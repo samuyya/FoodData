@@ -56,8 +56,7 @@ router.get('/me', (req, res) => {
     return res.json({
       ok: true,
       rol: 'empleado',
-      empresa: req.session.empresa,
-      adminNombre: req.session.adminNombre || null
+      empresa: req.session.empresa
     });
   }
   if (req.session && req.session.superadmin) {

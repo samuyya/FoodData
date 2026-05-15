@@ -1,14 +1,25 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const Administrador = require('../models/Administrador');
+const { getFormato } = require('../formatos');
 const { requireEmpresa } = require('../middleware/sesion');
 
 const router = express.Router();
 
+const MAX_EDAD_MS = 60 * 1000;
+
 router.post('/verificar', requireEmpresa, async (req, res) => {
-  const { password } = req.body;
-  if (!password) {
-    return res.status(400).json({ ok: false, error: 'Falta la contraseña' });
+  const { password, formatoId } = req.body;
+  if (!password || !formatoId) {
+    return res.status(400).json({ ok: false, error: 'Falta la contraseña o el formato' });
+  }
+
+  const formato = getFormato(formatoId);
+  if (!formato) {
+    return res.status(400).json({ ok: false, error: 'Formato no válido' });
+  }
+  if (!formato.restringido) {
+    return res.status(400).json({ ok: false, error: 'Este formato no requiere contraseña' });
   }
 
   const admins = await Administrador.find({ empresa_id: req.session.empresa.id });
@@ -19,17 +30,34 @@ router.post('/verificar', requireEmpresa, async (req, res) => {
   for (const a of admins) {
     const coincide = await bcrypt.compare(password, a.passwordHash);
     if (coincide) {
-      req.session.adminNombre = a.nombre;
-      return res.json({ ok: true, nombre: a.nombre });
+      req.session.adminPendiente = {
+        formatoId,
+        nombre: a.nombre,
+        ts: Date.now()
+      };
+      return res.json({ ok: true });
     }
   }
 
   res.status(401).json({ ok: false, error: 'Contraseña de administrador incorrecta' });
 });
 
-router.post('/salir', requireEmpresa, (req, res) => {
-  req.session.adminNombre = null;
+router.post('/limpiar', requireEmpresa, (req, res) => {
+  req.session.adminPendiente = null;
   res.json({ ok: true });
+});
+
+router.get('/consumir', requireEmpresa, (req, res) => {
+  const { formatoId } = req.query;
+  const p = req.session.adminPendiente;
+  const valido = p && p.formatoId === formatoId && (Date.now() - p.ts) <= MAX_EDAD_MS;
+  if (!valido) {
+    req.session.adminPendiente = null;
+    return res.status(401).json({ ok: false, error: 'Verificación de administrador requerida' });
+  }
+  const nombre = p.nombre;
+  req.session.adminPendiente = null;
+  res.json({ ok: true, nombre });
 });
 
 module.exports = router;

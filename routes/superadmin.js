@@ -6,7 +6,10 @@ const bcrypt = require('bcrypt');
 
 const Empresa = require('../models/Empresa');
 const Administrador = require('../models/Administrador');
+const { FORMATOS } = require('../formatos');
 const { requireSuperadmin } = require('../middleware/sesion');
+
+const IDS_FORMATOS = FORMATOS.map(f => f.id);
 
 const router = express.Router();
 
@@ -32,10 +35,23 @@ const upload = multer({
   }
 });
 
+router.get('/catalogo', requireSuperadmin, (req, res) => {
+  res.json({ ok: true, formatos: FORMATOS });
+});
+
 router.get('/empresas', requireSuperadmin, async (req, res) => {
   const empresas = await Empresa.find().sort({ nombre: 1 }).lean();
   res.json({ ok: true, empresas });
 });
+
+function parsearFormatosActivos(valor) {
+  let lista = [];
+  if (Array.isArray(valor)) lista = valor;
+  else if (typeof valor === 'string' && valor.length > 0) lista = [valor];
+  lista = lista.map(s => String(s).trim()).filter(Boolean);
+  const sinDuplicados = Array.from(new Set(lista));
+  return sinDuplicados.filter(id => IDS_FORMATOS.includes(id));
+}
 
 router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, res) => {
   try {
@@ -43,6 +59,12 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
     if (!nombre || !email || !password) {
       return res.status(400).json({ ok: false, error: 'Nombre, email y contraseña son obligatorios' });
     }
+
+    const formatosActivos = parsearFormatosActivos(req.body.formatosActivos);
+    if (formatosActivos.length === 0) {
+      return res.status(400).json({ ok: false, error: 'Selecciona al menos un formato para esta empresa' });
+    }
+
     const yaExiste = await Empresa.findOne({ email: email.toLowerCase().trim() });
     if (yaExiste) {
       return res.status(409).json({ ok: false, error: 'Ya existe una empresa con ese email' });
@@ -53,9 +75,19 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
       nombre: nombre.trim(),
       email: email.toLowerCase().trim(),
       passwordHash,
-      logo: logoRuta
+      logo: logoRuta,
+      formatosActivos
     });
-    res.status(201).json({ ok: true, empresa: { id: empresa._id, nombre: empresa.nombre, email: empresa.email, logo: empresa.logo } });
+    res.status(201).json({
+      ok: true,
+      empresa: {
+        id: empresa._id,
+        nombre: empresa.nombre,
+        email: empresa.email,
+        logo: empresa.logo,
+        formatosActivos: empresa.formatosActivos
+      }
+    });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }

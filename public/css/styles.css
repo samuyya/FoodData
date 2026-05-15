@@ -16,6 +16,8 @@
 
 * { box-sizing: border-box; }
 
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -329,4 +331,47 @@ body {
   display: flex;
   justify-content: flex-end;
   gap: .5rem;
+}
+
+.campo-fieldset {
+  border: 1px solid var(--color-borde);
+  border-radius: 8px;
+  padding: .75rem 1rem 1rem;
+}
+
+.campo-fieldset legend {
+  font-weight: 600;
+  font-size: .9rem;
+  padding: 0 .35rem;
+}
+
+.checkboxes-formatos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: .4rem .8rem;
+  margin-top: .35rem;
+}
+
+.check-formato {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .9rem;
+  cursor: pointer;
+  padding: .15rem 0;
+}
+
+.check-formato input { margin: 0; }
+
+.ayuda {
+  margin: .5rem 0 0;
+  font-size: .8rem;
+  color: var(--color-texto-suave);
+}
+
+.lista-formatos-activos {
+  display: block;
+  margin-top: .15rem;
+  font-size: .8rem;
+  color: var(--color-texto-suave);
 }

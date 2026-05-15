@@ -34,6 +34,13 @@
           <span>Logo (png, jpg, webp, svg — máx. 2MB)</span>
           <input type="file" name="logo" accept="image/*" />
         </label>
+
+        <fieldset class="campo campo-fieldset">
+          <legend>Formatos que usará esta empresa</legend>
+          <div id="checkboxes-formatos" class="checkboxes-formatos"></div>
+          <p class="ayuda">Marca al menos uno. La empresa solo verá los formatos seleccionados.</p>
+        </fieldset>
+
         <button type="submit" class="btn-primario">Crear empresa</button>
         <p class="mensaje" id="msg-empresa" hidden></p>
       </form>

@@ -7,6 +7,7 @@ const { FORMATOS, getFormato } = require('../formatos');
 const { requireEmpresa } = require('../middleware/sesion');
 const { adminVerificadoPara, adminHistorialActivo } = require('./admin');
 const { sincronizarFormatoMes, reconstruirMesCompleto, getRutaArchivo } = require('../servicios/excel');
+const googleSheets = require('../servicios/googleSheets');
 
 const router = express.Router();
 
@@ -132,6 +133,15 @@ router.post('/', requireEmpresa, async (req, res) => {
       await sincronizarFormatoMes(req.session.empresa.id, formatoId, info.anio, info.mes);
     } catch (errSync) {
       console.error('Excel sync falló:', errSync.message);
+    }
+
+    try {
+      const empresaDoc = await Empresa.findById(req.session.empresa.id).select('googleSheetId').lean();
+      if (empresaDoc && empresaDoc.googleSheetId) {
+        await googleSheets.sincronizarFormato(empresaDoc.googleSheetId, req.session.empresa.id, formatoId);
+      }
+    } catch (errGS) {
+      console.error('Google Sheets sync falló:', errGS.message);
     }
 
     const infoNuevo = await infoPendientes(req.session.empresa.id, formatoId);

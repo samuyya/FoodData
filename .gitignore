@@ -1,5 +1,6 @@
 node_modules/
 .env
+google-credentials.json
 datos/excel/*.xlsx
 public/img/logos/*
 !public/img/logos/.gitkeep

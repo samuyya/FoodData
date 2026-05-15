@@ -8,6 +8,7 @@ const empresaSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   passwordHash: { type: String, required: true },
   logo: { type: String, default: '' },
+  googleSheetId: { type: String, default: '', trim: true },
   formatosActivos: {
     type: [String],
     default: () => IDS_FORMATOS.slice(),

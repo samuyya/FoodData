@@ -8,8 +8,16 @@ const Empresa = require('../models/Empresa');
 const Administrador = require('../models/Administrador');
 const { FORMATOS } = require('../formatos');
 const { requireSuperadmin } = require('../middleware/sesion');
+const googleSheets = require('../servicios/googleSheets');
 
 const IDS_FORMATOS = FORMATOS.map(f => f.id);
+
+function extraerSheetId(valor) {
+  if (!valor) return '';
+  const v = String(valor).trim();
+  const m = v.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : v;
+}
 
 const router = express.Router();
 
@@ -37,6 +45,14 @@ const upload = multer({
 
 router.get('/catalogo', requireSuperadmin, (req, res) => {
   res.json({ ok: true, formatos: FORMATOS });
+});
+
+router.get('/google-info', requireSuperadmin, (req, res) => {
+  res.json({
+    ok: true,
+    disponible: googleSheets.estaDisponible(),
+    cuentaServicio: googleSheets.getCuentaServicio()
+  });
 });
 
 router.get('/empresas', requireSuperadmin, async (req, res) => {
@@ -76,6 +92,7 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
       email: email.toLowerCase().trim(),
       passwordHash,
       logo: logoRuta,
+      googleSheetId: extraerSheetId(req.body.googleSheetId),
       formatosActivos
     });
     res.status(201).json({
@@ -85,6 +102,7 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
         nombre: empresa.nombre,
         email: empresa.email,
         logo: empresa.logo,
+        googleSheetId: empresa.googleSheetId,
         formatosActivos: empresa.formatosActivos
       }
     });
@@ -120,6 +138,10 @@ router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req
       empresa.logo = `/img/logos/${req.file.filename}`;
     }
 
+    if (req.body.googleSheetId !== undefined) {
+      empresa.googleSheetId = extraerSheetId(req.body.googleSheetId);
+    }
+
     if (req.body.formatosActivos !== undefined) {
       const lista = parsearFormatosActivos(req.body.formatosActivos);
       if (lista.length === 0) {
@@ -136,6 +158,7 @@ router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req
         nombre: empresa.nombre,
         email: empresa.email,
         logo: empresa.logo,
+        googleSheetId: empresa.googleSheetId,
         formatosActivos: empresa.formatosActivos
       }
     });

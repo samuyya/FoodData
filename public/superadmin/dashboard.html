@@ -15,6 +15,15 @@
   </header>
 
   <main class="contenedor">
+    <section class="card" id="card-google" hidden>
+      <h2>Sincronización con Google Sheets</h2>
+      <p id="google-estado" class="ayuda"></p>
+      <div id="google-cuenta-wrap" hidden>
+        <p class="ayuda">Comparte cada hoja de Google (como <strong>Editor</strong>) con este correo para que la app pueda escribir en ella:</p>
+        <code id="google-cuenta" class="codigo-cuenta"></code>
+      </div>
+    </section>
+
     <section class="card">
       <h2>Crear empresa</h2>
       <form id="form-empresa" class="form" enctype="multipart/form-data">
@@ -33,6 +42,12 @@
         <label class="campo">
           <span>Logo (png, jpg, webp, svg — máx. 2MB)</span>
           <input type="file" name="logo" accept="image/*" />
+        </label>
+
+        <label class="campo">
+          <span>Google Sheets de la empresa (opcional)</span>
+          <input type="text" name="googleSheetId" placeholder="Pega el enlace o el ID de la hoja" />
+          <small class="ayuda" id="ayuda-google-crear">Pega aquí el enlace de la hoja de Google de esta empresa.</small>
         </label>
 
         <fieldset class="campo campo-fieldset">
@@ -109,6 +124,12 @@
         <label class="campo">
           <span>Reemplazar logo (opcional, máx. 2MB)</span>
           <input type="file" name="logo" accept="image/*" />
+        </label>
+
+        <label class="campo">
+          <span>Google Sheets de la empresa (opcional)</span>
+          <input type="text" name="googleSheetId" placeholder="Pega el enlace o el ID de la hoja" />
+          <small class="ayuda" id="ayuda-google-editar">Deja vacío para desvincular la hoja.</small>
         </label>
 
         <fieldset class="campo campo-fieldset">

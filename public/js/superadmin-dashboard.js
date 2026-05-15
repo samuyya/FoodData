@@ -16,6 +16,11 @@ const previewLogoActual = document.getElementById('preview-logo-actual');
 const previewLogoVacio = document.getElementById('preview-logo-vacio');
 const contenedorCheckboxesEditar = document.getElementById('checkboxes-formatos-editar');
 
+const cardGoogle = document.getElementById('card-google');
+const googleEstado = document.getElementById('google-estado');
+const googleCuentaWrap = document.getElementById('google-cuenta-wrap');
+const googleCuenta = document.getElementById('google-cuenta');
+
 let catalogoFormatos = [];
 
 function escapeHTML(s) {
@@ -62,6 +67,25 @@ async function cargarCatalogo() {
   const data = await r.json();
   catalogoFormatos = data.formatos;
   pintarCheckboxes(contenedorCheckboxes);
+}
+
+async function cargarGoogleInfo() {
+  try {
+    const r = await fetch('/api/superadmin/google-info');
+    if (!r.ok) return;
+    const data = await r.json();
+    cardGoogle.hidden = false;
+    if (data.disponible && data.cuentaServicio) {
+      googleEstado.textContent = 'La sincronización con Google Sheets está activa.';
+      googleCuenta.textContent = data.cuentaServicio;
+      googleCuentaWrap.hidden = false;
+    } else {
+      googleEstado.textContent = 'Google Sheets no está configurado todavía (falta el archivo de credenciales). El campo de hoja de cálculo se guardará igual, pero no se sincronizará hasta configurarlo.';
+      googleCuentaWrap.hidden = true;
+    }
+  } catch (err) {
+    cardGoogle.hidden = true;
+  }
 }
 
 async function cargarEmpresas() {
@@ -123,6 +147,7 @@ async function abrirModalEditar(empresaId) {
     formEditar.nombre.value = emp.nombre;
     formEditar.password.value = '';
     formEditar.logo.value = '';
+    formEditar.googleSheetId.value = emp.googleSheetId || '';
 
     if (emp.logo) {
       previewLogoActual.src = emp.logo;
@@ -256,6 +281,7 @@ btnLogout.addEventListener('click', async () => {
 
 (async function iniciar() {
   await cargarCatalogo();
+  await cargarGoogleInfo();
   await cargarEmpresas();
   await cargarAdmins();
 })();

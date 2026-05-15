@@ -12,6 +12,7 @@ const formatosRoutes = require('./routes/formatos');
 const adminRoutes = require('./routes/admin');
 const registrosRoutes = require('./routes/registros');
 const empleadosRoutes = require('./routes/empleados');
+const googleSheets = require('./servicios/googleSheets');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -57,6 +58,7 @@ async function iniciar() {
   try {
     await conectarDB();
     await seedSuperadmin();
+    googleSheets.inicializar();
     app.listen(PORT, () => {
       console.log(`Servidor escuchando en http://localhost:${PORT}`);
     });

@@ -1,0 +1,8 @@
+node_modules/
+.env
+datos/excel/*.xlsx
+public/img/logos/*
+!public/img/logos/.gitkeep
+*.log
+.DS_Store
+Thumbs.db

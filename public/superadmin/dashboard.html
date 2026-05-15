@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel Superadmin</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <strong>Panel Superadmin</strong>
+    </div>
+    <button id="btn-logout" class="btn-secundario">Cerrar sesión</button>
+  </header>
+
+  <main class="contenedor">
+    <section class="card">
+      <h2>Crear empresa</h2>
+      <form id="form-empresa" class="form" enctype="multipart/form-data">
+        <label class="campo">
+          <span>Nombre de la empresa</span>
+          <input type="text" name="nombre" required />
+        </label>
+        <label class="campo">
+          <span>Email de acceso</span>
+          <input type="email" name="email" required />
+        </label>
+        <label class="campo">
+          <span>Contraseña</span>
+          <input type="password" name="password" required />
+        </label>
+        <label class="campo">
+          <span>Logo (png, jpg, webp, svg — máx. 2MB)</span>
+          <input type="file" name="logo" accept="image/*" />
+        </label>
+        <button type="submit" class="btn-primario">Crear empresa</button>
+        <p class="mensaje" id="msg-empresa" hidden></p>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Empresas registradas</h2>
+      <ul id="lista-empresas" class="lista-empresas"></ul>
+    </section>
+
+    <section class="card">
+      <h2>Crear administrador</h2>
+      <form id="form-admin" class="form">
+        <label class="campo">
+          <span>Empresa</span>
+          <select name="empresa_id" required></select>
+        </label>
+        <label class="campo">
+          <span>Nombre del administrador</span>
+          <input type="text" name="nombre" required />
+        </label>
+        <label class="campo">
+          <span>Contraseña de acceso a formatos restringidos</span>
+          <input type="password" name="password" required />
+        </label>
+        <button type="submit" class="btn-primario">Crear administrador</button>
+        <p class="mensaje" id="msg-admin" hidden></p>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Administradores</h2>
+      <ul id="lista-admins" class="lista-empresas"></ul>
+    </section>
+  </main>
+
+  <script src="/js/superadmin-dashboard.js"></script>
+</body>
+</html>

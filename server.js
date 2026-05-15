@@ -11,6 +11,7 @@ const superadminRoutes = require('./routes/superadmin');
 const formatosRoutes = require('./routes/formatos');
 const adminRoutes = require('./routes/admin');
 const registrosRoutes = require('./routes/registros');
+const empleadosRoutes = require('./routes/empleados');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,6 +33,7 @@ app.use('/api/superadmin', superadminRoutes);
 app.use('/api/formatos', formatosRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/registros', registrosRoutes);
+app.use('/api/empleados', empleadosRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, mensaje: 'Servidor en linea' });

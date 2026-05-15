@@ -93,6 +93,57 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
   }
 });
 
+router.get('/empresas/:id', requireSuperadmin, async (req, res) => {
+  const empresa = await Empresa.findById(req.params.id).select('-passwordHash').lean();
+  if (!empresa) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });
+  res.json({ ok: true, empresa });
+});
+
+router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req, res) => {
+  try {
+    const empresa = await Empresa.findById(req.params.id);
+    if (!empresa) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });
+
+    if (req.body.nombre !== undefined) {
+      const nuevoNombre = String(req.body.nombre).trim();
+      if (!nuevoNombre) {
+        return res.status(400).json({ ok: false, error: 'El nombre no puede estar vacío' });
+      }
+      empresa.nombre = nuevoNombre;
+    }
+
+    if (req.body.password !== undefined && String(req.body.password).trim() !== '') {
+      empresa.passwordHash = await bcrypt.hash(req.body.password, 10);
+    }
+
+    if (req.file) {
+      empresa.logo = `/img/logos/${req.file.filename}`;
+    }
+
+    if (req.body.formatosActivos !== undefined) {
+      const lista = parsearFormatosActivos(req.body.formatosActivos);
+      if (lista.length === 0) {
+        return res.status(400).json({ ok: false, error: 'Selecciona al menos un formato' });
+      }
+      empresa.formatosActivos = lista;
+    }
+
+    await empresa.save();
+    res.json({
+      ok: true,
+      empresa: {
+        id: empresa._id,
+        nombre: empresa.nombre,
+        email: empresa.email,
+        logo: empresa.logo,
+        formatosActivos: empresa.formatosActivos
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 router.post('/administradores', requireSuperadmin, async (req, res) => {
   try {
     const { nombre, password, empresa_id } = req.body;

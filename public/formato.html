@@ -59,14 +59,51 @@
 
     <section id="seccion-empleados" class="card" hidden>
       <h2>Empleados registrados</h2>
-      <p class="ayuda">
-        Esta sección está reservada para el Formato 3.
-        La gestión completa (crear, editar, eliminar y formularios individuales)
-        se construirá en el siguiente paso.
-      </p>
-      <ul id="lista-empleados-placeholder" class="lista-empleados"></ul>
+      <p class="ayuda">Crea, edita o elimina los empleados de tu empresa. Toca un empleado para abrir su formulario individual.</p>
+
+      <form id="form-nuevo-empleado" class="form-inline">
+        <label class="campo">
+          <span>Nuevo empleado</span>
+          <input
+            type="text"
+            name="nombre"
+            placeholder="Nombre completo"
+            required
+            pattern="[A-Za-zÀ-ÿÑñ\s]+"
+            title="Solo letras y espacios"
+          />
+        </label>
+        <button type="submit" class="btn-primario">Agregar</button>
+      </form>
+      <p id="msg-empleado" class="mensaje" hidden></p>
+
+      <ul id="lista-empleados" class="lista-empleados"></ul>
     </section>
   </main>
+
+  <div id="modal-empleado" class="modal-backdrop" hidden>
+    <div class="modal">
+      <h2>Editar empleado</h2>
+      <form id="form-editar-empleado" class="form">
+        <input type="hidden" name="id" />
+        <label class="campo">
+          <span>Nombre</span>
+          <input
+            type="text"
+            name="nombre"
+            required
+            pattern="[A-Za-zÀ-ÿÑñ\s]+"
+            title="Solo letras y espacios"
+          />
+        </label>
+        <p id="modal-empleado-error" class="mensaje mensaje-error" hidden></p>
+        <div class="modal-acciones">
+          <button type="button" id="btn-cancelar-editar-empleado" class="btn-secundario">Cancelar</button>
+          <button type="submit" class="btn-primario">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <script src="/js/formato.js"></script>
 </body>

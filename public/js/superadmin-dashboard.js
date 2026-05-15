@@ -8,7 +8,24 @@ const selectEmpresa = formAdmin.querySelector('select[name="empresa_id"]');
 const btnLogout = document.getElementById('btn-logout');
 const contenedorCheckboxes = document.getElementById('checkboxes-formatos');
 
+const modalEditar = document.getElementById('modal-editar-empresa');
+const formEditar = document.getElementById('form-editar-empresa');
+const msgEditar = document.getElementById('msg-editar-empresa');
+const btnCancelarEditar = document.getElementById('btn-cancelar-editar-empresa');
+const previewLogoActual = document.getElementById('preview-logo-actual');
+const previewLogoVacio = document.getElementById('preview-logo-vacio');
+const contenedorCheckboxesEditar = document.getElementById('checkboxes-formatos-editar');
+
 let catalogoFormatos = [];
+
+function escapeHTML(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 function mostrarMensaje(el, texto, esError = false) {
   el.textContent = texto;
@@ -16,16 +33,17 @@ function mostrarMensaje(el, texto, esError = false) {
   el.hidden = false;
 }
 
-function pintarCheckboxes() {
-  contenedorCheckboxes.innerHTML = '';
+function pintarCheckboxes(contenedor, marcadosIds = null) {
+  contenedor.innerHTML = '';
   catalogoFormatos.forEach(f => {
+    const checked = (marcadosIds === null) ? true : marcadosIds.includes(f.id);
     const label = document.createElement('label');
     label.className = 'check-formato';
     label.innerHTML = `
-      <input type="checkbox" name="formatosActivos" value="${f.id}" checked />
-      <span>${f.numero}. ${f.nombre}${f.restringido ? ' 🔒' : ''}</span>
+      <input type="checkbox" name="formatosActivos" value="${f.id}" ${checked ? 'checked' : ''} />
+      <span>${f.numero}. ${escapeHTML(f.nombre)}${f.restringido ? ' 🔒' : ''}</span>
     `;
-    contenedorCheckboxes.appendChild(label);
+    contenedor.appendChild(label);
   });
 }
 
@@ -43,7 +61,7 @@ async function cargarCatalogo() {
   if (r.status === 401) { window.location.href = '/'; return; }
   const data = await r.json();
   catalogoFormatos = data.formatos;
-  pintarCheckboxes();
+  pintarCheckboxes(contenedorCheckboxes);
 }
 
 async function cargarEmpresas() {
@@ -57,13 +75,16 @@ async function cargarEmpresas() {
     const tieneSeleccion = Array.isArray(emp.formatosActivos) && emp.formatosActivos.length > 0;
     const activos = tieneSeleccion ? emp.formatosActivos : catalogoFormatos.map(f => f.id);
     const li = document.createElement('li');
+    li.className = 'empresa-item';
     li.innerHTML = `
-      ${emp.logo ? `<img src="${emp.logo}" alt="logo" class="mini-logo" />` : ''}
-      <span>
-        <strong>${emp.nombre}</strong> · ${emp.email}
-        <small class="lista-formatos-activos">${activos.length}/${total} formatos: ${nombresDeFormatos(activos)}</small>
+      ${emp.logo ? `<img src="${escapeHTML(emp.logo)}" alt="logo" class="mini-logo" />` : '<span class="mini-logo mini-logo--vacio"></span>'}
+      <span class="empresa-info">
+        <strong>${escapeHTML(emp.nombre)}</strong> · ${escapeHTML(emp.email)}
+        <small class="lista-formatos-activos">${activos.length}/${total} formatos: ${escapeHTML(nombresDeFormatos(activos))}</small>
       </span>
+      <button type="button" class="btn-secundario btn-editar-empresa" data-id="${emp._id}">Editar</button>
     `;
+    li.querySelector('.btn-editar-empresa').addEventListener('click', () => abrirModalEditar(emp._id));
     listaEmpresas.appendChild(li);
 
     const opt = document.createElement('option');
@@ -81,10 +102,96 @@ async function cargarAdmins() {
   data.administradores.forEach(a => {
     const li = document.createElement('li');
     const empresaNombre = a.empresa_id && a.empresa_id.nombre ? a.empresa_id.nombre : '(sin empresa)';
-    li.innerHTML = `<span><strong>${a.nombre}</strong> · ${empresaNombre}</span>`;
+    li.innerHTML = `<span><strong>${escapeHTML(a.nombre)}</strong> · ${escapeHTML(empresaNombre)}</span>`;
     listaAdmins.appendChild(li);
   });
 }
+
+async function abrirModalEditar(empresaId) {
+  msgEditar.hidden = true;
+  try {
+    const r = await fetch(`/api/superadmin/empresas/${encodeURIComponent(empresaId)}`);
+    if (!r.ok) {
+      alert('No se pudo cargar la empresa');
+      return;
+    }
+    const data = await r.json();
+    const emp = data.empresa;
+
+    formEditar.id.value = emp._id;
+    formEditar.email.value = emp.email;
+    formEditar.nombre.value = emp.nombre;
+    formEditar.password.value = '';
+    formEditar.logo.value = '';
+
+    if (emp.logo) {
+      previewLogoActual.src = emp.logo;
+      previewLogoActual.hidden = false;
+      previewLogoVacio.hidden = true;
+    } else {
+      previewLogoActual.hidden = true;
+      previewLogoVacio.hidden = false;
+    }
+
+    const tieneSeleccion = Array.isArray(emp.formatosActivos) && emp.formatosActivos.length > 0;
+    const marcados = tieneSeleccion ? emp.formatosActivos : catalogoFormatos.map(f => f.id);
+    pintarCheckboxes(contenedorCheckboxesEditar, marcados);
+
+    modalEditar.hidden = false;
+  } catch (err) {
+    alert('Error de red');
+  }
+}
+
+function cerrarModalEditar() {
+  modalEditar.hidden = true;
+}
+
+btnCancelarEditar.addEventListener('click', cerrarModalEditar);
+modalEditar.addEventListener('click', (e) => {
+  if (e.target === modalEditar) cerrarModalEditar();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !modalEditar.hidden) cerrarModalEditar();
+});
+
+formEditar.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  msgEditar.hidden = true;
+
+  const marcados = Array.from(
+    contenedorCheckboxesEditar.querySelectorAll('input[name="formatosActivos"]:checked')
+  ).map(i => i.value);
+  if (marcados.length === 0) {
+    mostrarMensaje(msgEditar, 'Selecciona al menos un formato', true);
+    return;
+  }
+
+  const fd = new FormData(formEditar);
+  fd.delete('email');
+  if (!formEditar.password.value.trim()) fd.delete('password');
+  if (!formEditar.logo.files.length) fd.delete('logo');
+
+  const id = formEditar.id.value;
+  fd.delete('id');
+
+  try {
+    const r = await fetch(`/api/superadmin/empresas/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: fd
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      mostrarMensaje(msgEditar, data.error || 'Error', true);
+      return;
+    }
+    mostrarMensaje(msgEditar, `Cambios guardados para "${data.empresa.nombre}"`);
+    cargarEmpresas();
+    setTimeout(cerrarModalEditar, 800);
+  } catch (err) {
+    mostrarMensaje(msgEditar, 'Error de red', true);
+  }
+});
 
 formEmpresa.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -108,7 +215,7 @@ formEmpresa.addEventListener('submit', async (e) => {
     }
     mostrarMensaje(msgEmpresa, `Empresa "${data.empresa.nombre}" creada con ${data.empresa.formatosActivos.length} formato(s)`);
     formEmpresa.reset();
-    pintarCheckboxes();
+    pintarCheckboxes(contenedorCheckboxes);
     cargarEmpresas();
   } catch (err) {
     mostrarMensaje(msgEmpresa, 'Error de red', true);

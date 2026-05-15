@@ -423,9 +423,145 @@ textarea:focus {
 
 .lista-empleados {
   list-style: none;
-  margin: 0;
+  margin: 1rem 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
   gap: .5rem;
+}
+
+.form-inline {
+  display: flex;
+  align-items: flex-end;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.form-inline .campo {
+  flex: 1;
+  min-width: 200px;
+}
+
+.empleado-vacio {
+  padding: 1rem;
+  text-align: center;
+  color: var(--color-texto-suave);
+  border: 1px dashed var(--color-borde);
+  border-radius: 8px;
+  font-size: .9rem;
+}
+
+.empleado-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+  overflow: hidden;
+}
+
+.empleado-cabecera {
+  display: flex;
+  align-items: stretch;
+  gap: .25rem;
+}
+
+.empleado-row {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .65rem .85rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+.empleado-row:hover { background: #f3f4f6; }
+
+.empleado-iniciales {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-primario);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}
+
+.empleado-nombre { flex: 1; font-weight: 500; }
+
+.empleado-flecha {
+  color: var(--color-texto-suave);
+  transition: transform .15s;
+}
+
+.empleado-item--abierto .empleado-flecha {
+  transform: rotate(180deg);
+}
+
+.empleado-acciones {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  padding-right: .5rem;
+}
+
+.btn-eliminar-empleado {
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  cursor: pointer;
+}
+.btn-eliminar-empleado:hover { background: #fecaca; }
+
+.empleado-formulario {
+  padding: .75rem 1rem 1rem;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.empresa-item {
+  display: flex !important;
+  align-items: center;
+  gap: .75rem;
+}
+
+.empresa-info {
+  flex: 1;
+}
+
+.mini-logo--vacio {
+  background: #e5e7eb;
+}
+
+.modal-grande {
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.logo-preview-wrap {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .35rem 0;
+}
+
+.logo-preview {
+  width: 56px;
+  height: 56px;
+}
+
+.btn-editar-empleado,
+.btn-editar-empresa {
+  padding: .35rem .7rem;
+  font-size: .85rem;
 }

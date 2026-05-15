@@ -77,6 +77,56 @@
     </section>
   </main>
 
+  <div id="modal-editar-empresa" class="modal-backdrop" hidden>
+    <div class="modal modal-grande">
+      <h2>Editar empresa</h2>
+      <form id="form-editar-empresa" class="form" enctype="multipart/form-data">
+        <input type="hidden" name="id" />
+
+        <label class="campo">
+          <span>Email (no editable)</span>
+          <input type="email" name="email" readonly class="input-readonly" />
+        </label>
+
+        <label class="campo">
+          <span>Nombre de la empresa</span>
+          <input type="text" name="nombre" required />
+        </label>
+
+        <label class="campo">
+          <span>Nueva contraseña (dejar vacío para mantener la actual)</span>
+          <input type="password" name="password" autocomplete="new-password" />
+        </label>
+
+        <label class="campo">
+          <span>Logo actual</span>
+          <div class="logo-preview-wrap">
+            <img id="preview-logo-actual" class="mini-logo logo-preview" alt="" hidden />
+            <span id="preview-logo-vacio" class="ayuda">Sin logo</span>
+          </div>
+        </label>
+
+        <label class="campo">
+          <span>Reemplazar logo (opcional, máx. 2MB)</span>
+          <input type="file" name="logo" accept="image/*" />
+        </label>
+
+        <fieldset class="campo campo-fieldset">
+          <legend>Formatos activos</legend>
+          <div id="checkboxes-formatos-editar" class="checkboxes-formatos"></div>
+          <p class="ayuda">Marca al menos uno.</p>
+        </fieldset>
+
+        <p id="msg-editar-empresa" class="mensaje" hidden></p>
+
+        <div class="modal-acciones">
+          <button type="button" id="btn-cancelar-editar-empresa" class="btn-secundario">Cancelar</button>
+          <button type="submit" class="btn-primario">Guardar cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="/js/superadmin-dashboard.js"></script>
 </body>
 </html>

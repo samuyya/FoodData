@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Formato - Inocuidad Alimentaria</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <img id="logo-empresa" class="logo-empresa" alt="" hidden />
+      <strong id="nombre-empresa">...</strong>
+    </div>
+    <div class="topbar-right">
+      <button id="btn-logout" class="btn-secundario">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <main class="contenedor">
+    <div class="card formato-cabecera">
+      <h1 class="titulo-pagina" id="formato-titulo">Cargando...</h1>
+      <p class="subtitulo-pagina">
+        <span class="meta-label">Fecha:</span>
+        <strong id="formato-fecha"></strong>
+        <span id="badge-admin-activo" class="badge-admin" hidden>
+          Sesión de administrador: <strong id="badge-admin-nombre"></strong>
+        </span>
+      </p>
+    </div>
+
+    <form id="form-registro" class="card">
+      <label class="campo">
+        <span>Responsable</span>
+        <input
+          type="text"
+          name="responsable"
+          id="input-responsable"
+          autocomplete="off"
+          pattern="[A-Za-zÀ-ÿÑñ\s]+"
+          title="Solo letras y espacios"
+        />
+        <small class="ayuda" id="responsable-hint">Escribe tu nombre (solo letras y espacios).</small>
+      </label>
+
+      <label class="campo">
+        <span>Observaciones</span>
+        <textarea name="observaciones" id="input-observaciones" rows="4" placeholder="Comentarios u observaciones del día..."></textarea>
+      </label>
+
+      <p id="msg-registro" class="mensaje" hidden></p>
+
+      <div class="acciones-formato">
+        <button type="submit" id="btn-guardar" class="btn-primario">Guardar</button>
+        <button type="button" id="btn-ver-registros" class="btn-secundario">Ver registros</button>
+        <button type="button" id="btn-volver" class="btn-secundario">Volver al menú</button>
+      </div>
+    </form>
+
+    <section id="seccion-empleados" class="card" hidden>
+      <h2>Empleados registrados</h2>
+      <p class="ayuda">
+        Esta sección está reservada para el Formato 3.
+        La gestión completa (crear, editar, eliminar y formularios individuales)
+        se construirá en el siguiente paso.
+      </p>
+      <ul id="lista-empleados-placeholder" class="lista-empleados"></ul>
+    </section>
+  </main>
+
+  <script src="/js/formato.js"></script>
+</body>
+</html>

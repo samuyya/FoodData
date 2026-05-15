@@ -6,7 +6,15 @@ const { requireEmpresa } = require('../middleware/sesion');
 
 const router = express.Router();
 
-const MAX_EDAD_MS = 60 * 1000;
+const MAX_EDAD_MS = 8 * 60 * 60 * 1000;
+
+function adminVerificadoPara(req, formatoId) {
+  const p = req.session && req.session.adminPendiente;
+  if (!p) return null;
+  if (p.formatoId !== formatoId) return null;
+  if (Date.now() - p.ts > MAX_EDAD_MS) return null;
+  return p.nombre;
+}
 
 router.post('/verificar', requireEmpresa, async (req, res) => {
   const { password, formatoId } = req.body;
@@ -49,15 +57,13 @@ router.post('/limpiar', requireEmpresa, (req, res) => {
 
 router.get('/consumir', requireEmpresa, (req, res) => {
   const { formatoId } = req.query;
-  const p = req.session.adminPendiente;
-  const valido = p && p.formatoId === formatoId && (Date.now() - p.ts) <= MAX_EDAD_MS;
-  if (!valido) {
+  const nombre = adminVerificadoPara(req, formatoId);
+  if (!nombre) {
     req.session.adminPendiente = null;
     return res.status(401).json({ ok: false, error: 'Verificación de administrador requerida' });
   }
-  const nombre = p.nombre;
-  req.session.adminPendiente = null;
   res.json({ ok: true, nombre });
 });
 
 module.exports = router;
+module.exports.adminVerificadoPara = adminVerificadoPara;

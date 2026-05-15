@@ -5,6 +5,10 @@ const fechaEl = document.getElementById('formato-fecha');
 const badgeAdminEl = document.getElementById('badge-admin-activo');
 const badgeAdminNombreEl = document.getElementById('badge-admin-nombre');
 
+const bannerPendientes = document.getElementById('banner-pendientes');
+const bannerInfo = document.getElementById('banner-info');
+const diaObjetivoEl = document.getElementById('formato-dia-actual');
+
 const inputResponsable = document.getElementById('input-responsable');
 const responsableHint = document.getElementById('responsable-hint');
 const inputObservaciones = document.getElementById('input-observaciones');
@@ -29,6 +33,19 @@ const formatoId = params.get('id');
 
 let formatoActual = null;
 let esRestringido = false;
+let adminNombreSesion = null;
+let estadoPendientes = null;
+
+const MESES_LARGOS = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+];
+
+function escapeHTML(s) {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 
 function mostrarMensaje(texto, esError = false) {
   msgRegistro.textContent = texto;
@@ -60,27 +77,63 @@ function pintarFecha() {
   });
 }
 
-function bloquearFormulario(motivo) {
-  inputResponsable.disabled = true;
-  inputObservaciones.disabled = true;
-  btnGuardar.disabled = true;
-  btnGuardar.title = motivo;
-  mostrarMensaje(motivo);
+function resetearFormulario() {
+  inputResponsable.disabled = false;
+  inputObservaciones.disabled = false;
+  btnGuardar.disabled = false;
+  btnGuardar.title = '';
+  msgRegistro.hidden = true;
+  bannerPendientes.hidden = true;
+  bannerInfo.hidden = true;
+  diaObjetivoEl.hidden = true;
+  if (!esRestringido) {
+    inputResponsable.value = '';
+  }
+  inputObservaciones.value = '';
 }
 
-function precargarRegistroExistente(reg) {
-  inputResponsable.value = reg.responsable || '';
-  inputObservaciones.value = reg.observaciones || '';
-  bloquearFormulario('Ya se guardó un registro para hoy en este formato.');
-}
+function pintarEstadoPendientes(info) {
+  estadoPendientes = info;
+  resetearFormulario();
 
-function escapeHTML(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+  const { diaActual, mes, anio, pendientes, siguienteDia, completoHoy, registroHoy } = info;
+  const nombreMes = MESES_LARGOS[mes - 1];
+
+  if (completoHoy) {
+    bannerInfo.innerHTML = `✅ <strong>Mes al día.</strong> Todos los registros del 1 al ${diaActual} de ${nombreMes} están completos.`;
+    bannerInfo.hidden = false;
+
+    if (registroHoy) {
+      inputResponsable.value = registroHoy.responsable || '';
+      inputObservaciones.value = registroHoy.observaciones || '';
+    }
+    inputResponsable.disabled = true;
+    inputObservaciones.disabled = true;
+    btnGuardar.disabled = true;
+    btnGuardar.title = 'Ya completaste todos los días hasta hoy';
+    return;
+  }
+
+  if (siguienteDia === diaActual) {
+    diaObjetivoEl.innerHTML = `📅 Estás registrando el <strong>día ${diaActual} de ${nombreMes}</strong> (hoy).`;
+    diaObjetivoEl.hidden = false;
+    return;
+  }
+
+  const restantes = pendientes.slice(1);
+  const restantesTxt = restantes.length === 0
+    ? 'Después de este, ya estarás al día.'
+    : `Después de este faltarán: ${restantes.join(', ')}.`;
+
+  bannerPendientes.innerHTML = `
+    ⚠️ <strong>Tienes ${pendientes.length} día(s) pendiente(s) en ${nombreMes}.</strong>
+    Días faltantes: ${pendientes.join(', ')}.
+    Debes completarlos en orden, empezando por el más antiguo.
+  `;
+  bannerPendientes.hidden = false;
+
+  diaObjetivoEl.innerHTML = `📝 Estás registrando el <strong>día ${siguienteDia} de ${nombreMes}</strong>. ${restantesTxt}`;
+  diaObjetivoEl.hidden = false;
 }
 
 function pintarEmpleados(empleados) {
@@ -118,12 +171,8 @@ function pintarEmpleados(empleados) {
       cont.hidden = !cont.hidden;
       li.classList.toggle('empleado-item--abierto');
     });
-    li.querySelector('.btn-editar-empleado').addEventListener('click', () => {
-      abrirModalEditar(emp);
-    });
-    li.querySelector('.btn-eliminar-empleado').addEventListener('click', () => {
-      confirmarEliminar(emp);
-    });
+    li.querySelector('.btn-editar-empleado').addEventListener('click', () => abrirModalEditar(emp));
+    li.querySelector('.btn-eliminar-empleado').addEventListener('click', () => confirmarEliminar(emp));
     listaEmpleados.appendChild(li);
   });
 }
@@ -143,9 +192,7 @@ function abrirModalEditar(emp) {
   setTimeout(() => formEditarEmpleado.nombre.focus(), 50);
 }
 
-function cerrarModalEditar() {
-  modalEmpleado.hidden = true;
-}
+function cerrarModalEditar() { modalEmpleado.hidden = true; }
 
 btnCancelarEditar.addEventListener('click', cerrarModalEditar);
 modalEmpleado.addEventListener('click', (e) => {
@@ -166,10 +213,7 @@ if (formNuevoEmpleado) {
         body: JSON.stringify({ nombre: formNuevoEmpleado.nombre.value })
       });
       const data = await r.json();
-      if (!r.ok) {
-        mostrarMsgEmpleado(data.error || 'Error', true);
-        return;
-      }
+      if (!r.ok) { mostrarMsgEmpleado(data.error || 'Error', true); return; }
       formNuevoEmpleado.reset();
       mostrarMsgEmpleado(`Empleado "${data.empleado.nombre}" agregado.`);
       cargarEmpleados();
@@ -205,15 +249,11 @@ formEditarEmpleado.addEventListener('submit', async (e) => {
 });
 
 async function confirmarEliminar(emp) {
-  const ok = window.confirm(`¿Eliminar a "${emp.nombre}"?\nEsta acción no se puede deshacer.`);
-  if (!ok) return;
+  if (!window.confirm(`¿Eliminar a "${emp.nombre}"?\nEsta acción no se puede deshacer.`)) return;
   try {
     const r = await fetch(`/api/empleados/${encodeURIComponent(emp._id)}`, { method: 'DELETE' });
     const data = await r.json();
-    if (!r.ok) {
-      mostrarMsgEmpleado(data.error || 'Error al eliminar', true);
-      return;
-    }
+    if (!r.ok) { mostrarMsgEmpleado(data.error || 'Error al eliminar', true); return; }
     mostrarMsgEmpleado(`Empleado "${emp.nombre}" eliminado.`);
     cargarEmpleados();
   } catch (err) {
@@ -248,16 +288,14 @@ async function cargar() {
 
     if (esRestringido) {
       const rC = await fetch(`/api/admin/consumir?formatoId=${encodeURIComponent(formatoId)}`);
-      if (!rC.ok) {
-        window.location.href = '/menu.html';
-        return;
-      }
+      if (!rC.ok) { window.location.href = '/menu.html'; return; }
       const dC = await rC.json();
-      inputResponsable.value = dC.nombre;
+      adminNombreSesion = dC.nombre;
+      inputResponsable.value = adminNombreSesion;
       inputResponsable.readOnly = true;
       inputResponsable.classList.add('input-readonly');
       responsableHint.textContent = 'Nombre del administrador (no editable).';
-      badgeAdminNombreEl.textContent = dC.nombre;
+      badgeAdminNombreEl.textContent = adminNombreSesion;
       badgeAdminEl.hidden = false;
 
       if (formatoActual.id === 'presentacion_personal') {
@@ -268,12 +306,10 @@ async function cargar() {
       inputResponsable.placeholder = 'Tu nombre completo';
     }
 
-    const rHoy = await fetch(`/api/registros/hoy/${encodeURIComponent(formatoId)}`);
-    if (rHoy.ok) {
-      const dHoy = await rHoy.json();
-      if (dHoy.registro) {
-        precargarRegistroExistente(dHoy.registro);
-      }
+    const rPend = await fetch(`/api/registros/pendientes/${encodeURIComponent(formatoId)}`);
+    if (rPend.ok) {
+      const dPend = await rPend.json();
+      pintarEstadoPendientes(dPend);
     }
   } catch (err) {
     document.body.innerHTML = '<p style="padding:2rem;color:#b91c1c">Error cargando el formato. Recarga la página.</p>';
@@ -304,8 +340,9 @@ formRegistro.addEventListener('submit', async (e) => {
       btnGuardar.disabled = false;
       return;
     }
-    mostrarMensaje('Registro guardado correctamente.');
-    bloquearFormulario('Ya se guardó un registro para hoy en este formato.');
+    const guardadoDia = data.registro.dia;
+    pintarEstadoPendientes(data.info);
+    mostrarMensaje(`Registro del día ${guardadoDia} guardado correctamente.`);
   } catch (err) {
     mostrarMensaje('Error de red al guardar', true);
     btnGuardar.disabled = false;
@@ -313,12 +350,10 @@ formRegistro.addEventListener('submit', async (e) => {
 });
 
 btnVerRegistros.addEventListener('click', () => {
-  alert('La pantalla de registros se construirá en el paso 9 (ciclo mensual e historial).');
+  window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}`;
 });
 
-btnVolver.addEventListener('click', () => {
-  window.location.href = '/menu.html';
-});
+btnVolver.addEventListener('click', () => { window.location.href = '/menu.html'; });
 
 btnLogout.addEventListener('click', async () => {
   await fetch('/api/auth/logout', { method: 'POST' });

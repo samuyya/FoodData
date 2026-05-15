@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registros - Inocuidad Alimentaria</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <img id="logo-empresa" class="logo-empresa" alt="" hidden />
+      <strong id="nombre-empresa">...</strong>
+    </div>
+    <div class="topbar-right">
+      <button id="btn-logout" class="btn-secundario">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <main class="contenedor">
+    <div class="card formato-cabecera">
+      <h1 class="titulo-pagina" id="formato-titulo">Cargando...</h1>
+      <p class="subtitulo-pagina" id="formato-subtitulo">Historial de registros mensuales.</p>
+    </div>
+
+    <section class="card">
+      <div class="historial-toolbar">
+        <label class="campo">
+          <span>Mes a consultar</span>
+          <select id="select-mes"></select>
+        </label>
+        <div class="historial-info">
+          <p id="historial-info-texto" class="ayuda"></p>
+        </div>
+        <div class="historial-acciones">
+          <button type="button" id="btn-volver-formato" class="btn-secundario">Volver al formato</button>
+          <button type="button" id="btn-ir-menu" class="btn-secundario">Ir al menú</button>
+        </div>
+      </div>
+
+      <div id="contenedor-tabla">
+        <p class="ayuda" id="estado-historial">Cargando registros...</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="modal-historial-admin" class="modal-backdrop" hidden>
+    <div class="modal">
+      <h2>Acceso a meses anteriores</h2>
+      <p class="subtitulo">Solo el administrador puede consultar meses anteriores al actual.</p>
+      <form id="form-verificar-historial" class="form">
+        <label class="campo">
+          <span>Contraseña de administrador</span>
+          <input type="password" name="password" required autocomplete="current-password" />
+        </label>
+        <p id="modal-historial-error" class="mensaje mensaje-error" hidden></p>
+        <div class="modal-acciones">
+          <button type="button" id="btn-cancelar-historial" class="btn-secundario">Cancelar</button>
+          <button type="submit" class="btn-primario">Verificar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/registros.js"></script>
+</body>
+</html>

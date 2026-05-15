@@ -6,6 +6,7 @@ const selectMes = document.getElementById('select-mes');
 const contenedorTabla = document.getElementById('contenedor-tabla');
 const estadoHistorial = document.getElementById('estado-historial');
 const historialInfoTexto = document.getElementById('historial-info-texto');
+const btnDescargar = document.getElementById('btn-descargar-excel');
 const btnVolverFormato = document.getElementById('btn-volver-formato');
 const btnIrMenu = document.getElementById('btn-ir-menu');
 const btnLogout = document.getElementById('btn-logout');
@@ -132,7 +133,7 @@ async function cargarHistorial(anio, mes) {
   try {
     const r = await fetch(`/api/registros/historial/${encodeURIComponent(formatoId)}?anio=${anio}&mes=${mes}`);
     if (r.status === 401) {
-      intentoPendiente = { anio, mes };
+      intentoPendiente = { anio, mes, accion: 'ver' };
       modalError.hidden = true;
       formVerificar.reset();
       modal.hidden = false;
@@ -198,12 +199,67 @@ formVerificar.addEventListener('submit', async (e) => {
     }
     modal.hidden = true;
     if (intentoPendiente) {
-      cargarHistorial(intentoPendiente.anio, intentoPendiente.mes);
+      const intento = intentoPendiente;
       intentoPendiente = null;
+      if (intento.accion === 'descargar') {
+        selectMes.value = `${intento.anio}-${intento.mes}`;
+        btnDescargar.click();
+      } else {
+        cargarHistorial(intento.anio, intento.mes);
+      }
     }
   } catch (err) {
     modalError.textContent = 'Error de red';
     modalError.hidden = false;
+  }
+});
+
+btnDescargar.addEventListener('click', async () => {
+  if (!selectMes.value) return;
+  const [anioStr, mesStr] = selectMes.value.split('-');
+  const anio = parseInt(anioStr, 10);
+  const mes = parseInt(mesStr, 10);
+
+  btnDescargar.disabled = true;
+  const textoOriginal = btnDescargar.textContent;
+  btnDescargar.textContent = 'Preparando...';
+
+  try {
+    const r = await fetch(`/api/registros/excel/${anio}/${mes}`);
+    if (r.status === 401) {
+      intentoPendiente = { anio, mes, accion: 'descargar' };
+      modalError.hidden = true;
+      formVerificar.reset();
+      modal.hidden = false;
+      setTimeout(() => formVerificar.password.focus(), 50);
+      return;
+    }
+    if (r.status === 404) {
+      alert('No hay registros guardados para ese mes todavía.');
+      return;
+    }
+    if (!r.ok) {
+      alert('Error descargando el archivo.');
+      return;
+    }
+    const blob = await r.blob();
+    const disposicion = r.headers.get('Content-Disposition') || '';
+    const m = disposicion.match(/filename="?([^"]+)"?/);
+    const nombre = m ? m[1] : `registros_${anio}-${String(mes).padStart(2, '0')}.xlsx`;
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombre;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert('Error de red al descargar.');
+  } finally {
+    btnDescargar.disabled = false;
+    btnDescargar.textContent = textoOriginal;
   }
 });
 

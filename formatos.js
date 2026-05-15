@@ -1,11 +1,11 @@
 const FORMATOS = [
-  { id: 'calidad_agua',          numero: 1, nombre: 'Calidad del agua',                       restringido: false },
-  { id: 'control_plagas',        numero: 2, nombre: 'Control de plagas',                      restringido: false },
-  { id: 'presentacion_personal', numero: 3, nombre: 'Presentación personal',                  restringido: true  },
-  { id: 'control_temperatura',   numero: 4, nombre: 'Control de temperatura',                 restringido: false },
-  { id: 'limpieza_desinfeccion', numero: 5, nombre: 'Limpieza y desinfección de superficies', restringido: false },
-  { id: 'manejo_residuos',       numero: 6, nombre: 'Manejo de residuos',                     restringido: false },
-  { id: 'capacitacion_continua', numero: 7, nombre: 'Capacitación continua',                  restringido: true  }
+  { id: 'calidad_agua',          numero: 1, nombre: 'Calidad del agua',                       nombreCorto: 'Calidad del agua',       restringido: false },
+  { id: 'control_plagas',        numero: 2, nombre: 'Control de plagas',                      nombreCorto: 'Control de plagas',      restringido: false },
+  { id: 'presentacion_personal', numero: 3, nombre: 'Presentación personal',                  nombreCorto: 'Presentación personal',  restringido: true  },
+  { id: 'control_temperatura',   numero: 4, nombre: 'Control de temperatura',                 nombreCorto: 'Control de temperatura', restringido: false },
+  { id: 'limpieza_desinfeccion', numero: 5, nombre: 'Limpieza y desinfección de superficies', nombreCorto: 'Limpieza superficies',   restringido: false },
+  { id: 'manejo_residuos',       numero: 6, nombre: 'Manejo de residuos',                     nombreCorto: 'Manejo de residuos',     restringido: false },
+  { id: 'capacitacion_continua', numero: 7, nombre: 'Capacitación continua',                  nombreCorto: 'Capacitación continua',  restringido: true  }
 ];
 
 function getFormato(id) {

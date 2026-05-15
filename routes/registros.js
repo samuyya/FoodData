@@ -1,10 +1,12 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const fs = require('fs');
 const Registro = require('../models/Registro');
 const Empresa = require('../models/Empresa');
 const { FORMATOS, getFormato } = require('../formatos');
 const { requireEmpresa } = require('../middleware/sesion');
 const { adminVerificadoPara, adminHistorialActivo } = require('./admin');
+const { sincronizarFormatoMes, reconstruirMesCompleto, getRutaArchivo } = require('../servicios/excel');
 
 const router = express.Router();
 
@@ -126,6 +128,12 @@ router.post('/', requireEmpresa, async (req, res) => {
       datos: datos || {}
     });
 
+    try {
+      await sincronizarFormatoMes(req.session.empresa.id, formatoId, info.anio, info.mes);
+    } catch (errSync) {
+      console.error('Excel sync falló:', errSync.message);
+    }
+
     const infoNuevo = await infoPendientes(req.session.empresa.id, formatoId);
     res.status(201).json({ ok: true, registro, info: infoNuevo });
   } catch (err) {
@@ -182,6 +190,40 @@ router.get('/historial/:formatoId', requireEmpresa, async (req, res) => {
   }).sort({ dia: 1 }).lean();
 
   res.json({ ok: true, anio, mes, esMesActual, registros });
+});
+
+router.get('/excel/:anio/:mes', requireEmpresa, async (req, res) => {
+  const anio = parseInt(req.params.anio, 10);
+  const mes = parseInt(req.params.mes, 10);
+  if (isNaN(anio) || isNaN(mes) || mes < 1 || mes > 12) {
+    return res.status(400).json({ ok: false, error: 'Mes o año inválidos' });
+  }
+
+  const hoy = partesDeHoy();
+  const esMesActual = (anio === hoy.anio && mes === hoy.mes);
+  if (!esMesActual && !adminHistorialActivo(req)) {
+    return res.status(401).json({ ok: false, error: 'Requiere verificación de administrador para meses anteriores' });
+  }
+
+  let { filePath } = getRutaArchivo(req.session.empresa.id, anio, mes);
+
+  if (!fs.existsSync(filePath)) {
+    const resultado = await reconstruirMesCompleto(req.session.empresa.id, anio, mes);
+    if (!resultado.filePath || !fs.existsSync(resultado.filePath)) {
+      return res.status(404).json({ ok: false, error: 'No hay registros para ese mes' });
+    }
+    filePath = resultado.filePath;
+  }
+
+  const empresa = await Empresa.findById(req.session.empresa.id).select('nombre').lean();
+  const slug = (empresa && empresa.nombre ? empresa.nombre : 'empresa')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-zA-Z0-9\-_]/g, '_');
+  const downloadName = `${slug}_${anio}-${String(mes).padStart(2, '0')}.xlsx`;
+
+  res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  fs.createReadStream(filePath).pipe(res);
 });
 
 module.exports = router;

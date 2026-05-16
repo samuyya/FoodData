@@ -2,7 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const session = require('express-session');
-const bcrypt = require('bcrypt');
+const helmet = require('helmet');
+const bcrypt = require('bcryptjs');
 const { conectarDB } = require('./db');
 const Superadmin = require('./models/Superadmin');
 
@@ -17,6 +18,8 @@ const googleSheets = require('./servicios/googleSheets');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(helmet({ contentSecurityPolicy: false }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -24,7 +27,12 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'desarrollo-cambiar-en-produccion',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 1000 * 60 * 60 * 8 }
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 8,
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production'
+  }
 }));
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -47,11 +55,22 @@ async function seedSuperadmin() {
     console.warn('SUPERADMIN_EMAIL / SUPERADMIN_PASSWORD no definidos en .env, no se crea superadmin inicial');
     return;
   }
-  const existe = await Superadmin.findOne({ email: email.toLowerCase().trim() });
-  if (existe) return;
-  const passwordHash = await bcrypt.hash(password, 10);
-  await Superadmin.create({ email: email.toLowerCase().trim(), passwordHash });
-  console.log(`Superadmin inicial creado: ${email}`);
+  const emailNorm = email.toLowerCase().trim();
+  const existe = await Superadmin.findOne({ email: emailNorm });
+
+  if (!existe) {
+    const passwordHash = await bcrypt.hash(password, 10);
+    await Superadmin.create({ email: emailNorm, passwordHash });
+    console.log(`Superadmin inicial creado: ${email}`);
+    return;
+  }
+
+  const coincide = await bcrypt.compare(password, existe.passwordHash);
+  if (!coincide) {
+    existe.passwordHash = await bcrypt.hash(password, 10);
+    await existe.save();
+    console.log(`Superadmin: contraseña sincronizada desde .env (${email})`);
+  }
 }
 
 async function iniciar() {

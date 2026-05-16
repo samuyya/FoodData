@@ -203,23 +203,26 @@ document.addEventListener('keydown', (e) => {
 });
 
 if (formNuevoEmpleado) {
+  const btnAgregar = formNuevoEmpleado.querySelector('button[type="submit"]');
   formNuevoEmpleado.addEventListener('submit', async (e) => {
     e.preventDefault();
     msgEmpleado.hidden = true;
-    try {
-      const r = await fetch('/api/empleados', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre: formNuevoEmpleado.nombre.value })
-      });
-      const data = await r.json();
-      if (!r.ok) { mostrarMsgEmpleado(data.error || 'Error', true); return; }
-      formNuevoEmpleado.reset();
-      mostrarMsgEmpleado(`Empleado "${data.empleado.nombre}" agregado.`);
-      cargarEmpleados();
-    } catch (err) {
-      mostrarMsgEmpleado('Error de red', true);
-    }
+    await conBotonCargando(btnAgregar, 'Agregando...', async () => {
+      try {
+        const r = await fetch('/api/empleados', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre: formNuevoEmpleado.nombre.value })
+        });
+        const data = await r.json();
+        if (!r.ok) { mostrarMsgEmpleado(data.error || 'Error', true); return; }
+        formNuevoEmpleado.reset();
+        mostrarMsgEmpleado(`Empleado "${data.empleado.nombre}" agregado.`);
+        cargarEmpleados();
+      } catch (err) {
+        mostrarMsgEmpleado('Error de red', true);
+      }
+    });
   });
 }
 
@@ -228,24 +231,27 @@ formEditarEmpleado.addEventListener('submit', async (e) => {
   modalEmpleadoError.hidden = true;
   const id = formEditarEmpleado.id.value;
   const nombre = formEditarEmpleado.nombre.value;
-  try {
-    const r = await fetch(`/api/empleados/${encodeURIComponent(id)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nombre })
-    });
-    const data = await r.json();
-    if (!r.ok) {
-      modalEmpleadoError.textContent = data.error || 'Error';
+  const btnGuardarEmp = formEditarEmpleado.querySelector('button[type="submit"]');
+  await conBotonCargando(btnGuardarEmp, 'Guardando...', async () => {
+    try {
+      const r = await fetch(`/api/empleados/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre })
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        modalEmpleadoError.textContent = data.error || 'Error';
+        modalEmpleadoError.hidden = false;
+        return;
+      }
+      cerrarModalEditar();
+      cargarEmpleados();
+    } catch (err) {
+      modalEmpleadoError.textContent = 'Error de red';
       modalEmpleadoError.hidden = false;
-      return;
     }
-    cerrarModalEditar();
-    cargarEmpleados();
-  } catch (err) {
-    modalEmpleadoError.textContent = 'Error de red';
-    modalEmpleadoError.hidden = false;
-  }
+  });
 });
 
 async function confirmarEliminar(emp) {
@@ -327,7 +333,9 @@ formRegistro.addEventListener('submit', async (e) => {
     datos: {}
   };
 
+  const txtGuardar = btnGuardar.textContent;
   btnGuardar.disabled = true;
+  btnGuardar.textContent = 'Guardando...';
   try {
     const r = await fetch('/api/registros', {
       method: 'POST',
@@ -346,6 +354,8 @@ formRegistro.addEventListener('submit', async (e) => {
   } catch (err) {
     mostrarMensaje('Error de red al guardar', true);
     btnGuardar.disabled = false;
+  } finally {
+    btnGuardar.textContent = txtGuardar;
   }
 });
 

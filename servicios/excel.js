@@ -34,7 +34,7 @@ async function abrirWorkbook(filePath, nombreEmpresa) {
       console.warn(`No se pudo leer ${filePath}, se reconstruye:`, err.message);
     }
   }
-  wb.creator = nombreEmpresa || 'Inocuidad Alimentaria';
+  wb.creator = nombreEmpresa || 'Seal Zenith';
   wb.created = new Date();
   return wb;
 }

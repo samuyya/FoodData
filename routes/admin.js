@@ -1,8 +1,9 @@
 const express = require('express');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const Administrador = require('../models/Administrador');
 const { getFormato } = require('../formatos');
 const { requireEmpresa } = require('../middleware/sesion');
+const { limiteAdmin } = require('../middleware/limites');
 
 const router = express.Router();
 
@@ -23,7 +24,7 @@ function adminHistorialActivo(req) {
   return true;
 }
 
-router.post('/verificar', requireEmpresa, async (req, res) => {
+router.post('/verificar', limiteAdmin, requireEmpresa, async (req, res) => {
   const { password, formatoId } = req.body;
   if (!password || !formatoId) {
     return res.status(400).json({ ok: false, error: 'Falta la contraseña o el formato' });
@@ -52,7 +53,7 @@ router.post('/verificar', requireEmpresa, async (req, res) => {
   res.status(401).json({ ok: false, error: 'Contraseña de administrador incorrecta' });
 });
 
-router.post('/verificar-historial', requireEmpresa, async (req, res) => {
+router.post('/verificar-historial', limiteAdmin, requireEmpresa, async (req, res) => {
   const { password } = req.body;
   if (!password) {
     return res.status(400).json({ ok: false, error: 'Falta la contraseña' });

@@ -75,6 +75,8 @@ formAdminPass.addEventListener('submit', async (e) => {
     return;
   }
 
+  const btnVerificar = formAdminPass.querySelector('button[type="submit"]');
+  await conBotonCargando(btnVerificar, 'Verificando...', async () => {
   try {
     const r = await fetch('/api/admin/verificar', {
       method: 'POST',
@@ -97,6 +99,7 @@ formAdminPass.addEventListener('submit', async (e) => {
     modalError.textContent = 'Error de conexión';
     modalError.hidden = false;
   }
+  });
 });
 
 btnLogout.addEventListener('click', async () => {

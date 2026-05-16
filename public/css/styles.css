@@ -657,8 +657,75 @@ textarea:focus {
   text-align: center;
 }
 
-@media (max-width: 600px) {
+#contenedor-tabla {
+  overflow-x: auto;
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    flex-wrap: wrap;
+    padding: .7rem 1rem;
+    gap: .5rem;
+  }
+
+  .topbar-left { gap: .5rem; }
+  .topbar img.logo-empresa { height: 32px; }
+  .topbar-right { flex-wrap: wrap; }
+
+  .contenedor {
+    padding: 0 1rem;
+    margin: 1rem auto;
+  }
+
+  .card { padding: 1.1rem; }
+
+  .titulo-pagina { font-size: 1.25rem; }
+
+  .grid-formatos {
+    grid-template-columns: 1fr;
+  }
+
   .historial-toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .historial-acciones {
+    flex-wrap: wrap;
+  }
+
+  .historial-acciones .btn-primario,
+  .historial-acciones .btn-secundario {
+    flex: 1;
+    min-width: 140px;
+  }
+
+  .acciones-formato {
+    flex-direction: column;
+  }
+
+  .acciones-formato .btn-primario,
+  .acciones-formato .btn-secundario {
+    width: 100%;
+  }
+
+  .login-card {
+    padding: 1.75rem 1.25rem;
+  }
+
+  .modal {
+    padding: 1.25rem;
+  }
+
+  .form-inline {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-inline .campo {
+    min-width: 0;
+  }
+
+  .empleado-acciones {
+    flex-wrap: wrap;
   }
 }

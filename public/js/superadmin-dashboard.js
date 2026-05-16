@@ -200,22 +200,25 @@ formEditar.addEventListener('submit', async (e) => {
   const id = formEditar.id.value;
   fd.delete('id');
 
-  try {
-    const r = await fetch(`/api/superadmin/empresas/${encodeURIComponent(id)}`, {
-      method: 'PUT',
-      body: fd
-    });
-    const data = await r.json();
-    if (!r.ok) {
-      mostrarMensaje(msgEditar, data.error || 'Error', true);
-      return;
+  const btnGuardarEditar = formEditar.querySelector('button[type="submit"]');
+  await conBotonCargando(btnGuardarEditar, 'Guardando...', async () => {
+    try {
+      const r = await fetch(`/api/superadmin/empresas/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: fd
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        mostrarMensaje(msgEditar, data.error || 'Error', true);
+        return;
+      }
+      mostrarMensaje(msgEditar, `Cambios guardados para "${data.empresa.nombre}"`);
+      cargarEmpresas();
+      setTimeout(cerrarModalEditar, 800);
+    } catch (err) {
+      mostrarMensaje(msgEditar, 'Error de red', true);
     }
-    mostrarMensaje(msgEditar, `Cambios guardados para "${data.empresa.nombre}"`);
-    cargarEmpresas();
-    setTimeout(cerrarModalEditar, 800);
-  } catch (err) {
-    mostrarMensaje(msgEditar, 'Error de red', true);
-  }
+  });
 });
 
 formEmpresa.addEventListener('submit', async (e) => {
@@ -231,20 +234,23 @@ formEmpresa.addEventListener('submit', async (e) => {
     return;
   }
 
-  try {
-    const r = await fetch('/api/superadmin/empresas', { method: 'POST', body: fd });
-    const data = await r.json();
-    if (!r.ok) {
-      mostrarMensaje(msgEmpresa, data.error || 'Error', true);
-      return;
+  const btnCrearEmpresa = formEmpresa.querySelector('button[type="submit"]');
+  await conBotonCargando(btnCrearEmpresa, 'Creando...', async () => {
+    try {
+      const r = await fetch('/api/superadmin/empresas', { method: 'POST', body: fd });
+      const data = await r.json();
+      if (!r.ok) {
+        mostrarMensaje(msgEmpresa, data.error || 'Error', true);
+        return;
+      }
+      mostrarMensaje(msgEmpresa, `Empresa "${data.empresa.nombre}" creada con ${data.empresa.formatosActivos.length} formato(s)`);
+      formEmpresa.reset();
+      pintarCheckboxes(contenedorCheckboxes);
+      cargarEmpresas();
+    } catch (err) {
+      mostrarMensaje(msgEmpresa, 'Error de red', true);
     }
-    mostrarMensaje(msgEmpresa, `Empresa "${data.empresa.nombre}" creada con ${data.empresa.formatosActivos.length} formato(s)`);
-    formEmpresa.reset();
-    pintarCheckboxes(contenedorCheckboxes);
-    cargarEmpresas();
-  } catch (err) {
-    mostrarMensaje(msgEmpresa, 'Error de red', true);
-  }
+  });
 });
 
 formAdmin.addEventListener('submit', async (e) => {
@@ -255,23 +261,26 @@ formAdmin.addEventListener('submit', async (e) => {
     password: formAdmin.password.value,
     empresa_id: formAdmin.empresa_id.value
   };
-  try {
-    const r = await fetch('/api/superadmin/administradores', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(datos)
-    });
-    const data = await r.json();
-    if (!r.ok) {
-      mostrarMensaje(msgAdmin, data.error || 'Error', true);
-      return;
+  const btnCrearAdmin = formAdmin.querySelector('button[type="submit"]');
+  await conBotonCargando(btnCrearAdmin, 'Creando...', async () => {
+    try {
+      const r = await fetch('/api/superadmin/administradores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(datos)
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        mostrarMensaje(msgAdmin, data.error || 'Error', true);
+        return;
+      }
+      mostrarMensaje(msgAdmin, `Administrador "${data.administrador.nombre}" creado`);
+      formAdmin.reset();
+      cargarAdmins();
+    } catch (err) {
+      mostrarMensaje(msgAdmin, 'Error de red', true);
     }
-    mostrarMensaje(msgAdmin, `Administrador "${data.administrador.nombre}" creado`);
-    formAdmin.reset();
-    cargarAdmins();
-  } catch (err) {
-    mostrarMensaje(msgAdmin, 'Error de red', true);
-  }
+  });
 });
 
 btnLogout.addEventListener('click', async () => {

@@ -1,13 +1,14 @@
 const express = require('express');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const Empresa = require('../models/Empresa');
 const Superadmin = require('../models/Superadmin');
+const { limiteLogin } = require('../middleware/limites');
 
 const router = express.Router();
 
 const MSG_CREDENCIALES = 'El Email o la contraseña son incorrectas';
 
-router.post('/login', async (req, res) => {
+router.post('/login', limiteLogin, async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ ok: false, error: 'Email y contraseña son obligatorios' });

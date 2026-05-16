@@ -185,33 +185,36 @@ document.addEventListener('keydown', (e) => {
 formVerificar.addEventListener('submit', async (e) => {
   e.preventDefault();
   modalError.hidden = true;
-  try {
-    const r = await fetch('/api/admin/verificar-historial', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: formVerificar.password.value })
-    });
-    const data = await r.json();
-    if (!r.ok) {
-      modalError.textContent = data.error || 'Error';
-      modalError.hidden = false;
-      return;
-    }
-    modal.hidden = true;
-    if (intentoPendiente) {
-      const intento = intentoPendiente;
-      intentoPendiente = null;
-      if (intento.accion === 'descargar') {
-        selectMes.value = `${intento.anio}-${intento.mes}`;
-        btnDescargar.click();
-      } else {
-        cargarHistorial(intento.anio, intento.mes);
+  const btnVerificar = formVerificar.querySelector('button[type="submit"]');
+  await conBotonCargando(btnVerificar, 'Verificando...', async () => {
+    try {
+      const r = await fetch('/api/admin/verificar-historial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: formVerificar.password.value })
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        modalError.textContent = data.error || 'Error';
+        modalError.hidden = false;
+        return;
       }
+      modal.hidden = true;
+      if (intentoPendiente) {
+        const intento = intentoPendiente;
+        intentoPendiente = null;
+        if (intento.accion === 'descargar') {
+          selectMes.value = `${intento.anio}-${intento.mes}`;
+          btnDescargar.click();
+        } else {
+          cargarHistorial(intento.anio, intento.mes);
+        }
+      }
+    } catch (err) {
+      modalError.textContent = 'Error de red';
+      modalError.hidden = false;
     }
-  } catch (err) {
-    modalError.textContent = 'Error de red';
-    modalError.hidden = false;
-  }
+  });
 });
 
 btnDescargar.addEventListener('click', async () => {

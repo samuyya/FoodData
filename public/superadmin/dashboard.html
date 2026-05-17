@@ -56,6 +56,12 @@
           <p class="ayuda">Marca al menos uno. La empresa solo verá los formatos seleccionados.</p>
         </fieldset>
 
+        <fieldset class="campo campo-fieldset">
+          <legend>Formatos que requieren contraseña de administrador</legend>
+          <div id="checkboxes-restringidos" class="checkboxes-formatos"></div>
+          <p class="ayuda">Marca los formatos que pedirán contraseña de administrador al abrirse. Puede ser ninguno. Solo aplica a formatos activos.</p>
+        </fieldset>
+
         <button type="submit" class="btn-primario">Crear empresa</button>
         <p class="mensaje" id="msg-empresa" hidden></p>
       </form>
@@ -136,6 +142,12 @@
           <legend>Formatos activos</legend>
           <div id="checkboxes-formatos-editar" class="checkboxes-formatos"></div>
           <p class="ayuda">Marca al menos uno.</p>
+        </fieldset>
+
+        <fieldset class="campo campo-fieldset">
+          <legend>Formatos que requieren contraseña de administrador</legend>
+          <div id="checkboxes-restringidos-editar" class="checkboxes-formatos"></div>
+          <p class="ayuda">Marca los que pedirán contraseña. Puede ser ninguno. Solo aplica a formatos activos.</p>
         </fieldset>
 
         <p id="msg-editar-empresa" class="mensaje" hidden></p>

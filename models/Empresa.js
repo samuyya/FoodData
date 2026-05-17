@@ -16,6 +16,14 @@ const empresaSchema = new mongoose.Schema({
       validator: arr => arr.length > 0 && arr.every(id => IDS_FORMATOS.includes(id)),
       message: 'Lista de formatos inválida'
     }
+  },
+  formatosRestringidos: {
+    type: [String],
+    default: [],
+    validate: {
+      validator: arr => arr.every(id => IDS_FORMATOS.includes(id)),
+      message: 'Lista de formatos restringidos inválida'
+    }
   }
 }, { timestamps: true });
 

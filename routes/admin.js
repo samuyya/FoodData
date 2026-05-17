@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const Administrador = require('../models/Administrador');
 const { getFormato } = require('../formatos');
+const { getConfigEmpresa } = require('../empresaConfig');
 const { requireEmpresa } = require('../middleware/sesion');
 const { limiteAdmin } = require('../middleware/limites');
 
@@ -34,7 +35,8 @@ router.post('/verificar', limiteAdmin, requireEmpresa, async (req, res) => {
   if (!formato) {
     return res.status(400).json({ ok: false, error: 'Formato no válido' });
   }
-  if (!formato.restringido) {
+  const { restringidos } = await getConfigEmpresa(req.session.empresa.id);
+  if (!restringidos.includes(formatoId)) {
     return res.status(400).json({ ok: false, error: 'Este formato no requiere contraseña' });
   }
 

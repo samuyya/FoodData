@@ -1,18 +1,24 @@
 const express = require('express');
 const EmpleadoLista = require('../models/EmpleadoLista');
 const { requireEmpresa } = require('../middleware/sesion');
+const { getConfigEmpresa } = require('../empresaConfig');
 const { adminVerificadoPara } = require('./admin');
 
 const router = express.Router();
 
 const REGEX_LETRAS = /^[A-Za-zÀ-ÿÑñ\s]+$/;
 
-function requireAdminFormato3(req, res, next) {
-  const nombre = adminVerificadoPara(req, 'presentacion_personal');
-  if (!nombre) {
-    return res.status(401).json({ ok: false, error: 'Requiere verificación de administrador del Formato 3' });
+async function requireAccesoFormato3(req, res, next) {
+  try {
+    const { restringidos } = await getConfigEmpresa(req.session.empresa.id);
+    const esRestringido = restringidos.includes('presentacion_personal');
+    if (esRestringido && !adminVerificadoPara(req, 'presentacion_personal')) {
+      return res.status(401).json({ ok: false, error: 'Requiere verificación de administrador del Formato 3' });
+    }
+    next();
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
-  next();
 }
 
 function validarNombre(nombre) {
@@ -22,7 +28,7 @@ function validarNombre(nombre) {
   return { nombre: limpio };
 }
 
-router.get('/', requireEmpresa, requireAdminFormato3, async (req, res) => {
+router.get('/', requireEmpresa, requireAccesoFormato3, async (req, res) => {
   const empleados = await EmpleadoLista
     .find({ empresa_id: req.session.empresa.id })
     .sort({ nombre: 1 })
@@ -30,7 +36,7 @@ router.get('/', requireEmpresa, requireAdminFormato3, async (req, res) => {
   res.json({ ok: true, empleados });
 });
 
-router.post('/', requireEmpresa, requireAdminFormato3, async (req, res) => {
+router.post('/', requireEmpresa, requireAccesoFormato3, async (req, res) => {
   const v = validarNombre(req.body.nombre);
   if (v.error) return res.status(400).json({ ok: false, error: v.error });
 
@@ -49,7 +55,7 @@ router.post('/', requireEmpresa, requireAdminFormato3, async (req, res) => {
   res.status(201).json({ ok: true, empleado });
 });
 
-router.put('/:id', requireEmpresa, requireAdminFormato3, async (req, res) => {
+router.put('/:id', requireEmpresa, requireAccesoFormato3, async (req, res) => {
   const v = validarNombre(req.body.nombre);
   if (v.error) return res.status(400).json({ ok: false, error: v.error });
 
@@ -71,7 +77,7 @@ router.put('/:id', requireEmpresa, requireAdminFormato3, async (req, res) => {
   res.json({ ok: true, empleado });
 });
 
-router.delete('/:id', requireEmpresa, requireAdminFormato3, async (req, res) => {
+router.delete('/:id', requireEmpresa, requireAccesoFormato3, async (req, res) => {
   const r = await EmpleadoLista.findOneAndDelete({
     _id: req.params.id,
     empresa_id: req.session.empresa.id

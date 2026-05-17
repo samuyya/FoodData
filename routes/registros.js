@@ -4,6 +4,7 @@ const fs = require('fs');
 const Registro = require('../models/Registro');
 const Empresa = require('../models/Empresa');
 const { FORMATOS, getFormato } = require('../formatos');
+const { getConfigEmpresa } = require('../empresaConfig');
 const { requireEmpresa } = require('../middleware/sesion');
 const { adminVerificadoPara, adminHistorialActivo } = require('./admin');
 const { sincronizarFormatoMes, reconstruirMesCompleto, getRutaArchivo } = require('../servicios/excel');
@@ -92,8 +93,10 @@ router.post('/', requireEmpresa, async (req, res) => {
     const formato = getFormato(formatoId);
     if (!formato) return res.status(400).json({ ok: false, error: 'Formato no válido' });
 
-    const habilitado = await empresaTieneFormato(req.session.empresa.id, formatoId);
-    if (!habilitado) return res.status(403).json({ ok: false, error: 'Esta empresa no tiene este formato habilitado' });
+    const { activos, restringidos } = await getConfigEmpresa(req.session.empresa.id);
+    if (!activos.includes(formatoId)) {
+      return res.status(403).json({ ok: false, error: 'Esta empresa no tiene este formato habilitado' });
+    }
 
     const info = await infoPendientes(req.session.empresa.id, formatoId);
     if (info.completoHoy) {
@@ -101,7 +104,7 @@ router.post('/', requireEmpresa, async (req, res) => {
     }
 
     let nombreResponsable;
-    if (formato.restringido) {
+    if (restringidos.includes(formatoId)) {
       const adminNombre = adminVerificadoPara(req, formatoId);
       if (!adminNombre) {
         return res.status(401).json({ ok: false, error: 'Se requiere verificación de administrador para guardar este formato' });

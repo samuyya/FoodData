@@ -7,6 +7,7 @@ const listaAdmins = document.getElementById('lista-admins');
 const selectEmpresa = formAdmin.querySelector('select[name="empresa_id"]');
 const btnLogout = document.getElementById('btn-logout');
 const contenedorCheckboxes = document.getElementById('checkboxes-formatos');
+const contenedorRestringidos = document.getElementById('checkboxes-restringidos');
 
 const modalEditar = document.getElementById('modal-editar-empresa');
 const formEditar = document.getElementById('form-editar-empresa');
@@ -15,6 +16,7 @@ const btnCancelarEditar = document.getElementById('btn-cancelar-editar-empresa')
 const previewLogoActual = document.getElementById('preview-logo-actual');
 const previewLogoVacio = document.getElementById('preview-logo-vacio');
 const contenedorCheckboxesEditar = document.getElementById('checkboxes-formatos-editar');
+const contenedorRestringidosEditar = document.getElementById('checkboxes-restringidos-editar');
 
 const cardGoogle = document.getElementById('card-google');
 const googleEstado = document.getElementById('google-estado');
@@ -38,15 +40,23 @@ function mostrarMensaje(el, texto, esError = false) {
   el.hidden = false;
 }
 
-function pintarCheckboxes(contenedor, marcadosIds = null) {
+function idsTodos() {
+  return catalogoFormatos.map(f => f.id);
+}
+
+function idsRestringidosPorDefecto() {
+  return catalogoFormatos.filter(f => f.restringidoPorDefecto).map(f => f.id);
+}
+
+function pintarCheckboxes(contenedor, nombreCampo, marcadosIds) {
   contenedor.innerHTML = '';
   catalogoFormatos.forEach(f => {
-    const checked = (marcadosIds === null) ? true : marcadosIds.includes(f.id);
+    const checked = Array.isArray(marcadosIds) && marcadosIds.includes(f.id);
     const label = document.createElement('label');
     label.className = 'check-formato';
     label.innerHTML = `
-      <input type="checkbox" name="formatosActivos" value="${f.id}" ${checked ? 'checked' : ''} />
-      <span>${f.numero}. ${escapeHTML(f.nombre)}${f.restringido ? ' 🔒' : ''}</span>
+      <input type="checkbox" name="${nombreCampo}" value="${f.id}" ${checked ? 'checked' : ''} />
+      <span>${f.numero}. ${escapeHTML(f.nombre)}</span>
     `;
     contenedor.appendChild(label);
   });
@@ -61,12 +71,26 @@ function nombresDeFormatos(ids) {
     .join(', ');
 }
 
+function activosDeEmpresa(emp) {
+  return (Array.isArray(emp.formatosActivos) && emp.formatosActivos.length > 0)
+    ? emp.formatosActivos
+    : idsTodos();
+}
+
+function restringidosDeEmpresa(emp, activos) {
+  const base = Array.isArray(emp.formatosRestringidos)
+    ? emp.formatosRestringidos
+    : idsRestringidosPorDefecto();
+  return base.filter(id => activos.includes(id));
+}
+
 async function cargarCatalogo() {
   const r = await fetch('/api/superadmin/catalogo');
   if (r.status === 401) { window.location.href = '/'; return; }
   const data = await r.json();
   catalogoFormatos = data.formatos;
-  pintarCheckboxes(contenedorCheckboxes);
+  pintarCheckboxes(contenedorCheckboxes, 'formatosActivos', idsTodos());
+  pintarCheckboxes(contenedorRestringidos, 'formatosRestringidos', idsRestringidosPorDefecto());
 }
 
 async function cargarGoogleInfo() {
@@ -96,15 +120,18 @@ async function cargarEmpresas() {
   selectEmpresa.innerHTML = '<option value="">-- selecciona --</option>';
   data.empresas.forEach(emp => {
     const total = catalogoFormatos.length;
-    const tieneSeleccion = Array.isArray(emp.formatosActivos) && emp.formatosActivos.length > 0;
-    const activos = tieneSeleccion ? emp.formatosActivos : catalogoFormatos.map(f => f.id);
+    const activos = activosDeEmpresa(emp);
+    const restringidos = restringidosDeEmpresa(emp, activos);
+    const textoCandado = restringidos.length === 0
+      ? 'sin contraseña'
+      : `${restringidos.length} con contraseña`;
     const li = document.createElement('li');
     li.className = 'empresa-item';
     li.innerHTML = `
       ${emp.logo ? `<img src="${escapeHTML(emp.logo)}" alt="logo" class="mini-logo" />` : '<span class="mini-logo mini-logo--vacio"></span>'}
       <span class="empresa-info">
         <strong>${escapeHTML(emp.nombre)}</strong> · ${escapeHTML(emp.email)}
-        <small class="lista-formatos-activos">${activos.length}/${total} formatos: ${escapeHTML(nombresDeFormatos(activos))}</small>
+        <small class="lista-formatos-activos">${activos.length}/${total} formatos · ${textoCandado}: ${escapeHTML(nombresDeFormatos(activos))}</small>
       </span>
       <button type="button" class="btn-secundario btn-editar-empresa" data-id="${emp._id}">Editar</button>
     `;
@@ -158,9 +185,10 @@ async function abrirModalEditar(empresaId) {
       previewLogoVacio.hidden = false;
     }
 
-    const tieneSeleccion = Array.isArray(emp.formatosActivos) && emp.formatosActivos.length > 0;
-    const marcados = tieneSeleccion ? emp.formatosActivos : catalogoFormatos.map(f => f.id);
-    pintarCheckboxes(contenedorCheckboxesEditar, marcados);
+    const activos = activosDeEmpresa(emp);
+    const restringidos = restringidosDeEmpresa(emp, activos);
+    pintarCheckboxes(contenedorCheckboxesEditar, 'formatosActivos', activos);
+    pintarCheckboxes(contenedorRestringidosEditar, 'formatosRestringidos', restringidos);
 
     modalEditar.hidden = false;
   } catch (err) {
@@ -196,6 +224,7 @@ formEditar.addEventListener('submit', async (e) => {
   fd.delete('email');
   if (!formEditar.password.value.trim()) fd.delete('password');
   if (!formEditar.logo.files.length) fd.delete('logo');
+  if (!fd.has('formatosRestringidos')) fd.append('formatosRestringidos', '');
 
   const id = formEditar.id.value;
   fd.delete('id');
@@ -233,6 +262,7 @@ formEmpresa.addEventListener('submit', async (e) => {
     mostrarMensaje(msgEmpresa, 'Selecciona al menos un formato', true);
     return;
   }
+  if (!fd.has('formatosRestringidos')) fd.append('formatosRestringidos', '');
 
   const btnCrearEmpresa = formEmpresa.querySelector('button[type="submit"]');
   await conBotonCargando(btnCrearEmpresa, 'Creando...', async () => {
@@ -245,7 +275,8 @@ formEmpresa.addEventListener('submit', async (e) => {
       }
       mostrarMensaje(msgEmpresa, `Empresa "${data.empresa.nombre}" creada con ${data.empresa.formatosActivos.length} formato(s)`);
       formEmpresa.reset();
-      pintarCheckboxes(contenedorCheckboxes);
+      pintarCheckboxes(contenedorCheckboxes, 'formatosActivos', idsTodos());
+      pintarCheckboxes(contenedorRestringidos, 'formatosRestringidos', idsRestringidosPorDefecto());
       cargarEmpresas();
     } catch (err) {
       mostrarMensaje(msgEmpresa, 'Error de red', true);

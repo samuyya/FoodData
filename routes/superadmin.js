@@ -60,7 +60,7 @@ router.get('/empresas', requireSuperadmin, async (req, res) => {
   res.json({ ok: true, empresas });
 });
 
-function parsearFormatosActivos(valor) {
+function parsearListaFormatos(valor) {
   let lista = [];
   if (Array.isArray(valor)) lista = valor;
   else if (typeof valor === 'string' && valor.length > 0) lista = [valor];
@@ -76,10 +76,13 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
       return res.status(400).json({ ok: false, error: 'Nombre, email y contraseña son obligatorios' });
     }
 
-    const formatosActivos = parsearFormatosActivos(req.body.formatosActivos);
+    const formatosActivos = parsearListaFormatos(req.body.formatosActivos);
     if (formatosActivos.length === 0) {
       return res.status(400).json({ ok: false, error: 'Selecciona al menos un formato para esta empresa' });
     }
+
+    const formatosRestringidos = parsearListaFormatos(req.body.formatosRestringidos)
+      .filter(id => formatosActivos.includes(id));
 
     const yaExiste = await Empresa.findOne({ email: email.toLowerCase().trim() });
     if (yaExiste) {
@@ -93,7 +96,8 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
       passwordHash,
       logo: logoRuta,
       googleSheetId: extraerSheetId(req.body.googleSheetId),
-      formatosActivos
+      formatosActivos,
+      formatosRestringidos
     });
     res.status(201).json({
       ok: true,
@@ -103,7 +107,8 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
         email: empresa.email,
         logo: empresa.logo,
         googleSheetId: empresa.googleSheetId,
-        formatosActivos: empresa.formatosActivos
+        formatosActivos: empresa.formatosActivos,
+        formatosRestringidos: empresa.formatosRestringidos
       }
     });
   } catch (err) {
@@ -143,11 +148,16 @@ router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req
     }
 
     if (req.body.formatosActivos !== undefined) {
-      const lista = parsearFormatosActivos(req.body.formatosActivos);
+      const lista = parsearListaFormatos(req.body.formatosActivos);
       if (lista.length === 0) {
         return res.status(400).json({ ok: false, error: 'Selecciona al menos un formato' });
       }
       empresa.formatosActivos = lista;
+    }
+
+    if (req.body.formatosRestringidos !== undefined) {
+      empresa.formatosRestringidos = parsearListaFormatos(req.body.formatosRestringidos)
+        .filter(id => empresa.formatosActivos.includes(id));
     }
 
     await empresa.save();
@@ -159,7 +169,8 @@ router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req
         email: empresa.email,
         logo: empresa.logo,
         googleSheetId: empresa.googleSheetId,
-        formatosActivos: empresa.formatosActivos
+        formatosActivos: empresa.formatosActivos,
+        formatosRestringidos: empresa.formatosRestringidos
       }
     });
   } catch (err) {

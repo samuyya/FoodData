@@ -303,13 +303,13 @@ async function cargar() {
       responsableHint.textContent = 'Nombre del administrador (no editable).';
       badgeAdminNombreEl.textContent = adminNombreSesion;
       badgeAdminEl.hidden = false;
-
-      if (formatoActual.id === 'presentacion_personal') {
-        seccionEmpleados.hidden = false;
-        cargarEmpleados();
-      }
     } else {
       inputResponsable.placeholder = 'Tu nombre completo';
+    }
+
+    if (formatoActual.id === 'presentacion_personal') {
+      seccionEmpleados.hidden = false;
+      cargarEmpleados();
     }
 
     const rPend = await fetch(`/api/registros/pendientes/${encodeURIComponent(formatoId)}`);

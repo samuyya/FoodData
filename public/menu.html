@@ -8,40 +8,29 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="topbar-left">
-      <img id="logo-empresa" class="logo-empresa" alt="" hidden />
-      <strong id="nombre-empresa">...</strong>
+    <div class="logo-establecimiento">
+      <img id="logo-empresa" class="logo-empresa-img" alt="" hidden />
+      <span id="logo-placeholder" class="logo-placeholder">Logo del establecimiento</span>
     </div>
-    <div class="topbar-right">
-      <button id="btn-logout" class="btn-secundario">Cerrar sesión</button>
-    </div>
+    <h1 class="nombre-establecimiento" id="nombre-empresa">...</h1>
+    <button id="btn-logout" class="btn-secundario">Cerrar sesión</button>
   </header>
 
   <main class="contenedor">
-    <h1 class="titulo-pagina">Formatos de control</h1>
-    <p class="subtitulo-pagina">Selecciona un formato para registrar el día de hoy.</p>
-
-    <ul id="grid-formatos" class="grid-formatos"></ul>
-  </main>
-
-  <div id="modal-admin" class="modal-backdrop" hidden>
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
-      <h2 id="modal-titulo">Acceso de administrador</h2>
-      <p class="subtitulo">Formato: <span id="modal-formato-nombre"></span></p>
-
-      <form id="form-admin-pass" class="form">
-        <label class="campo">
-          <span>Contraseña de administrador</span>
-          <input type="password" name="password" required autocomplete="current-password" />
-        </label>
-        <p id="modal-error" class="mensaje mensaje-error" hidden></p>
-        <div class="modal-acciones">
-          <button type="button" id="modal-cancelar" class="btn-secundario">Cancelar</button>
-          <button type="submit" class="btn-primario">Verificar</button>
-        </div>
-      </form>
+    <div class="caja-proyecto">
+      <span class="nombre-proyecto">Seal Zenith</span>
     </div>
-  </div>
+
+    <h2 class="label-menu">Menú Principal</h2>
+
+    <div class="botones-menu">
+      <button type="button" class="boton-menu" id="btn-formatos">Formatos</button>
+      <button type="button" class="boton-menu" id="btn-asistencia">Asistencia</button>
+      <button type="button" class="boton-menu" id="btn-capacitaciones">Capacitaciones</button>
+    </div>
+
+    <p id="msg-menu" class="banner banner-info" hidden></p>
+  </main>
 
   <script src="/js/util.js"></script>
   <script src="/js/menu.js"></script>

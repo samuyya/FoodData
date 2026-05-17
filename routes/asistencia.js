@@ -9,6 +9,7 @@ const Administrador = require('../models/Administrador');
 const { requireEmpresa } = require('../middleware/sesion');
 const { limiteAdmin } = require('../middleware/limites');
 const { guardarFotoAsistencia, rutaAbsolutaFoto } = require('../servicios/almacenamiento');
+const { generarExcelAsistencia } = require('../servicios/excel');
 
 const router = express.Router();
 
@@ -223,6 +224,26 @@ router.post('/corregir-salida', limiteAdmin, requireEmpresa, async (req, res) =>
   await registro.save();
 
   res.json({ ok: true, registro });
+});
+
+router.get('/excel/:anio/:mes', requireEmpresa, async (req, res) => {
+  const anio = parseInt(req.params.anio, 10);
+  const mes = parseInt(req.params.mes, 10);
+  if (isNaN(anio) || isNaN(mes) || mes < 1 || mes > 12) {
+    return res.status(400).json({ ok: false, error: 'Mes o año inválidos' });
+  }
+  try {
+    const buffer = await generarExcelAsistencia(req.session.empresa.id, anio, mes);
+    if (!buffer) {
+      return res.status(404).json({ ok: false, error: 'No hay registros de asistencia para ese mes' });
+    }
+    const nombre = `asistencia_${anio}-${String(mes).padStart(2, '0')}.xlsx`;
+    res.setHeader('Content-Disposition', `attachment; filename="${nombre}"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(Buffer.from(buffer));
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 module.exports = router;

@@ -3,6 +3,7 @@ const fs = require('fs');
 const ExcelJS = require('exceljs');
 const Registro = require('../models/Registro');
 const Empresa = require('../models/Empresa');
+const Asistencia = require('../models/Asistencia');
 const { FORMATOS, getFormato } = require('../formatos');
 
 const CARPETA_EXCEL = path.join(__dirname, '..', 'datos', 'excel');
@@ -123,8 +124,72 @@ function getRutaArchivo(empresaId, anio, mes) {
   return rutaArchivo(empresaId, anio, mes);
 }
 
+function horaCorta(fecha) {
+  if (!fecha) return '';
+  return new Date(fecha).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+}
+
+function estiloEncabezado(row) {
+  row.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } };
+  row.alignment = { vertical: 'middle' };
+  row.height = 22;
+}
+
+async function generarExcelAsistencia(empresaId, anio, mes) {
+  const registros = await Asistencia.find({ empresa_id: empresaId, anio, mes })
+    .sort({ empleadoNombre: 1, dia: 1 })
+    .lean();
+
+  if (registros.length === 0) return null;
+
+  const empresa = await Empresa.findById(empresaId).select('nombre').lean();
+  const wb = new ExcelJS.Workbook();
+  wb.creator = empresa && empresa.nombre ? empresa.nombre : 'Seal Zenith';
+  wb.created = new Date();
+
+  const hoja = wb.addWorksheet('Asistencia');
+  hoja.columns = [
+    { header: 'Empleado',         key: 'empleado', width: 28 },
+    { header: 'Día',              key: 'dia',      width: 8  },
+    { header: 'Fecha',            key: 'fecha',    width: 30 },
+    { header: 'Entrada',          key: 'entrada',  width: 12 },
+    { header: 'Salida',           key: 'salida',   width: 16 },
+    { header: 'Horas trabajadas', key: 'horas',    width: 18 }
+  ];
+  estiloEncabezado(hoja.getRow(1));
+
+  const totales = {};
+  registros.forEach(r => {
+    const completo = !!(r.horaIngreso && r.horaSalida);
+    const horas = completo ? (r.horasTrabajadas || 0) : 0;
+    hoja.addRow({
+      empleado: r.empleadoNombre,
+      dia: r.dia,
+      fecha: fechaLargaEs(r.anio, r.mes, r.dia),
+      entrada: horaCorta(r.horaIngreso),
+      salida: r.horaSalida ? horaCorta(r.horaSalida) : 'FALTA SALIDA',
+      horas: completo ? horas : ''
+    });
+    totales[r.empleadoNombre] = (totales[r.empleadoNombre] || 0) + horas;
+  });
+
+  const resumen = wb.addWorksheet('Resumen');
+  resumen.columns = [
+    { header: 'Empleado',            key: 'empleado', width: 28 },
+    { header: 'Total horas del mes', key: 'total',    width: 22 }
+  ];
+  estiloEncabezado(resumen.getRow(1));
+  Object.keys(totales).sort().forEach(nombre => {
+    resumen.addRow({ empleado: nombre, total: Math.round(totales[nombre] * 100) / 100 });
+  });
+
+  return wb.xlsx.writeBuffer();
+}
+
 module.exports = {
   sincronizarFormatoMes,
   reconstruirMesCompleto,
-  getRutaArchivo
+  getRutaArchivo,
+  generarExcelAsistencia
 };

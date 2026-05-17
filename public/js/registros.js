@@ -270,7 +270,7 @@ btnVolverFormato.addEventListener('click', () => {
   window.location.href = `/formato.html?id=${encodeURIComponent(formatoId)}`;
 });
 
-btnIrMenu.addEventListener('click', () => { window.location.href = '/menu.html'; });
+btnIrMenu.addEventListener('click', () => { window.location.href = '/formatos.html'; });
 
 btnLogout.addEventListener('click', async () => {
   await fetch('/api/auth/logout', { method: 'POST' });

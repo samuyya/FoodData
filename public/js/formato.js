@@ -294,7 +294,7 @@ async function cargar() {
 
     if (esRestringido) {
       const rC = await fetch(`/api/admin/consumir?formatoId=${encodeURIComponent(formatoId)}`);
-      if (!rC.ok) { window.location.href = '/menu.html'; return; }
+      if (!rC.ok) { window.location.href = '/formatos.html'; return; }
       const dC = await rC.json();
       adminNombreSesion = dC.nombre;
       inputResponsable.value = adminNombreSesion;
@@ -363,7 +363,7 @@ btnVerRegistros.addEventListener('click', () => {
   window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}`;
 });
 
-btnVolver.addEventListener('click', () => { window.location.href = '/menu.html'; });
+btnVolver.addEventListener('click', () => { window.location.href = '/formatos.html'; });
 
 btnLogout.addEventListener('click', async () => {
   await fetch('/api/auth/logout', { method: 'POST' });

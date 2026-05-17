@@ -852,6 +852,10 @@ textarea:focus {
   font-weight: 700;
 }
 
+.btn-descarga-mes {
+  margin-bottom: 1rem;
+}
+
 @media (max-width: 640px) {
   .topbar {
     flex-wrap: wrap;

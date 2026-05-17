@@ -5,6 +5,7 @@ const btnLogout = document.getElementById('btn-logout');
 
 const selectEmpleado = document.getElementById('select-empleado');
 const selectMes = document.getElementById('select-mes');
+const btnDescargar = document.getElementById('btn-descargar-excel');
 const contenedorTabla = document.getElementById('contenedor-tabla');
 const estadoRegistro = document.getElementById('estado-registro');
 
@@ -249,6 +250,39 @@ formCorregir.addEventListener('submit', async (e) => {
 
 selectEmpleado.addEventListener('change', cargarRegistro);
 selectMes.addEventListener('change', cargarRegistro);
+
+btnDescargar.addEventListener('click', async () => {
+  if (!selectMes.value) return;
+  const [anioStr, mesStr] = selectMes.value.split('-');
+  await conBotonCargando(btnDescargar, 'Preparando...', async () => {
+    try {
+      const r = await fetch(`/api/asistencia/excel/${anioStr}/${mesStr}`);
+      if (r.status === 404) {
+        alert('No hay registros de asistencia para ese mes todavía.');
+        return;
+      }
+      if (!r.ok) {
+        alert('Error al descargar el archivo.');
+        return;
+      }
+      const blob = await r.blob();
+      const disposicion = r.headers.get('Content-Disposition') || '';
+      const m = disposicion.match(/filename="?([^"]+)"?/);
+      const nombre = m ? m[1] : `asistencia_${anioStr}-${String(mesStr).padStart(2, '0')}.xlsx`;
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nombre;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Error de red al descargar.');
+    }
+  });
+});
 
 btnVolver.addEventListener('click', () => { window.location.href = '/asistencia.html'; });
 btnLogout.addEventListener('click', async () => {

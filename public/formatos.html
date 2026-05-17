@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Formatos - Seal Zenith</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <img id="logo-empresa" class="logo-empresa" alt="" hidden />
+      <strong id="nombre-empresa">...</strong>
+    </div>
+    <div class="topbar-right">
+      <button id="btn-logout" class="btn-secundario">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <main class="contenedor">
+    <button type="button" id="btn-volver" class="btn-secundario btn-volver-menu">← Volver al menú</button>
+    <h1 class="titulo-pagina">Formatos</h1>
+    <p class="subtitulo-pagina">Selecciona un formato para registrar el día de hoy.</p>
+
+    <ul id="lista-formatos" class="lista-formatos"></ul>
+  </main>
+
+  <div id="modal-admin" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+      <h2 id="modal-titulo">Acceso de administrador</h2>
+      <p class="subtitulo">Formato: <span id="modal-formato-nombre"></span></p>
+
+      <form id="form-admin-pass" class="form">
+        <label class="campo">
+          <span>Contraseña de administrador</span>
+          <input type="password" name="password" required autocomplete="current-password" />
+        </label>
+        <p id="modal-error" class="mensaje mensaje-error" hidden></p>
+        <div class="modal-acciones">
+          <button type="button" id="modal-cancelar" class="btn-secundario">Cancelar</button>
+          <button type="submit" class="btn-primario">Verificar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/util.js"></script>
+  <script src="/js/formatos.js"></script>
+</body>
+</html>

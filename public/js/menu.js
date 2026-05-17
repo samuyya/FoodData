@@ -25,8 +25,12 @@ function avisoPendiente(nombre) {
   msgMenu.hidden = false;
 }
 
-btnFormatos.addEventListener('click', () => avisoPendiente('Formatos'));
-btnAsistencia.addEventListener('click', () => avisoPendiente('Asistencia'));
+btnFormatos.addEventListener('click', () => {
+  window.location.href = '/formatos.html';
+});
+btnAsistencia.addEventListener('click', () => {
+  window.location.href = '/asistencia.html';
+});
 btnCapacitaciones.addEventListener('click', () => avisoPendiente('Capacitaciones'));
 
 btnLogout.addEventListener('click', async () => {

@@ -1,0 +1,273 @@
+const logoEl = document.getElementById('logo-empresa');
+const nombreEmpresaEl = document.getElementById('nombre-empresa');
+const btnVolver = document.getElementById('btn-volver');
+const btnLogout = document.getElementById('btn-logout');
+
+const selectEmpleado = document.getElementById('select-empleado');
+const selectMes = document.getElementById('select-mes');
+const contenedorTabla = document.getElementById('contenedor-tabla');
+const estadoRegistro = document.getElementById('estado-registro');
+
+const modalFoto = document.getElementById('modal-foto');
+const modalFotoImg = document.getElementById('modal-foto-img');
+const modalFotoTitulo = document.getElementById('modal-foto-titulo');
+const btnCerrarFoto = document.getElementById('btn-cerrar-foto');
+
+const modalCorregir = document.getElementById('modal-corregir');
+const formCorregir = document.getElementById('form-corregir');
+const corregirDia = document.getElementById('corregir-dia');
+const corregirError = document.getElementById('corregir-error');
+const btnCancelarCorregir = document.getElementById('btn-cancelar-corregir');
+
+const MESES_LARGOS = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+];
+
+let registroIdEnCorreccion = null;
+
+function escapeHTML(s) {
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function pintarHeader(empresa) {
+  nombreEmpresaEl.textContent = empresa.nombre;
+  if (empresa.logo) {
+    logoEl.src = empresa.logo;
+    logoEl.alt = `Logo de ${empresa.nombre}`;
+    logoEl.hidden = false;
+  } else {
+    logoEl.hidden = true;
+  }
+}
+
+function horaTexto(iso) {
+  return new Date(iso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+}
+
+function fotoUrl(ref) {
+  return `/api/asistencia/foto?ref=${encodeURIComponent(ref)}`;
+}
+
+async function cargarEmpleados() {
+  const r = await fetch('/api/asistencia/empleados');
+  const data = await r.json();
+  selectEmpleado.innerHTML = '<option value="">-- selecciona --</option>';
+  (data.empleados || []).forEach(emp => {
+    const opt = document.createElement('option');
+    opt.value = emp._id;
+    opt.textContent = emp.nombre;
+    selectEmpleado.appendChild(opt);
+  });
+}
+
+async function cargarMeses() {
+  const hoy = new Date();
+  const anioActual = hoy.getFullYear();
+  const mesActual = hoy.getMonth() + 1;
+
+  const r = await fetch('/api/asistencia/meses');
+  const data = await r.json();
+
+  const opciones = new Map();
+  const claveActual = `${anioActual}-${mesActual}`;
+  opciones.set(claveActual, { anio: anioActual, mes: mesActual });
+  (data.meses || []).forEach(m => {
+    opciones.set(`${m.anio}-${m.mes}`, { anio: m.anio, mes: m.mes });
+  });
+
+  const orden = Array.from(opciones.values()).sort((a, b) => {
+    if (a.anio !== b.anio) return b.anio - a.anio;
+    return b.mes - a.mes;
+  });
+
+  selectMes.innerHTML = '';
+  orden.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = `${o.anio}-${o.mes}`;
+    opt.textContent = `${MESES_LARGOS[o.mes - 1]} ${o.anio}`;
+    selectMes.appendChild(opt);
+  });
+  selectMes.value = claveActual;
+}
+
+function miniFoto(ref, etiqueta) {
+  if (!ref) return '<span class="ayuda">sin foto</span>';
+  const url = fotoUrl(ref);
+  return `<img class="foto-mini" loading="lazy" src="${url}" data-url="${url}" data-etiqueta="${etiqueta}" alt="${etiqueta}" title="Ver ${etiqueta}" />`;
+}
+
+function renderTabla(data) {
+  contenedorTabla.innerHTML = '';
+
+  if (data.dias.length === 0) {
+    estadoRegistro.textContent = `${data.empleado.nombre} no tiene registros en ${MESES_LARGOS[data.mes - 1]} ${data.anio}.`;
+    contenedorTabla.appendChild(estadoRegistro);
+    return;
+  }
+
+  const tabla = document.createElement('table');
+  tabla.className = 'tabla-registros';
+  tabla.innerHTML = `
+    <thead>
+      <tr>
+        <th>Día</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Evidencia</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  `;
+  const tbody = tabla.querySelector('tbody');
+
+  data.dias.forEach(d => {
+    const tr = document.createElement('tr');
+    const entrada = d.horaIngreso ? horaTexto(d.horaIngreso) : '—';
+    const salida = d.horaSalida ? horaTexto(d.horaSalida) : '—';
+    const horas = d.completo ? `${d.horasTrabajadas} h` : '—';
+
+    let evidencia;
+    if (d.completo) {
+      evidencia = `<div class="celda-evidencia">${miniFoto(d.fotoIngreso, 'Entrada')}${miniFoto(d.fotoSalida, 'Salida')}</div>`;
+    } else {
+      evidencia = `<span class="falta-salida">⚠ falta salida</span>
+        <button type="button" class="btn-secundario btn-corregir" data-id="${d.registroId}" data-dia="${d.dia}">Corregir</button>`;
+    }
+
+    tr.innerHTML = `
+      <td>${d.dia}</td>
+      <td>${entrada}</td>
+      <td>${salida}</td>
+      <td>${horas}</td>
+      <td>${evidencia}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  contenedorTabla.appendChild(tabla);
+
+  const total = document.createElement('p');
+  total.className = 'total-mes';
+  total.textContent = `Total del mes: ${data.totalHoras} horas`;
+  contenedorTabla.appendChild(total);
+
+  contenedorTabla.querySelectorAll('.foto-mini').forEach(img => {
+    img.addEventListener('click', () => {
+      modalFotoImg.src = img.dataset.url;
+      modalFotoTitulo.textContent = `Evidencia — ${img.dataset.etiqueta}`;
+      modalFoto.hidden = false;
+    });
+  });
+
+  contenedorTabla.querySelectorAll('.btn-corregir').forEach(btn => {
+    btn.addEventListener('click', () => abrirCorregir(btn.dataset.id, btn.dataset.dia));
+  });
+}
+
+async function cargarRegistro() {
+  const empleadoId = selectEmpleado.value;
+  if (!empleadoId) {
+    contenedorTabla.innerHTML = '';
+    estadoRegistro.textContent = 'Selecciona un empleado para ver su registro.';
+    contenedorTabla.appendChild(estadoRegistro);
+    return;
+  }
+  const [anioStr, mesStr] = selectMes.value.split('-');
+
+  contenedorTabla.innerHTML = '';
+  estadoRegistro.textContent = 'Cargando...';
+  contenedorTabla.appendChild(estadoRegistro);
+
+  try {
+    const r = await fetch(`/api/asistencia/registro/${encodeURIComponent(empleadoId)}?anio=${anioStr}&mes=${mesStr}`);
+    const data = await r.json();
+    if (!r.ok) {
+      estadoRegistro.textContent = data.error || 'Error cargando el registro';
+      return;
+    }
+    renderTabla(data);
+  } catch (err) {
+    estadoRegistro.textContent = 'Error de red';
+  }
+}
+
+function abrirCorregir(registroId, dia) {
+  registroIdEnCorreccion = registroId;
+  corregirDia.textContent = dia;
+  corregirError.hidden = true;
+  formCorregir.reset();
+  modalCorregir.hidden = false;
+  setTimeout(() => formCorregir.hora.focus(), 50);
+}
+
+function cerrarCorregir() {
+  modalCorregir.hidden = true;
+  registroIdEnCorreccion = null;
+}
+
+btnCerrarFoto.addEventListener('click', () => { modalFoto.hidden = true; });
+modalFoto.addEventListener('click', (e) => { if (e.target === modalFoto) modalFoto.hidden = true; });
+
+btnCancelarCorregir.addEventListener('click', cerrarCorregir);
+modalCorregir.addEventListener('click', (e) => { if (e.target === modalCorregir) cerrarCorregir(); });
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (!modalFoto.hidden) modalFoto.hidden = true;
+  if (!modalCorregir.hidden) cerrarCorregir();
+});
+
+formCorregir.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  corregirError.hidden = true;
+  const btnGuardar = formCorregir.querySelector('button[type="submit"]');
+  await conBotonCargando(btnGuardar, 'Guardando...', async () => {
+    try {
+      const r = await fetch('/api/asistencia/corregir-salida', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          registroId: registroIdEnCorreccion,
+          hora: formCorregir.hora.value,
+          password: formCorregir.password.value
+        })
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        corregirError.textContent = data.error || 'No se pudo corregir';
+        corregirError.hidden = false;
+        return;
+      }
+      cerrarCorregir();
+      cargarRegistro();
+    } catch (err) {
+      corregirError.textContent = 'Error de red';
+      corregirError.hidden = false;
+    }
+  });
+});
+
+selectEmpleado.addEventListener('change', cargarRegistro);
+selectMes.addEventListener('change', cargarRegistro);
+
+btnVolver.addEventListener('click', () => { window.location.href = '/asistencia.html'; });
+btnLogout.addEventListener('click', async () => {
+  await fetch('/api/auth/logout', { method: 'POST' });
+  window.location.href = '/';
+});
+
+async function iniciar() {
+  try {
+    const rMe = await fetch('/api/auth/me');
+    if (rMe.status === 401) { window.location.href = '/'; return; }
+    const me = await rMe.json();
+    if (me.rol !== 'empleado') { window.location.href = '/'; return; }
+    pintarHeader(me.empresa);
+    await cargarEmpleados();
+    await cargarMeses();
+  } catch (err) {
+    document.body.innerHTML = '<p style="padding:2rem;color:#b91c1c">Error cargando la página. Recarga.</p>';
+  }
+}
+
+iniciar();

@@ -18,16 +18,42 @@
   </header>
 
   <main class="contenedor">
-    <button type="button" id="btn-volver" class="btn-secundario btn-volver-menu">← Volver al menú</button>
-    <h1 class="titulo-pagina">Asistencia</h1>
-    <p class="subtitulo-pagina">Selecciona tu nombre para registrar tu entrada o salida del día.</p>
-
-    <div id="area-empleados" class="card">
-      <p class="ayuda">
-        La lista de empleados y la cámara se construirán en las siguientes fases.
-        Esta es la estructura base de la sección de Asistencia.
-      </p>
+    <div class="fila-acciones-top">
+      <button type="button" id="btn-volver" class="btn-secundario btn-volver-menu">← Volver al menú</button>
+      <button type="button" id="btn-registro" class="btn-secundario">Ver registro de horas</button>
     </div>
+    <h1 class="titulo-pagina">Asistencia</h1>
+    <p class="subtitulo-pagina">Registra tu entrada o salida del día con una foto.</p>
+
+    <section id="paso-seleccion" class="card">
+      <h2>1. Selecciona tu nombre</h2>
+      <ul id="lista-empleados-asistencia" class="lista-empleados"></ul>
+    </section>
+
+    <section id="paso-camara" class="card" hidden>
+      <h2>2. Toma tu foto</h2>
+      <p class="empleado-activo">Empleado: <strong id="nombre-seleccionado"></strong></p>
+      <p id="estado-empleado" class="dia-objetivo"></p>
+
+      <div class="camara-wrap">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas" class="foto-preview" hidden></canvas>
+      </div>
+
+      <p id="msg-asistencia" class="mensaje" hidden></p>
+
+      <div class="acciones-camara">
+        <button type="button" id="btn-tomar" class="btn-primario">Tomar foto</button>
+        <button type="button" id="btn-repetir" class="btn-secundario" hidden>Repetir foto</button>
+        <button type="button" id="btn-confirmar" class="btn-primario" hidden>Confirmar y registrar</button>
+        <button type="button" id="btn-cancelar-camara" class="btn-secundario">Cancelar</button>
+      </div>
+    </section>
+
+    <section id="paso-resultado" class="card" hidden>
+      <div id="resultado-banner" class="banner banner-info"></div>
+      <button type="button" id="btn-otro" class="btn-primario">Registrar otro empleado</button>
+    </section>
   </main>
 
   <script src="/js/util.js"></script>

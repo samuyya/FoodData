@@ -764,6 +764,94 @@ textarea:focus {
   max-width: 600px;
 }
 
+.boton-empleado {
+  font: inherit;
+  font-weight: 600;
+  width: 100%;
+  text-align: left;
+  padding: .85rem 1rem;
+  background: #fff;
+  border: 1px solid var(--color-borde);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color .12s, background .12s;
+}
+
+.boton-empleado:hover {
+  border-color: var(--color-primario);
+  background: #eff6ff;
+}
+
+.empleado-activo {
+  margin: 0 0 .5rem;
+  color: var(--color-texto-suave);
+}
+
+.camara-wrap {
+  margin: 1rem 0;
+  max-width: 480px;
+}
+
+.camara-wrap video,
+.foto-preview {
+  width: 100%;
+  border-radius: 10px;
+  background: #000;
+  display: block;
+}
+
+.acciones-camara {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.fila-acciones-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-self: flex-start;
+}
+
+.celda-evidencia {
+  display: flex;
+  gap: .35rem;
+  align-items: center;
+}
+
+.foto-mini {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--color-borde);
+  cursor: pointer;
+}
+
+.foto-mini:hover {
+  border-color: var(--color-primario);
+}
+
+.foto-grande {
+  max-width: 100%;
+  max-height: 60vh;
+  border-radius: 8px;
+  display: block;
+  margin: 0 auto 1rem;
+}
+
+.falta-salida {
+  color: #92400e;
+  font-weight: 600;
+  margin-right: .5rem;
+}
+
+.total-mes {
+  margin-top: 1rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
 @media (max-width: 640px) {
   .topbar {
     flex-wrap: wrap;

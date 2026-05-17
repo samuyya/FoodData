@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registro de horas - Seal Zenith</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <img id="logo-empresa" class="logo-empresa" alt="" hidden />
+      <strong id="nombre-empresa">...</strong>
+    </div>
+    <div class="topbar-right">
+      <button id="btn-logout" class="btn-secundario">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <main class="contenedor">
+    <button type="button" id="btn-volver" class="btn-secundario btn-volver-menu">← Volver a Asistencia</button>
+    <h1 class="titulo-pagina">Registro mensual de asistencia</h1>
+    <p class="subtitulo-pagina">Horas trabajadas por empleado, día a día.</p>
+
+    <section class="card">
+      <div class="historial-toolbar">
+        <label class="campo">
+          <span>Empleado</span>
+          <select id="select-empleado"></select>
+        </label>
+        <label class="campo">
+          <span>Mes</span>
+          <select id="select-mes"></select>
+        </label>
+      </div>
+
+      <div id="contenedor-tabla">
+        <p class="ayuda" id="estado-registro">Selecciona un empleado para ver su registro.</p>
+      </div>
+    </section>
+  </main>
+
+  <div id="modal-foto" class="modal-backdrop" hidden>
+    <div class="modal">
+      <h2 id="modal-foto-titulo">Evidencia</h2>
+      <img id="modal-foto-img" class="foto-grande" alt="Evidencia de asistencia" />
+      <div class="modal-acciones">
+        <button type="button" id="btn-cerrar-foto" class="btn-secundario">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-corregir" class="modal-backdrop" hidden>
+    <div class="modal">
+      <h2>Corregir hora de salida</h2>
+      <p class="subtitulo">Día <span id="corregir-dia"></span> — solo el administrador puede corregir.</p>
+      <form id="form-corregir" class="form">
+        <label class="campo">
+          <span>Hora de salida</span>
+          <input type="time" name="hora" required />
+        </label>
+        <label class="campo">
+          <span>Contraseña de administrador</span>
+          <input type="password" name="password" required autocomplete="current-password" />
+        </label>
+        <p id="corregir-error" class="mensaje mensaje-error" hidden></p>
+        <div class="modal-acciones">
+          <button type="button" id="btn-cancelar-corregir" class="btn-secundario">Cancelar</button>
+          <button type="submit" class="btn-primario">Guardar corrección</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/util.js"></script>
+  <script src="/js/registro-asistencia.js"></script>
+</body>
+</html>

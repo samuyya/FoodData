@@ -136,6 +136,19 @@ function estiloEncabezado(row) {
   row.height = 22;
 }
 
+function nombreHojaEmpleado(nombre, usados) {
+  const base = (String(nombre).replace(/[\\\/\?\*\[\]:]/g, '').trim() || 'Empleado').slice(0, 31);
+  let candidato = base;
+  let n = 2;
+  while (usados.has(candidato.toLowerCase())) {
+    const sufijo = ` (${n})`;
+    candidato = base.slice(0, 31 - sufijo.length) + sufijo;
+    n++;
+  }
+  usados.add(candidato.toLowerCase());
+  return candidato;
+}
+
 async function generarExcelAsistencia(empresaId, anio, mes) {
   const registros = await Asistencia.find({ empresa_id: empresaId, anio, mes })
     .sort({ empleadoNombre: 1, dia: 1 })
@@ -148,30 +161,10 @@ async function generarExcelAsistencia(empresaId, anio, mes) {
   wb.creator = empresa && empresa.nombre ? empresa.nombre : 'Seal Zenith';
   wb.created = new Date();
 
-  const hoja = wb.addWorksheet('Asistencia');
-  hoja.columns = [
-    { header: 'Empleado',         key: 'empleado', width: 28 },
-    { header: 'Día',              key: 'dia',      width: 8  },
-    { header: 'Fecha',            key: 'fecha',    width: 30 },
-    { header: 'Entrada',          key: 'entrada',  width: 12 },
-    { header: 'Salida',           key: 'salida',   width: 16 },
-    { header: 'Horas trabajadas', key: 'horas',    width: 18 }
-  ];
-  estiloEncabezado(hoja.getRow(1));
-
-  const totales = {};
+  const porEmpleado = new Map();
   registros.forEach(r => {
-    const completo = !!(r.horaIngreso && r.horaSalida);
-    const horas = completo ? (r.horasTrabajadas || 0) : 0;
-    hoja.addRow({
-      empleado: r.empleadoNombre,
-      dia: r.dia,
-      fecha: fechaLargaEs(r.anio, r.mes, r.dia),
-      entrada: horaCorta(r.horaIngreso),
-      salida: r.horaSalida ? horaCorta(r.horaSalida) : 'FALTA SALIDA',
-      horas: completo ? horas : ''
-    });
-    totales[r.empleadoNombre] = (totales[r.empleadoNombre] || 0) + horas;
+    if (!porEmpleado.has(r.empleadoNombre)) porEmpleado.set(r.empleadoNombre, []);
+    porEmpleado.get(r.empleadoNombre).push(r);
   });
 
   const resumen = wb.addWorksheet('Resumen');
@@ -180,9 +173,44 @@ async function generarExcelAsistencia(empresaId, anio, mes) {
     { header: 'Total horas del mes', key: 'total',    width: 22 }
   ];
   estiloEncabezado(resumen.getRow(1));
-  Object.keys(totales).sort().forEach(nombre => {
-    resumen.addRow({ empleado: nombre, total: Math.round(totales[nombre] * 100) / 100 });
-  });
+
+  const usados = new Set();
+  const totales = [];
+
+  for (const [nombre, lista] of porEmpleado) {
+    const hoja = wb.addWorksheet(nombreHojaEmpleado(nombre, usados));
+    hoja.columns = [
+      { header: 'Día',              key: 'dia',     width: 8  },
+      { header: 'Fecha',            key: 'fecha',   width: 30 },
+      { header: 'Entrada',          key: 'entrada', width: 12 },
+      { header: 'Salida',           key: 'salida',  width: 16 },
+      { header: 'Horas trabajadas', key: 'horas',   width: 18 }
+    ];
+    estiloEncabezado(hoja.getRow(1));
+
+    let total = 0;
+    lista.forEach(r => {
+      const completo = !!(r.horaIngreso && r.horaSalida);
+      const horas = completo ? (r.horasTrabajadas || 0) : 0;
+      total += horas;
+      hoja.addRow({
+        dia: r.dia,
+        fecha: fechaLargaEs(r.anio, r.mes, r.dia),
+        entrada: horaCorta(r.horaIngreso),
+        salida: r.horaSalida ? horaCorta(r.horaSalida) : 'FALTA SALIDA',
+        horas: completo ? horas : ''
+      });
+    });
+
+    const filaTotal = hoja.addRow({ salida: 'Total del mes:', horas: Math.round(total * 100) / 100 });
+    filaTotal.font = { bold: true };
+
+    totales.push({ nombre, total: Math.round(total * 100) / 100 });
+  }
+
+  totales
+    .sort((a, b) => a.nombre.localeCompare(b.nombre))
+    .forEach(t => resumen.addRow({ empleado: t.nombre, total: t.total }));
 
   return wb.xlsx.writeBuffer();
 }

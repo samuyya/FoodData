@@ -35,7 +35,7 @@ async function abrirWorkbook(filePath, nombreEmpresa) {
       console.warn(`No se pudo leer ${filePath}, se reconstruye:`, err.message);
     }
   }
-  wb.creator = nombreEmpresa || 'Seal Zenith';
+  wb.creator = nombreEmpresa || 'FoodData';
   wb.created = new Date();
   return wb;
 }
@@ -158,7 +158,7 @@ async function generarExcelAsistencia(empresaId, anio, mes) {
 
   const empresa = await Empresa.findById(empresaId).select('nombre').lean();
   const wb = new ExcelJS.Workbook();
-  wb.creator = empresa && empresa.nombre ? empresa.nombre : 'Seal Zenith';
+  wb.creator = empresa && empresa.nombre ? empresa.nombre : 'FoodData';
   wb.created = new Date();
 
   const porEmpleado = new Map();

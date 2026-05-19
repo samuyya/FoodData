@@ -7,6 +7,9 @@ const btnAsistencia = document.getElementById('btn-asistencia');
 const btnCapacitaciones = document.getElementById('btn-capacitaciones');
 const msgMenu = document.getElementById('msg-menu');
 
+const anioActualEl = document.getElementById('anio-actual');
+if (anioActualEl) anioActualEl.textContent = new Date().getFullYear();
+
 function pintarHeader(empresa) {
   nombreEmpresaEl.textContent = empresa.nombre;
   if (empresa.logo) {

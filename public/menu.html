@@ -3,34 +3,53 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Menú - Seal Zenith</title>
+  <title>Menú - FoodData</title>
   <link rel="stylesheet" href="/css/styles.css" />
 </head>
-<body>
-  <header class="topbar">
-    <div class="logo-establecimiento">
-      <img id="logo-empresa" class="logo-empresa-img" alt="" hidden />
-      <span id="logo-placeholder" class="logo-placeholder">Logo del establecimiento</span>
-    </div>
-    <h1 class="nombre-establecimiento" id="nombre-empresa">...</h1>
+<body class="menu-body">
+  <header class="menu-topbar">
+    <img src="/img/logo-solo.fooddata.png" class="menu-marca-logo" alt="FoodData" />
     <button id="btn-logout" class="btn-secundario">Cerrar sesión</button>
   </header>
 
-  <main class="contenedor">
-    <div class="caja-proyecto">
-      <span class="nombre-proyecto">Seal Zenith</span>
-    </div>
+  <main class="menu-main">
+    <section class="establecimiento">
+      <div class="establecimiento-logo">
+        <img id="logo-empresa" class="establecimiento-logo-img" alt="" hidden />
+        <span id="logo-placeholder" class="establecimiento-logo-ph">Logo</span>
+      </div>
+      <div class="establecimiento-info">
+        <span class="establecimiento-label">Restaurante</span>
+        <h1 id="nombre-empresa" class="establecimiento-nombre">...</h1>
+      </div>
+    </section>
 
-    <h2 class="label-menu">Menú Principal</h2>
+    <h2 class="menu-label">Menú Principal</h2>
 
-    <div class="botones-menu">
-      <button type="button" class="boton-menu" id="btn-formatos">Formatos</button>
-      <button type="button" class="boton-menu" id="btn-asistencia">Asistencia</button>
-      <button type="button" class="boton-menu" id="btn-capacitaciones">Capacitaciones</button>
-    </div>
+    <nav class="menu-botones">
+      <button type="button" class="menu-boton" id="btn-formatos">
+        <span class="menu-boton-icono">📋</span>
+        <span class="menu-boton-texto">Formatos</span>
+        <span class="menu-boton-flecha">›</span>
+      </button>
+      <button type="button" class="menu-boton" id="btn-asistencia">
+        <span class="menu-boton-icono">📅</span>
+        <span class="menu-boton-texto">Asistencia</span>
+        <span class="menu-boton-flecha">›</span>
+      </button>
+      <button type="button" class="menu-boton" id="btn-capacitaciones">
+        <span class="menu-boton-icono">🎓</span>
+        <span class="menu-boton-texto">Capacitaciones</span>
+        <span class="menu-boton-flecha">›</span>
+      </button>
+    </nav>
 
     <p id="msg-menu" class="banner banner-info" hidden></p>
   </main>
+
+  <footer class="menu-footer">
+    © <span id="anio-actual">2026</span> FoodData · Todos los derechos reservados
+  </footer>
 
   <script src="/js/util.js"></script>
   <script src="/js/menu.js"></script>

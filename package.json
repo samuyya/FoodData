@@ -1,7 +1,7 @@
 {
-  "name": "seal-zenith",
+  "name": "fooddata",
   "version": "0.1.0",
-  "description": "Seal Zenith - Digitalizacion de formatos de control de calidad e inocuidad alimentaria",
+  "description": "FoodData - Digitalizacion de formatos de control de calidad e inocuidad alimentaria",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

@@ -578,6 +578,46 @@ textarea:focus {
   font-size: .85rem;
 }
 
+.empresa-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+
+.empresa-acciones .btn-secundario,
+.empresa-acciones .btn-peligro {
+  padding: .35rem .7rem;
+  font-size: .85rem;
+}
+
+.btn-peligro {
+  font: inherit;
+  font-weight: 600;
+  border: 1px solid #fecaca;
+  background: #fee2e2;
+  color: #b91c1c;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.btn-peligro:hover { background: #fecaca; }
+
+.badge-inactiva {
+  display: inline-block;
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 999px;
+  padding: .1rem .5rem;
+  font-size: .72rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.empresa-item--inactiva {
+  opacity: .7;
+  background: #f9fafb;
+}
+
 .banner {
   padding: .85rem 1rem;
   border-radius: var(--radio);

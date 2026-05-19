@@ -125,24 +125,93 @@ async function cargarEmpresas() {
     const textoCandado = restringidos.length === 0
       ? 'sin contraseña'
       : `${restringidos.length} con contraseña`;
+    const estaActiva = emp.activa !== false;
+
     const li = document.createElement('li');
-    li.className = 'empresa-item';
+    li.className = 'empresa-item' + (estaActiva ? '' : ' empresa-item--inactiva');
+
+    const badge = estaActiva ? '' : ' <span class="badge-inactiva">Desactivada</span>';
+    const botones = estaActiva
+      ? `<button type="button" class="btn-secundario btn-editar-empresa">Editar</button>
+         <button type="button" class="btn-secundario btn-desactivar-empresa">Desactivar</button>`
+      : `<button type="button" class="btn-secundario btn-reactivar-empresa">Reactivar</button>
+         <button type="button" class="btn-peligro btn-eliminar-empresa-def">Eliminar definitivamente</button>`;
+
     li.innerHTML = `
       ${emp.logo ? `<img src="${escapeHTML(emp.logo)}" alt="logo" class="mini-logo" />` : '<span class="mini-logo mini-logo--vacio"></span>'}
       <span class="empresa-info">
-        <strong>${escapeHTML(emp.nombre)}</strong> · ${escapeHTML(emp.email)}
+        <strong>${escapeHTML(emp.nombre)}</strong>${badge} · ${escapeHTML(emp.email)}
         <small class="lista-formatos-activos">${activos.length}/${total} formatos · ${textoCandado}: ${escapeHTML(nombresDeFormatos(activos))}</small>
       </span>
-      <button type="button" class="btn-secundario btn-editar-empresa" data-id="${emp._id}">Editar</button>
+      <div class="empresa-acciones">${botones}</div>
     `;
-    li.querySelector('.btn-editar-empresa').addEventListener('click', () => abrirModalEditar(emp._id));
-    listaEmpresas.appendChild(li);
 
-    const opt = document.createElement('option');
-    opt.value = emp._id;
-    opt.textContent = emp.nombre;
-    selectEmpresa.appendChild(opt);
+    if (estaActiva) {
+      li.querySelector('.btn-editar-empresa').addEventListener('click', () => abrirModalEditar(emp._id));
+      li.querySelector('.btn-desactivar-empresa').addEventListener('click', () => desactivarEmpresa(emp));
+
+      const opt = document.createElement('option');
+      opt.value = emp._id;
+      opt.textContent = emp.nombre;
+      selectEmpresa.appendChild(opt);
+    } else {
+      li.querySelector('.btn-reactivar-empresa').addEventListener('click', () => reactivarEmpresa(emp));
+      li.querySelector('.btn-eliminar-empresa-def').addEventListener('click', () => eliminarEmpresa(emp));
+    }
+
+    listaEmpresas.appendChild(li);
   });
+}
+
+async function desactivarEmpresa(emp) {
+  if (!confirm(`¿Desactivar "${emp.nombre}"?\n\nNo podrá iniciar sesión, pero todos sus datos se conservan. Podrás reactivarla cuando quieras.`)) return;
+  try {
+    const r = await fetch(`/api/superadmin/empresas/${encodeURIComponent(emp._id)}/desactivar`, { method: 'POST' });
+    const data = await r.json();
+    if (!r.ok) { alert(data.error || 'Error al desactivar'); return; }
+    cargarEmpresas();
+  } catch (err) {
+    alert('Error de red');
+  }
+}
+
+async function reactivarEmpresa(emp) {
+  if (!confirm(`¿Reactivar "${emp.nombre}"? Volverá a poder iniciar sesión.`)) return;
+  try {
+    const r = await fetch(`/api/superadmin/empresas/${encodeURIComponent(emp._id)}/reactivar`, { method: 'POST' });
+    const data = await r.json();
+    if (!r.ok) { alert(data.error || 'Error al reactivar'); return; }
+    cargarEmpresas();
+  } catch (err) {
+    alert('Error de red');
+  }
+}
+
+async function eliminarEmpresa(emp) {
+  const escrito = prompt(
+    `ELIMINACIÓN DEFINITIVA de "${emp.nombre}".\n\n` +
+    `Esto borra para siempre: administradores, empleados, registros de formatos, ` +
+    `asistencia, fotos y archivos Excel. NO se puede deshacer.\n\n` +
+    `Para confirmar, escribe el nombre exacto de la empresa:`
+  );
+  if (escrito === null) return;
+  if (escrito.trim() !== emp.nombre) {
+    alert('El nombre no coincide. No se eliminó nada.');
+    return;
+  }
+  try {
+    const r = await fetch(`/api/superadmin/empresas/${encodeURIComponent(emp._id)}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirmacion: escrito.trim() })
+    });
+    const data = await r.json();
+    if (!r.ok) { alert(data.error || 'Error al eliminar'); return; }
+    alert(`Empresa "${emp.nombre}" eliminada definitivamente.`);
+    cargarEmpresas();
+  } catch (err) {
+    alert('Error de red');
+  }
 }
 
 async function cargarAdmins() {

@@ -6,6 +6,9 @@ const bcrypt = require('bcryptjs');
 
 const Empresa = require('../models/Empresa');
 const Administrador = require('../models/Administrador');
+const EmpleadoLista = require('../models/EmpleadoLista');
+const Registro = require('../models/Registro');
+const Asistencia = require('../models/Asistencia');
 const { FORMATOS } = require('../formatos');
 const { requireSuperadmin } = require('../middleware/sesion');
 const googleSheets = require('../servicios/googleSheets');
@@ -173,6 +176,55 @@ router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req
         formatosRestringidos: empresa.formatosRestringidos
       }
     });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/empresas/:id/desactivar', requireSuperadmin, async (req, res) => {
+  const empresa = await Empresa.findById(req.params.id);
+  if (!empresa) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });
+  empresa.activa = false;
+  await empresa.save();
+  res.json({ ok: true });
+});
+
+router.post('/empresas/:id/reactivar', requireSuperadmin, async (req, res) => {
+  const empresa = await Empresa.findById(req.params.id);
+  if (!empresa) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });
+  empresa.activa = true;
+  await empresa.save();
+  res.json({ ok: true });
+});
+
+router.delete('/empresas/:id', requireSuperadmin, async (req, res) => {
+  try {
+    const empresa = await Empresa.findById(req.params.id);
+    if (!empresa) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });
+    if (empresa.activa !== false) {
+      return res.status(409).json({ ok: false, error: 'Primero debes desactivar la empresa antes de eliminarla definitivamente' });
+    }
+    const confirmacion = String((req.body && req.body.confirmacion) || '').trim();
+    if (confirmacion !== empresa.nombre) {
+      return res.status(400).json({ ok: false, error: 'El nombre de confirmación no coincide con el de la empresa' });
+    }
+
+    const empresaId = empresa._id;
+    await Administrador.deleteMany({ empresa_id: empresaId });
+    await EmpleadoLista.deleteMany({ empresa_id: empresaId });
+    await Registro.deleteMany({ empresa_id: empresaId });
+    await Asistencia.deleteMany({ empresa_id: empresaId });
+
+    const dirAsistencia = path.join(__dirname, '..', 'datos', 'asistencia', String(empresaId));
+    const dirExcel = path.join(__dirname, '..', 'datos', 'excel', String(empresaId));
+    await fs.promises.rm(dirAsistencia, { recursive: true, force: true });
+    await fs.promises.rm(dirExcel, { recursive: true, force: true });
+    if (empresa.logo) {
+      await fs.promises.rm(path.join(carpetaLogos, path.basename(empresa.logo)), { force: true });
+    }
+
+    await empresa.deleteOne();
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }

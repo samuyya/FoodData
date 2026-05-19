@@ -36,6 +36,10 @@ router.post('/login', limiteLogin, async (req, res) => {
     return res.status(401).json({ ok: false, error: MSG_CREDENCIALES });
   }
 
+  if (empresa.activa === false) {
+    return res.status(403).json({ ok: false, error: 'Esta empresa está desactivada. Contacta al administrador del sistema.' });
+  }
+
   req.session.empresa = {
     id: empresa._id.toString(),
     nombre: empresa.nombre,

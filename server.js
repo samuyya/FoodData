@@ -3,6 +3,7 @@ const express = require('express');
 const path = require('path');
 const session = require('express-session');
 const helmet = require('helmet');
+const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const { conectarDB } = require('./db');
 const Superadmin = require('./models/Superadmin');
@@ -19,7 +20,38 @@ const googleSheets = require('./servicios/googleSheets');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      baseUri: ["'self'"],
+      scriptSrc: ["'self'"],
+      scriptSrcAttr: ["'none'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:'],
+      fontSrc: ["'self'"],
+      connectSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'self'"]
+    }
+  }
+}));
+
+const origenesPermitidos = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || origenesPermitidos.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Origen no permitido por CORS'));
+  },
+  credentials: true
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -80,8 +112,17 @@ async function iniciar() {
     await conectarDB();
     await seedSuperadmin();
     googleSheets.inicializar();
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`Servidor escuchando en http://localhost:${PORT}`);
+    });
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`\nEl puerto ${PORT} ya está en uso. Hay otro servidor corriendo.`);
+        console.error('Detén el otro servidor con Ctrl+C en su terminal y vuelve a intentar.\n');
+      } else {
+        console.error('Error del servidor:', err.message);
+      }
+      process.exit(1);
     });
   } catch (err) {
     console.error('Error al iniciar:', err.message);

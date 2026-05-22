@@ -1,0 +1,15 @@
+{
+  "name": "FoodData",
+  "short_name": "FoodData",
+  "description": "Control de calidad e inocuidad alimentaria",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#16c2a3",
+  "icons": [
+    { "src": "/img/icon-fooddata.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "/img/icon-fooddata.png", "type": "image/png", "sizes": "512x512" }
+  ]
+}

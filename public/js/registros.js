@@ -9,7 +9,7 @@ const historialInfoTexto = document.getElementById('historial-info-texto');
 const btnDescargar = document.getElementById('btn-descargar-excel');
 const btnVolverFormato = document.getElementById('btn-volver-formato');
 const btnIrMenu = document.getElementById('btn-ir-menu');
-const btnLogout = document.getElementById('btn-logout');
+const logoPlaceholder = document.getElementById('logo-placeholder');
 
 const modal = document.getElementById('modal-historial-admin');
 const formVerificar = document.getElementById('form-verificar-historial');
@@ -41,8 +41,10 @@ function pintarHeader(empresa) {
     logoEl.src = empresa.logo;
     logoEl.alt = `Logo de ${empresa.nombre}`;
     logoEl.hidden = false;
+    logoPlaceholder.hidden = true;
   } else {
     logoEl.hidden = true;
+    logoPlaceholder.hidden = false;
   }
 }
 
@@ -272,10 +274,6 @@ btnVolverFormato.addEventListener('click', () => {
 
 btnIrMenu.addEventListener('click', () => { window.location.href = '/formatos.html'; });
 
-btnLogout.addEventListener('click', async () => {
-  await fetch('/api/auth/logout', { method: 'POST' });
-  window.location.href = '/';
-});
 
 async function iniciar() {
   if (!formatoId) {

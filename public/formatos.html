@@ -6,22 +6,32 @@
   <title>Formatos - FoodData</title>
   <link rel="stylesheet" href="/css/styles.css" />
 </head>
-<body>
-  <header class="topbar">
-    <div class="topbar-left">
-      <img id="logo-empresa" class="logo-empresa" alt="" hidden />
-      <strong id="nombre-empresa">...</strong>
-    </div>
-    <div class="topbar-right">
-      <button id="btn-logout" class="btn-secundario">Cerrar sesión</button>
+<body class="sub-body">
+  <header class="sub-topbar">
+    <div class="sub-topbar-inner">
+      <button type="button" id="btn-volver" class="btn-secundario btn-volver-sub">← Volver al menú</button>
+
+      <div class="sub-encabezado">
+        <div class="sub-titulo-grupo">
+          <h1 class="titulo-pagina">Formatos</h1>
+          <p class="subtitulo-pagina">Selecciona un formato para registrar el día de hoy.</p>
+        </div>
+
+        <section class="establecimiento">
+          <div class="establecimiento-logo">
+            <img id="logo-empresa" class="establecimiento-logo-img" alt="" hidden />
+            <span id="logo-placeholder" class="establecimiento-logo-ph">Logo</span>
+          </div>
+          <div class="establecimiento-info">
+            <span class="establecimiento-label">Restaurante</span>
+            <strong id="nombre-empresa" class="establecimiento-nombre">...</strong>
+          </div>
+        </section>
+      </div>
     </div>
   </header>
 
-  <main class="contenedor">
-    <button type="button" id="btn-volver" class="btn-secundario btn-volver-menu">← Volver al menú</button>
-    <h1 class="titulo-pagina">Formatos</h1>
-    <p class="subtitulo-pagina">Selecciona un formato para registrar el día de hoy.</p>
-
+  <main class="sub-main">
     <ul id="lista-formatos" class="lista-formatos"></ul>
   </main>
 

@@ -6,8 +6,7 @@ const FORMATOS_VALIDOS = [
   'presentacion_personal',
   'control_temperatura',
   'limpieza_desinfeccion',
-  'manejo_residuos',
-  'capacitacion_continua'
+  'manejo_residuos'
 ];
 
 const registroSchema = new mongoose.Schema({

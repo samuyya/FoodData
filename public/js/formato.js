@@ -17,7 +17,7 @@ const formRegistro = document.getElementById('form-registro');
 const btnGuardar = document.getElementById('btn-guardar');
 const btnVerRegistros = document.getElementById('btn-ver-registros');
 const btnVolver = document.getElementById('btn-volver');
-const btnLogout = document.getElementById('btn-logout');
+const logoPlaceholder = document.getElementById('logo-placeholder');
 
 const seccionEmpleados = document.getElementById('seccion-empleados');
 const formNuevoEmpleado = document.getElementById('form-nuevo-empleado');
@@ -65,8 +65,10 @@ function pintarHeader(empresa) {
     logoEl.src = empresa.logo;
     logoEl.alt = `Logo de ${empresa.nombre}`;
     logoEl.hidden = false;
+    logoPlaceholder.hidden = true;
   } else {
     logoEl.hidden = true;
+    logoPlaceholder.hidden = false;
   }
 }
 
@@ -322,16 +324,31 @@ async function cargar() {
   }
 }
 
-formRegistro.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  msgRegistro.hidden = true;
+const modalAdminAtrasado = document.getElementById('modal-admin-atrasado');
+const formAdminAtrasado = document.getElementById('form-admin-atrasado');
+const modalAdminAtrasadoError = document.getElementById('modal-admin-atrasado-error');
+const btnCancelarAdminAtrasado = document.getElementById('btn-cancelar-admin-atrasado');
 
+function abrirModalAdminAtrasado() {
+  formAdminAtrasado.reset();
+  modalAdminAtrasadoError.hidden = true;
+  modalAdminAtrasado.hidden = false;
+  setTimeout(() => formAdminAtrasado.password.focus(), 50);
+}
+
+function cerrarModalAdminAtrasado() {
+  modalAdminAtrasado.hidden = true;
+}
+
+async function enviarRegistro(passwordAdmin) {
+  msgRegistro.hidden = true;
   const cuerpo = {
     formatoId,
     responsable: inputResponsable.value,
     observaciones: inputObservaciones.value,
     datos: {}
   };
+  if (passwordAdmin) cuerpo.password = passwordAdmin;
 
   const txtGuardar = btnGuardar.textContent;
   btnGuardar.disabled = true;
@@ -344,19 +361,49 @@ formRegistro.addEventListener('submit', async (e) => {
     });
     const data = await r.json();
     if (!r.ok) {
-      mostrarMensaje(data.error || 'Error al guardar', true);
       btnGuardar.disabled = false;
-      return;
+      return { error: data.error || 'Error al guardar', requiereClaveAdmin: data.requiereClaveAdmin };
     }
     const guardadoDia = data.registro.dia;
     pintarEstadoPendientes(data.info);
     mostrarMensaje(`Registro del día ${guardadoDia} guardado correctamente.`);
+    return { ok: true };
   } catch (err) {
-    mostrarMensaje('Error de red al guardar', true);
     btnGuardar.disabled = false;
+    return { error: 'Error de red al guardar' };
   } finally {
     btnGuardar.textContent = txtGuardar;
   }
+}
+
+formRegistro.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const res = await enviarRegistro();
+  if (res && res.requiereClaveAdmin) {
+    abrirModalAdminAtrasado();
+  } else if (res && res.error) {
+    mostrarMensaje(res.error, true);
+  }
+});
+
+formAdminAtrasado.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  modalAdminAtrasadoError.hidden = true;
+  const res = await enviarRegistro(formAdminAtrasado.password.value);
+  if (res && res.error) {
+    modalAdminAtrasadoError.textContent = res.error;
+    modalAdminAtrasadoError.hidden = false;
+    return;
+  }
+  cerrarModalAdminAtrasado();
+});
+
+btnCancelarAdminAtrasado.addEventListener('click', cerrarModalAdminAtrasado);
+modalAdminAtrasado.addEventListener('click', (e) => {
+  if (e.target === modalAdminAtrasado) cerrarModalAdminAtrasado();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !modalAdminAtrasado.hidden) cerrarModalAdminAtrasado();
 });
 
 btnVerRegistros.addEventListener('click', () => {
@@ -365,9 +412,5 @@ btnVerRegistros.addEventListener('click', () => {
 
 btnVolver.addEventListener('click', () => { window.location.href = '/formatos.html'; });
 
-btnLogout.addEventListener('click', async () => {
-  await fetch('/api/auth/logout', { method: 'POST' });
-  window.location.href = '/';
-});
 
 cargar();

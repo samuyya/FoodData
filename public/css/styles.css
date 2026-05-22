@@ -1,17 +1,17 @@
 :root {
-  --color-primario: #2563eb;
-  --color-primario-oscuro: #1d4ed8;
-  --color-fondo: #f5f7fb;
+  --color-primario: #16c2a3;
+  --color-primario-oscuro: #11a98d;
+  --color-fondo: #f3faf8;
   --color-superficie: #ffffff;
   --color-texto: #1f2937;
   --color-texto-suave: #6b7280;
-  --color-borde: #d1d5db;
+  --color-borde: #d8e7e1;
   --color-error: #b91c1c;
   --color-error-bg: #fee2e2;
   --color-ok: #15803d;
   --color-ok-bg: #dcfce7;
-  --radio: 10px;
-  --sombra: 0 2px 8px rgba(0,0,0,.06);
+  --radio: 14px;
+  --sombra: 0 4px 14px rgba(15, 40, 32, .06);
 }
 
 * { box-sizing: border-box; }
@@ -317,7 +317,7 @@ body {
 .formato-card:hover {
   transform: translateY(-2px);
   border-color: var(--color-primario);
-  box-shadow: 0 6px 16px rgba(37,99,235,.15);
+  box-shadow: 0 6px 16px rgba(22,194,163,.15);
 }
 
 .formato-numero {
@@ -692,15 +692,15 @@ textarea:focus {
 }
 
 .banner-info {
-  background: #dbeafe;
-  color: #1e3a8a;
-  border: 1px solid #bfdbfe;
+  background: #e3f6f1;
+  color: #0c6b58;
+  border: 1px solid #b9e3d6;
 }
 
 .dia-objetivo {
   margin: 0 0 .25rem;
   padding: .6rem .85rem;
-  background: #eff6ff;
+  background: #eafaf6;
   border-left: 4px solid var(--color-primario);
   border-radius: 6px;
   font-size: .92rem;
@@ -926,6 +926,63 @@ textarea:focus {
   align-self: flex-start;
 }
 
+.sub-body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+
+.sub-topbar {
+  background: linear-gradient(180deg, #a4ddcd 0%, #ffffff 100%);
+  padding: 1.5rem 1.75rem 2.5rem;
+}
+
+.sub-topbar-inner {
+  max-width: 880px;
+  margin: 0 auto;
+}
+
+.btn-volver-sub {
+  margin-bottom: 1.5rem;
+}
+
+.sub-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-bottom: 1.5rem;
+}
+
+.sa-cabecera-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.sub-encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.sub-encabezado .establecimiento {
+  margin-bottom: 0;
+}
+
+.sub-main {
+  flex: 1;
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 2rem 1.75rem 3rem;
+}
+
 .lista-formatos {
   list-style: none;
   margin: 0;
@@ -951,7 +1008,7 @@ textarea:focus {
 
 .boton-empleado:hover {
   border-color: var(--color-primario);
-  background: #eff6ff;
+  background: #eafaf6;
 }
 
 .empleado-activo {
@@ -1058,6 +1115,14 @@ textarea:focus {
 
   .menu-main {
     padding: 1.25rem 1rem 2.5rem;
+  }
+
+  .sub-topbar {
+    padding: 1.2rem 1rem 2rem;
+  }
+
+  .sub-main {
+    padding: 1.5rem 1rem 2.5rem;
   }
 
   .topbar-left { gap: .5rem; }

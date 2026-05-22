@@ -2,7 +2,7 @@ const logoEl = document.getElementById('logo-empresa');
 const nombreEmpresaEl = document.getElementById('nombre-empresa');
 const lista = document.getElementById('lista-formatos');
 const btnVolver = document.getElementById('btn-volver');
-const btnLogout = document.getElementById('btn-logout');
+const logoPlaceholder = document.getElementById('logo-placeholder');
 
 const modal = document.getElementById('modal-admin');
 const modalFormatoNombre = document.getElementById('modal-formato-nombre');
@@ -24,8 +24,10 @@ function pintarHeader(empresa) {
     logoEl.src = empresa.logo;
     logoEl.alt = `Logo de ${empresa.nombre}`;
     logoEl.hidden = false;
+    logoPlaceholder.hidden = true;
   } else {
     logoEl.hidden = true;
+    logoPlaceholder.hidden = false;
   }
 }
 
@@ -115,11 +117,6 @@ formAdminPass.addEventListener('submit', async (e) => {
 
 btnVolver.addEventListener('click', () => {
   window.location.href = '/menu.html';
-});
-
-btnLogout.addEventListener('click', async () => {
-  await fetch('/api/auth/logout', { method: 'POST' });
-  window.location.href = '/';
 });
 
 async function iniciar() {

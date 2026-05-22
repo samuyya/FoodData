@@ -4,8 +4,7 @@ const FORMATOS = [
   { id: 'presentacion_personal', numero: 3, nombre: 'Presentación personal',                  nombreCorto: 'Presentación personal',  restringidoPorDefecto: true  },
   { id: 'control_temperatura',   numero: 4, nombre: 'Control de temperatura',                 nombreCorto: 'Control de temperatura', restringidoPorDefecto: false },
   { id: 'limpieza_desinfeccion', numero: 5, nombre: 'Limpieza y desinfección de superficies', nombreCorto: 'Limpieza superficies',   restringidoPorDefecto: false },
-  { id: 'manejo_residuos',       numero: 6, nombre: 'Manejo de residuos',                     nombreCorto: 'Manejo de residuos',     restringidoPorDefecto: false },
-  { id: 'capacitacion_continua', numero: 7, nombre: 'Capacitación continua',                  nombreCorto: 'Capacitación continua',  restringidoPorDefecto: true  }
+  { id: 'manejo_residuos',       numero: 6, nombre: 'Manejo de residuos',                     nombreCorto: 'Manejo de residuos',     restringidoPorDefecto: false }
 ];
 
 function getFormato(id) {

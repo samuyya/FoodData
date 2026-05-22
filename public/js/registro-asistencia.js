@@ -1,7 +1,7 @@
 const logoEl = document.getElementById('logo-empresa');
 const nombreEmpresaEl = document.getElementById('nombre-empresa');
 const btnVolver = document.getElementById('btn-volver');
-const btnLogout = document.getElementById('btn-logout');
+const logoPlaceholder = document.getElementById('logo-placeholder');
 
 const selectEmpleado = document.getElementById('select-empleado');
 const selectMes = document.getElementById('select-mes');
@@ -39,8 +39,10 @@ function pintarHeader(empresa) {
     logoEl.src = empresa.logo;
     logoEl.alt = `Logo de ${empresa.nombre}`;
     logoEl.hidden = false;
+    logoPlaceholder.hidden = true;
   } else {
     logoEl.hidden = true;
+    logoPlaceholder.hidden = false;
   }
 }
 
@@ -285,11 +287,6 @@ btnDescargar.addEventListener('click', async () => {
 });
 
 btnVolver.addEventListener('click', () => { window.location.href = '/asistencia.html'; });
-btnLogout.addEventListener('click', async () => {
-  await fetch('/api/auth/logout', { method: 'POST' });
-  window.location.href = '/';
-});
-
 async function iniciar() {
   try {
     const rMe = await fetch('/api/auth/me');

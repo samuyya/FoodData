@@ -6,15 +6,21 @@
   <title>Panel Superadmin - FoodData</title>
   <link rel="stylesheet" href="/css/styles.css" />
 </head>
-<body>
-  <header class="topbar">
-    <div class="topbar-left">
-      <strong>Panel Superadmin</strong>
+<body class="sub-body">
+  <header class="sub-topbar">
+    <div class="sub-topbar-inner">
+      <div class="sa-cabecera-fila">
+        <img src="/img/logo-solo.fooddata.png" class="menu-marca-logo" alt="FoodData" />
+        <button id="btn-logout" class="btn-secundario">Cerrar sesión</button>
+      </div>
+      <div class="sub-titulo-grupo">
+        <h1 class="titulo-pagina">Panel Superadmin</h1>
+        <p class="subtitulo-pagina">Gestiona las empresas y sus administradores.</p>
+      </div>
     </div>
-    <button id="btn-logout" class="btn-secundario">Cerrar sesión</button>
   </header>
 
-  <main class="contenedor">
+  <main class="sub-main">
     <section class="card" id="card-google" hidden>
       <h2>Sincronización con Google Sheets</h2>
       <p id="google-estado" class="ayuda"></p>

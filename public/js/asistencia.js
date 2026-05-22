@@ -2,7 +2,7 @@ const logoEl = document.getElementById('logo-empresa');
 const nombreEmpresaEl = document.getElementById('nombre-empresa');
 const btnVolver = document.getElementById('btn-volver');
 const btnRegistro = document.getElementById('btn-registro');
-const btnLogout = document.getElementById('btn-logout');
+const logoPlaceholder = document.getElementById('logo-placeholder');
 
 const pasoSeleccion = document.getElementById('paso-seleccion');
 const pasoCamara = document.getElementById('paso-camara');
@@ -39,8 +39,10 @@ function pintarHeader(empresa) {
     logoEl.src = empresa.logo;
     logoEl.alt = `Logo de ${empresa.nombre}`;
     logoEl.hidden = false;
+    logoPlaceholder.hidden = true;
   } else {
     logoEl.hidden = true;
+    logoPlaceholder.hidden = false;
   }
 }
 
@@ -216,12 +218,6 @@ btnVolver.addEventListener('click', () => {
 btnRegistro.addEventListener('click', () => {
   detenerCamara();
   window.location.href = '/registro-asistencia.html';
-});
-
-btnLogout.addEventListener('click', async () => {
-  detenerCamara();
-  await fetch('/api/auth/logout', { method: 'POST' });
-  window.location.href = '/';
 });
 
 window.addEventListener('beforeunload', detenerCamara);

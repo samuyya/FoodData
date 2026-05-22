@@ -5,6 +5,7 @@ const btnLogout = document.getElementById('btn-logout');
 const btnFormatos = document.getElementById('btn-formatos');
 const btnAsistencia = document.getElementById('btn-asistencia');
 const btnCapacitaciones = document.getElementById('btn-capacitaciones');
+const btnProgramas = document.getElementById('btn-programas');
 const msgMenu = document.getElementById('msg-menu');
 
 const anioActualEl = document.getElementById('anio-actual');
@@ -35,6 +36,7 @@ btnAsistencia.addEventListener('click', () => {
   window.location.href = '/asistencia.html';
 });
 btnCapacitaciones.addEventListener('click', () => avisoPendiente('Capacitaciones'));
+btnProgramas.addEventListener('click', () => avisoPendiente('Programas'));
 
 btnLogout.addEventListener('click', async () => {
   await fetch('/api/auth/logout', { method: 'POST' });

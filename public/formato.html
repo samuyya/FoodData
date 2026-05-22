@@ -6,29 +6,38 @@
   <title>Formato - FoodData</title>
   <link rel="stylesheet" href="/css/styles.css" />
 </head>
-<body>
-  <header class="topbar">
-    <div class="topbar-left">
-      <img id="logo-empresa" class="logo-empresa" alt="" hidden />
-      <strong id="nombre-empresa">...</strong>
-    </div>
-    <div class="topbar-right">
-      <button id="btn-logout" class="btn-secundario">Cerrar sesión</button>
+<body class="sub-body">
+  <header class="sub-topbar">
+    <div class="sub-topbar-inner">
+      <button type="button" id="btn-volver" class="btn-secundario btn-volver-sub">← Volver a formatos</button>
+
+      <div class="sub-encabezado">
+        <div class="sub-titulo-grupo">
+          <h1 class="titulo-pagina" id="formato-titulo">Cargando...</h1>
+          <p class="subtitulo-pagina">
+            <span class="meta-label">Fecha:</span>
+            <strong id="formato-fecha"></strong>
+            <span id="badge-admin-activo" class="badge-admin" hidden>
+              Sesión de administrador: <strong id="badge-admin-nombre"></strong>
+            </span>
+          </p>
+        </div>
+
+        <section class="establecimiento">
+          <div class="establecimiento-logo">
+            <img id="logo-empresa" class="establecimiento-logo-img" alt="" hidden />
+            <span id="logo-placeholder" class="establecimiento-logo-ph">Logo</span>
+          </div>
+          <div class="establecimiento-info">
+            <span class="establecimiento-label">Restaurante</span>
+            <strong id="nombre-empresa" class="establecimiento-nombre">...</strong>
+          </div>
+        </section>
+      </div>
     </div>
   </header>
 
-  <main class="contenedor">
-    <div class="card formato-cabecera">
-      <h1 class="titulo-pagina" id="formato-titulo">Cargando...</h1>
-      <p class="subtitulo-pagina">
-        <span class="meta-label">Fecha:</span>
-        <strong id="formato-fecha"></strong>
-        <span id="badge-admin-activo" class="badge-admin" hidden>
-          Sesión de administrador: <strong id="badge-admin-nombre"></strong>
-        </span>
-      </p>
-    </div>
-
+  <main class="sub-main">
     <div id="banner-pendientes" class="banner banner-warning" hidden></div>
     <div id="banner-info" class="banner banner-info" hidden></div>
 
@@ -58,7 +67,6 @@
       <div class="acciones-formato">
         <button type="submit" id="btn-guardar" class="btn-primario">Guardar</button>
         <button type="button" id="btn-ver-registros" class="btn-secundario">Ver registros</button>
-        <button type="button" id="btn-volver" class="btn-secundario">Volver a formatos</button>
       </div>
     </form>
 
@@ -105,6 +113,24 @@
         <div class="modal-acciones">
           <button type="button" id="btn-cancelar-editar-empleado" class="btn-secundario">Cancelar</button>
           <button type="submit" class="btn-primario">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-admin-atrasado" class="modal-backdrop" hidden>
+    <div class="modal">
+      <h2>Formato atrasado</h2>
+      <p class="subtitulo">Estás registrando un día anterior. Solo el administrador puede llenar días atrasados — ingresa la contraseña para continuar.</p>
+      <form id="form-admin-atrasado" class="form">
+        <label class="campo">
+          <span>Contraseña de administrador</span>
+          <input type="password" name="password" required autocomplete="current-password" />
+        </label>
+        <p id="modal-admin-atrasado-error" class="mensaje mensaje-error" hidden></p>
+        <div class="modal-acciones">
+          <button type="button" id="btn-cancelar-admin-atrasado" class="btn-secundario">Cancelar</button>
+          <button type="submit" class="btn-primario">Continuar</button>
         </div>
       </form>
     </div>

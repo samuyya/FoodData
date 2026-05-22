@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const fs = require('fs');
 const Registro = require('../models/Registro');
 const Empresa = require('../models/Empresa');
+const Administrador = require('../models/Administrador');
+const bcrypt = require('bcryptjs');
 const { FORMATOS, getFormato } = require('../formatos');
 const { getConfigEmpresa } = require('../empresaConfig');
 const { requireEmpresa } = require('../middleware/sesion');
@@ -13,6 +15,20 @@ const googleSheets = require('../servicios/googleSheets');
 const router = express.Router();
 
 const REGEX_LETRAS = /^[A-Za-zÀ-ÿÑñ\s]+$/;
+
+async function verificarPasswordAdmin(empresaId, password) {
+  if (!password) {
+    return { status: 401, requiereClave: true, error: 'Este formato está atrasado. Ingresa la contraseña de administrador para continuar.' };
+  }
+  const admins = await Administrador.find({ empresa_id: empresaId });
+  if (admins.length === 0) {
+    return { status: 404, error: 'Esta empresa aún no tiene administrador asignado' };
+  }
+  for (const a of admins) {
+    if (await bcrypt.compare(password, a.passwordHash)) return { ok: true };
+  }
+  return { status: 401, requiereClave: true, error: 'Contraseña de administrador incorrecta' };
+}
 
 async function empresaTieneFormato(empresaId, formatoId) {
   const e = await Empresa.findById(empresaId).select('formatosActivos').lean();
@@ -115,6 +131,19 @@ router.post('/', requireEmpresa, async (req, res) => {
       if (!limpio) return res.status(400).json({ ok: false, error: 'El responsable es obligatorio' });
       if (!REGEX_LETRAS.test(limpio)) return res.status(400).json({ ok: false, error: 'El responsable solo puede contener letras y espacios' });
       nombreResponsable = limpio;
+
+      if (info.siguienteDia !== info.diaActual) {
+        const TTL = 8 * 60 * 60 * 1000;
+        const marca = req.session.adminAtrasado;
+        const yaVerificado = marca && (Date.now() - marca.ts <= TTL);
+        if (!yaVerificado) {
+          const v = await verificarPasswordAdmin(req.session.empresa.id, req.body.password);
+          if (v.error) {
+            return res.status(v.status).json({ ok: false, error: v.error, requiereClaveAdmin: !!v.requiereClave });
+          }
+          req.session.adminAtrasado = { ts: Date.now() };
+        }
+      }
     }
 
     const dia = info.siguienteDia;

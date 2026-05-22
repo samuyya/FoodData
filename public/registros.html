@@ -6,23 +6,35 @@
   <title>Registros - FoodData</title>
   <link rel="stylesheet" href="/css/styles.css" />
 </head>
-<body>
-  <header class="topbar">
-    <div class="topbar-left">
-      <img id="logo-empresa" class="logo-empresa" alt="" hidden />
-      <strong id="nombre-empresa">...</strong>
-    </div>
-    <div class="topbar-right">
-      <button id="btn-logout" class="btn-secundario">Cerrar sesión</button>
+<body class="sub-body">
+  <header class="sub-topbar">
+    <div class="sub-topbar-inner">
+      <div class="sub-acciones">
+        <button type="button" id="btn-volver-formato" class="btn-secundario">← Volver al formato</button>
+        <button type="button" id="btn-ir-menu" class="btn-secundario">Ir a formatos</button>
+      </div>
+
+      <div class="sub-encabezado">
+        <div class="sub-titulo-grupo">
+          <h1 class="titulo-pagina" id="formato-titulo">Cargando...</h1>
+          <p class="subtitulo-pagina" id="formato-subtitulo">Historial de registros mensuales.</p>
+        </div>
+
+        <section class="establecimiento">
+          <div class="establecimiento-logo">
+            <img id="logo-empresa" class="establecimiento-logo-img" alt="" hidden />
+            <span id="logo-placeholder" class="establecimiento-logo-ph">Logo</span>
+          </div>
+          <div class="establecimiento-info">
+            <span class="establecimiento-label">Restaurante</span>
+            <strong id="nombre-empresa" class="establecimiento-nombre">...</strong>
+          </div>
+        </section>
+      </div>
     </div>
   </header>
 
-  <main class="contenedor">
-    <div class="card formato-cabecera">
-      <h1 class="titulo-pagina" id="formato-titulo">Cargando...</h1>
-      <p class="subtitulo-pagina" id="formato-subtitulo">Historial de registros mensuales.</p>
-    </div>
-
+  <main class="sub-main">
     <section class="card">
       <div class="historial-toolbar">
         <label class="campo">
@@ -34,8 +46,6 @@
         </div>
         <div class="historial-acciones">
           <button type="button" id="btn-descargar-excel" class="btn-primario">📥 Descargar Excel del mes</button>
-          <button type="button" id="btn-volver-formato" class="btn-secundario">Volver al formato</button>
-          <button type="button" id="btn-ir-menu" class="btn-secundario">Ir a formatos</button>
         </div>
       </div>
 

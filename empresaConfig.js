@@ -2,23 +2,42 @@ const Empresa = require('./models/Empresa');
 const { FORMATOS } = require('./formatos');
 
 const TODOS_IDS = FORMATOS.map(f => f.id);
-const RESTRINGIDOS_DEFECTO = FORMATOS.filter(f => f.restringidoPorDefecto).map(f => f.id);
 
 async function getConfigEmpresa(empresaId) {
   const e = await Empresa.findById(empresaId)
-    .select('formatosActivos formatosRestringidos')
+    .select('formatosActivos formatosCarpeta')
     .lean();
 
   const activos = (e && Array.isArray(e.formatosActivos) && e.formatosActivos.length > 0)
     ? e.formatosActivos
     : TODOS_IDS.slice();
 
-  const restringidosRaw = (e && Array.isArray(e.formatosRestringidos))
-    ? e.formatosRestringidos
-    : RESTRINGIDOS_DEFECTO;
+  const cDoc = (e && e.formatosCarpeta) || {};
+  const cocina        = Array.isArray(cDoc.cocina)        ? cDoc.cocina.filter(id => activos.includes(id))        : [];
+  const salon         = Array.isArray(cDoc.salon)         ? cDoc.salon.filter(id => activos.includes(id))         : [];
+  const administracion= Array.isArray(cDoc.administracion)? cDoc.administracion.filter(id => activos.includes(id)): [];
 
-  const restringidos = restringidosRaw.filter(id => activos.includes(id));
-  return { activos, restringidos };
+  // Formatos que no están en ninguna carpeta van a cocina por defecto
+  const conAlgunaCarpeta = new Set([...cocina, ...salon, ...administracion]);
+  const sinAsignar = activos.filter(id => !conAlgunaCarpeta.has(id));
+
+  return {
+    activos,
+    carpetas: {
+      cocina: [...cocina, ...sinAsignar],
+      salon,
+      administracion
+    }
+  };
 }
 
-module.exports = { getConfigEmpresa };
+// Devuelve TODAS las carpetas a las que pertenece un formato (puede ser más de una)
+function getCarpetasDeFormato(carpetas, formatoId) {
+  const resultado = [];
+  if (carpetas.cocina.includes(formatoId))        resultado.push('cocina');
+  if (carpetas.salon.includes(formatoId))         resultado.push('salon');
+  if (carpetas.administracion.includes(formatoId))resultado.push('administracion');
+  return resultado.length > 0 ? resultado : ['cocina'];
+}
+
+module.exports = { getConfigEmpresa, getCarpetasDeFormato };

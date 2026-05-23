@@ -18,13 +18,10 @@ const empresaSchema = new mongoose.Schema({
       message: 'Lista de formatos inválida'
     }
   },
-  formatosRestringidos: {
-    type: [String],
-    default: [],
-    validate: {
-      validator: arr => arr.every(id => IDS_FORMATOS.includes(id)),
-      message: 'Lista de formatos restringidos inválida'
-    }
+  formatosCarpeta: {
+    cocina:        { type: [String], default: () => IDS_FORMATOS.slice() },
+    salon:         { type: [String], default: () => [] },
+    administracion:{ type: [String], default: () => [] }
   }
 }, { timestamps: true });
 

@@ -7,7 +7,7 @@ const listaAdmins = document.getElementById('lista-admins');
 const selectEmpresa = formAdmin.querySelector('select[name="empresa_id"]');
 const btnLogout = document.getElementById('btn-logout');
 const contenedorCheckboxes = document.getElementById('checkboxes-formatos');
-const contenedorRestringidos = document.getElementById('checkboxes-restringidos');
+const tablaCarpetas = document.getElementById('tabla-carpetas');
 
 const modalEditar = document.getElementById('modal-editar-empresa');
 const formEditar = document.getElementById('form-editar-empresa');
@@ -16,7 +16,7 @@ const btnCancelarEditar = document.getElementById('btn-cancelar-editar-empresa')
 const previewLogoActual = document.getElementById('preview-logo-actual');
 const previewLogoVacio = document.getElementById('preview-logo-vacio');
 const contenedorCheckboxesEditar = document.getElementById('checkboxes-formatos-editar');
-const contenedorRestringidosEditar = document.getElementById('checkboxes-restringidos-editar');
+const tablaCarpetasEditar = document.getElementById('tabla-carpetas-editar');
 
 const cardGoogle = document.getElementById('card-google');
 const googleEstado = document.getElementById('google-estado');
@@ -44,10 +44,6 @@ function idsTodos() {
   return catalogoFormatos.map(f => f.id);
 }
 
-function idsRestringidosPorDefecto() {
-  return catalogoFormatos.filter(f => f.restringidoPorDefecto).map(f => f.id);
-}
-
 function pintarCheckboxes(contenedor, nombreCampo, marcadosIds) {
   contenedor.innerHTML = '';
   catalogoFormatos.forEach(f => {
@@ -60,6 +56,50 @@ function pintarCheckboxes(contenedor, nombreCampo, marcadosIds) {
     `;
     contenedor.appendChild(label);
   });
+}
+
+// Pinta una tabla con checkboxes para asignar carpetas a cada formato activo
+// Un formato puede estar en una o varias carpetas a la vez
+function pintarTablaCarpetas(contenedor, activosIds, carpetaDoc) {
+  const cDoc = carpetaDoc || {};
+  const enCocina        = Array.isArray(cDoc.cocina)        ? cDoc.cocina        : activosIds.slice();
+  const enSalon         = Array.isArray(cDoc.salon)         ? cDoc.salon         : [];
+  const enAdministracion= Array.isArray(cDoc.administracion)? cDoc.administracion: [];
+
+  contenedor.innerHTML = '';
+  const tabla = document.createElement('table');
+  tabla.className = 'tabla-carpeta-asign';
+  tabla.innerHTML = `
+    <thead>
+      <tr>
+        <th>Formato</th>
+        <th>🍳 Cocina</th>
+        <th>🪑 Salón</th>
+        <th>🔒 Administración</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  `;
+  const tbody = tabla.querySelector('tbody');
+
+  catalogoFormatos
+    .filter(f => activosIds.includes(f.id))
+    .forEach(f => {
+      const enC = enCocina.includes(f.id)         || (!enSalon.includes(f.id) && !enAdministracion.includes(f.id));
+      const enS = enSalon.includes(f.id);
+      const enA = enAdministracion.includes(f.id);
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escapeHTML(f.nombre)}</td>
+        <td class="td-radio"><input type="checkbox" name="carpeta_cocina"         value="${f.id}" ${enC ? 'checked' : ''} /></td>
+        <td class="td-radio"><input type="checkbox" name="carpeta_salon"          value="${f.id}" ${enS ? 'checked' : ''} /></td>
+        <td class="td-radio"><input type="checkbox" name="carpeta_administracion" value="${f.id}" ${enA ? 'checked' : ''} /></td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+  contenedor.appendChild(tabla);
 }
 
 function nombresDeFormatos(ids) {
@@ -77,20 +117,21 @@ function activosDeEmpresa(emp) {
     : idsTodos();
 }
 
-function restringidosDeEmpresa(emp, activos) {
-  const base = Array.isArray(emp.formatosRestringidos)
-    ? emp.formatosRestringidos
-    : idsRestringidosPorDefecto();
-  return base.filter(id => activos.includes(id));
-}
-
 async function cargarCatalogo() {
   const r = await fetch('/api/superadmin/catalogo');
   if (r.status === 401) { window.location.href = '/'; return; }
   const data = await r.json();
   catalogoFormatos = data.formatos;
   pintarCheckboxes(contenedorCheckboxes, 'formatosActivos', idsTodos());
-  pintarCheckboxes(contenedorRestringidos, 'formatosRestringidos', idsRestringidosPorDefecto());
+  pintarTablaCarpetas(tablaCarpetas, idsTodos(), null);
+
+  // Actualizar tabla de carpetas cuando cambie la selección de formatos activos
+  contenedorCheckboxes.addEventListener('change', () => {
+    const marcados = Array.from(
+      contenedorCheckboxes.querySelectorAll('input[name="formatosActivos"]:checked')
+    ).map(i => i.value);
+    pintarTablaCarpetas(tablaCarpetas, marcados, null);
+  });
 }
 
 async function cargarGoogleInfo() {
@@ -121,10 +162,9 @@ async function cargarEmpresas() {
   data.empresas.forEach(emp => {
     const total = catalogoFormatos.length;
     const activos = activosDeEmpresa(emp);
-    const restringidos = restringidosDeEmpresa(emp, activos);
-    const textoCandado = restringidos.length === 0
-      ? 'sin contraseña'
-      : `${restringidos.length} con contraseña`;
+    const cDoc = emp.formatosCarpeta || {};
+    const enAdmin = Array.isArray(cDoc.administracion) ? cDoc.administracion.length : 0;
+    const textoAdmin = enAdmin === 0 ? 'ninguno en Administración' : `${enAdmin} en Administración`;
     const estaActiva = emp.activa !== false;
 
     const li = document.createElement('li');
@@ -141,7 +181,7 @@ async function cargarEmpresas() {
       ${emp.logo ? `<img src="${escapeHTML(emp.logo)}" alt="logo" class="mini-logo" />` : '<span class="mini-logo mini-logo--vacio"></span>'}
       <span class="empresa-info">
         <strong>${escapeHTML(emp.nombre)}</strong>${badge} · ${escapeHTML(emp.email)}
-        <small class="lista-formatos-activos">${activos.length}/${total} formatos · ${textoCandado}: ${escapeHTML(nombresDeFormatos(activos))}</small>
+        <small class="lista-formatos-activos">${activos.length}/${total} formatos · ${textoAdmin}</small>
       </span>
       <div class="empresa-acciones">${botones}</div>
     `;
@@ -255,9 +295,16 @@ async function abrirModalEditar(empresaId) {
     }
 
     const activos = activosDeEmpresa(emp);
-    const restringidos = restringidosDeEmpresa(emp, activos);
     pintarCheckboxes(contenedorCheckboxesEditar, 'formatosActivos', activos);
-    pintarCheckboxes(contenedorRestringidosEditar, 'formatosRestringidos', restringidos);
+    pintarTablaCarpetas(tablaCarpetasEditar, activos, emp.formatosCarpeta || {});
+
+    // Actualizar tabla de carpetas cuando cambie la selección de formatos activos
+    contenedorCheckboxesEditar.onchange = () => {
+      const marcados = Array.from(
+        contenedorCheckboxesEditar.querySelectorAll('input[name="formatosActivos"]:checked')
+      ).map(i => i.value);
+      pintarTablaCarpetas(tablaCarpetasEditar, marcados, emp.formatosCarpeta || {});
+    };
 
     modalEditar.hidden = false;
   } catch (err) {
@@ -293,7 +340,6 @@ formEditar.addEventListener('submit', async (e) => {
   fd.delete('email');
   if (!formEditar.password.value.trim()) fd.delete('password');
   if (!formEditar.logo.files.length) fd.delete('logo');
-  if (!fd.has('formatosRestringidos')) fd.append('formatosRestringidos', '');
 
   const id = formEditar.id.value;
   fd.delete('id');
@@ -331,8 +377,6 @@ formEmpresa.addEventListener('submit', async (e) => {
     mostrarMensaje(msgEmpresa, 'Selecciona al menos un formato', true);
     return;
   }
-  if (!fd.has('formatosRestringidos')) fd.append('formatosRestringidos', '');
-
   const btnCrearEmpresa = formEmpresa.querySelector('button[type="submit"]');
   await conBotonCargando(btnCrearEmpresa, 'Creando...', async () => {
     try {
@@ -345,7 +389,7 @@ formEmpresa.addEventListener('submit', async (e) => {
       mostrarMensaje(msgEmpresa, `Empresa "${data.empresa.nombre}" creada con ${data.empresa.formatosActivos.length} formato(s)`);
       formEmpresa.reset();
       pintarCheckboxes(contenedorCheckboxes, 'formatosActivos', idsTodos());
-      pintarCheckboxes(contenedorRestringidos, 'formatosRestringidos', idsRestringidosPorDefecto());
+      pintarTablaCarpetas(tablaCarpetas, idsTodos(), null);
       cargarEmpresas();
     } catch (err) {
       mostrarMensaje(msgEmpresa, 'Error de red', true);

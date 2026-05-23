@@ -46,17 +46,21 @@ function fechaLargaEs(anio, mes, dia) {
   });
 }
 
-function nombrePestana(formato) {
-  return `${formato.numero}. ${formato.nombreCorto || formato.nombre}`.slice(0, 90);
+const SUFIJO_CARPETA_GS = { cocina: '', salon: ' (Salón)', administracion: ' (Admón)' };
+
+function nombrePestana(formato, carpeta) {
+  const sufijo = SUFIJO_CARPETA_GS[carpeta] || '';
+  return `${formato.numero}. ${formato.nombreCorto || formato.nombre}${sufijo}`.slice(0, 90);
 }
 
-async function sincronizarFormato(spreadsheetId, empresaId, formatoId) {
+async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) {
   if (!disponible || !spreadsheetId) return;
 
   const formato = getFormato(formatoId);
   if (!formato) return;
 
-  const pestana = nombrePestana(formato);
+  const carpetaReal = carpeta || 'cocina';
+  const pestana = nombrePestana(formato, carpetaReal);
 
   const meta = await sheets.spreadsheets.get({ spreadsheetId });
   const existe = (meta.data.sheets || []).some(s => s.properties.title === pestana);
@@ -71,7 +75,8 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId) {
 
   const registros = await Registro.find({
     empresa_id: empresaId,
-    formato: formatoId
+    formato: formatoId,
+    carpeta: carpetaReal
   }).sort({ anio: 1, mes: 1, dia: 1 }).lean();
 
   const encabezado = ['Año', 'Mes', 'Día', 'Fecha', 'Responsable', 'Observaciones'];

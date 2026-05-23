@@ -14,8 +14,11 @@ function rutaArchivo(empresaId, anio, mes) {
   return { dir, fileName, filePath: path.join(dir, fileName) };
 }
 
-function nombreHoja(formato) {
-  const propuesto = `${formato.numero}. ${formato.nombreCorto || formato.nombre}`;
+const SUFIJO_CARPETA = { cocina: '', salon: ' (Sal)', administracion: ' (Adm)' };
+
+function nombreHoja(formato, carpeta) {
+  const sufijo = SUFIJO_CARPETA[carpeta] || '';
+  const propuesto = `${formato.numero}. ${formato.nombreCorto || formato.nombre}${sufijo}`;
   return propuesto.replace(/[\\\/\?\*\[\]:]/g, '').slice(0, 31);
 }
 
@@ -70,7 +73,7 @@ function pintarHoja(sheet, registros) {
   }
 }
 
-async function sincronizarFormatoMes(empresaId, formatoId, anio, mes) {
+async function sincronizarFormatoMes(empresaId, formatoId, carpeta, anio, mes) {
   const formato = getFormato(formatoId);
   if (!formato) throw new Error(`Formato desconocido: ${formatoId}`);
 
@@ -80,7 +83,7 @@ async function sincronizarFormatoMes(empresaId, formatoId, anio, mes) {
   const empresa = await Empresa.findById(empresaId).select('nombre').lean();
   const wb = await abrirWorkbook(filePath, empresa && empresa.nombre);
 
-  const sheetName = nombreHoja(formato);
+  const sheetName = nombreHoja(formato, carpeta || 'cocina');
   const existente = wb.getWorksheet(sheetName);
   if (existente) wb.removeWorksheet(existente.id);
   const sheet = wb.addWorksheet(sheetName);
@@ -88,6 +91,7 @@ async function sincronizarFormatoMes(empresaId, formatoId, anio, mes) {
   const registros = await Registro.find({
     empresa_id: empresaId,
     formato: formatoId,
+    carpeta: carpeta || 'cocina',
     anio, mes
   }).sort({ dia: 1 }).lean();
 
@@ -105,17 +109,19 @@ async function reconstruirMesCompleto(empresaId, anio, mes) {
     await fs.promises.unlink(filePath);
   }
 
-  const formatosConDatos = await Registro.distinct('formato', {
-    empresa_id: empresaId, anio, mes
-  });
+  // Distinct por (formato, carpeta) — cada instancia es independiente
+  const instancias = await Registro.aggregate([
+    { $match: { empresa_id: new (require('mongoose').Types.ObjectId)(empresaId), anio, mes } },
+    { $group: { _id: { formato: '$formato', carpeta: '$carpeta' } } }
+  ]);
 
-  if (formatosConDatos.length === 0) {
+  if (instancias.length === 0) {
     return { filePath: null };
   }
 
-  for (const formatoId of formatosConDatos) {
-    if (!getFormato(formatoId)) continue;
-    await sincronizarFormatoMes(empresaId, formatoId, anio, mes);
+  for (const { _id } of instancias) {
+    if (!getFormato(_id.formato)) continue;
+    await sincronizarFormatoMes(empresaId, _id.formato, _id.carpeta || 'cocina', anio, mes);
   }
   return { filePath };
 }

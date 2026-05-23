@@ -72,6 +72,21 @@ function parsearListaFormatos(valor) {
   return sinDuplicados.filter(id => IDS_FORMATOS.includes(id));
 }
 
+function parsearCarpetas(body, activos) {
+  // Cada carpeta es un campo de checkboxes: carpeta_cocina, carpeta_salon, carpeta_administracion
+  // Un formato puede estar en ninguna, una o varias carpetas
+  const extraer = campo => parsearListaFormatos(body[campo]).filter(id => activos.includes(id));
+  const cocina        = extraer('carpeta_cocina');
+  const salon         = extraer('carpeta_salon');
+  const administracion= extraer('carpeta_administracion');
+
+  // Si un formato activo no quedó en ninguna carpeta, lo ponemos en cocina por defecto
+  const conAlguna = new Set([...cocina, ...salon, ...administracion]);
+  activos.filter(id => !conAlguna.has(id)).forEach(id => cocina.push(id));
+
+  return { cocina, salon, administracion };
+}
+
 router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, res) => {
   try {
     const { nombre, email, password } = req.body;
@@ -84,8 +99,7 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
       return res.status(400).json({ ok: false, error: 'Selecciona al menos un formato para esta empresa' });
     }
 
-    const formatosRestringidos = parsearListaFormatos(req.body.formatosRestringidos)
-      .filter(id => formatosActivos.includes(id));
+    const formatosCarpeta = parsearCarpetas(req.body, formatosActivos);
 
     const yaExiste = await Empresa.findOne({ email: email.toLowerCase().trim() });
     if (yaExiste) {
@@ -100,7 +114,7 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
       logo: logoRuta,
       googleSheetId: extraerSheetId(req.body.googleSheetId),
       formatosActivos,
-      formatosRestringidos
+      formatosCarpeta
     });
     res.status(201).json({
       ok: true,
@@ -111,7 +125,7 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
         logo: empresa.logo,
         googleSheetId: empresa.googleSheetId,
         formatosActivos: empresa.formatosActivos,
-        formatosRestringidos: empresa.formatosRestringidos
+        formatosCarpeta: empresa.formatosCarpeta
       }
     });
   } catch (err) {
@@ -158,10 +172,7 @@ router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req
       empresa.formatosActivos = lista;
     }
 
-    if (req.body.formatosRestringidos !== undefined) {
-      empresa.formatosRestringidos = parsearListaFormatos(req.body.formatosRestringidos)
-        .filter(id => empresa.formatosActivos.includes(id));
-    }
+    empresa.formatosCarpeta = parsearCarpetas(req.body, empresa.formatosActivos);
 
     await empresa.save();
     res.json({
@@ -173,7 +184,7 @@ router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req
         logo: empresa.logo,
         googleSheetId: empresa.googleSheetId,
         formatosActivos: empresa.formatosActivos,
-        formatosRestringidos: empresa.formatosRestringidos
+        formatosCarpeta: empresa.formatosCarpeta
       }
     });
   } catch (err) {

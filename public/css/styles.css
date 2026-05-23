@@ -1191,3 +1191,88 @@ textarea:focus {
     flex-wrap: wrap;
   }
 }
+
+/* ===== Carpetas de formatos ===== */
+
+.carpeta-card {
+  cursor: pointer;
+  align-items: center;
+}
+
+.carpeta-card--vacia {
+  opacity: .55;
+  cursor: default;
+}
+
+.carpeta-icono {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  min-height: 72px;
+  background: var(--color-primario);
+  color: #fff;
+  font-size: 1.6rem;
+  border-top-left-radius: var(--radio);
+  border-bottom-left-radius: var(--radio);
+  flex-shrink: 0;
+}
+
+.carpeta-icono--admin {
+  background: #4f46e5;
+}
+
+.carpeta-card--admin .formato-lock {
+  color: #3730a3;
+  background: #e0e7ff;
+  border-color: #c7d2fe;
+}
+
+.carpeta-cantidad {
+  font-size: .82rem;
+  color: #6b7280;
+}
+
+.carpeta-flecha {
+  margin-left: auto;
+  padding-right: 1rem;
+  font-size: 1.4rem;
+  color: var(--color-primario);
+  font-weight: 700;
+}
+
+/* ===== Tabla de asignación de carpetas (superadmin) ===== */
+
+.tabla-carpetas {
+  overflow-x: auto;
+}
+
+.tabla-carpeta-asign {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .9rem;
+}
+
+.tabla-carpeta-asign th,
+.tabla-carpeta-asign td {
+  padding: .55rem .75rem;
+  border-bottom: 1px solid var(--color-borde);
+  text-align: left;
+}
+
+.tabla-carpeta-asign th {
+  font-size: .78rem;
+  color: #6b7280;
+  font-weight: 600;
+  background: #f9fafb;
+}
+
+.tabla-carpeta-asign .td-radio {
+  text-align: center;
+}
+
+.tabla-carpeta-asign input[type="radio"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--color-primario);
+  cursor: pointer;
+}

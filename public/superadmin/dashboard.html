@@ -63,9 +63,9 @@
         </fieldset>
 
         <fieldset class="campo campo-fieldset">
-          <legend>Formatos que requieren contraseña de administrador</legend>
-          <div id="checkboxes-restringidos" class="checkboxes-formatos"></div>
-          <p class="ayuda">Marca los formatos que pedirán contraseña de administrador al abrirse. Puede ser ninguno. Solo aplica a formatos activos.</p>
+          <legend>Carpeta de cada formato</legend>
+          <div id="tabla-carpetas" class="tabla-carpetas"></div>
+          <p class="ayuda">Asigna cada formato a una carpeta. La carpeta <strong>Administración</strong> requiere contraseña para acceder.</p>
         </fieldset>
 
         <button type="submit" class="btn-primario">Crear empresa</button>
@@ -90,7 +90,7 @@
           <input type="text" name="nombre" required />
         </label>
         <label class="campo">
-          <span>Contraseña de acceso a formatos restringidos</span>
+          <span>Contraseña de acceso a la carpeta Administración</span>
           <input type="password" name="password" required />
         </label>
         <button type="submit" class="btn-primario">Crear administrador</button>
@@ -151,9 +151,9 @@
         </fieldset>
 
         <fieldset class="campo campo-fieldset">
-          <legend>Formatos que requieren contraseña de administrador</legend>
-          <div id="checkboxes-restringidos-editar" class="checkboxes-formatos"></div>
-          <p class="ayuda">Marca los que pedirán contraseña. Puede ser ninguno. Solo aplica a formatos activos.</p>
+          <legend>Carpeta de cada formato</legend>
+          <div id="tabla-carpetas-editar" class="tabla-carpetas"></div>
+          <p class="ayuda">Asigna cada formato a una carpeta. La carpeta <strong>Administración</strong> requiere contraseña para acceder.</p>
         </fieldset>
 
         <p id="msg-editar-empresa" class="mensaje" hidden></p>

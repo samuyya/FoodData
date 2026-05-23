@@ -8,7 +8,7 @@ const bcrypt = require('bcryptjs');
 const { FORMATOS, getFormato } = require('../formatos');
 const { getConfigEmpresa } = require('../empresaConfig');
 const { requireEmpresa } = require('../middleware/sesion');
-const { adminVerificadoPara, adminHistorialActivo } = require('./admin');
+const { adminCarpetaAdministracionActivo, adminHistorialActivo } = require('./admin');
 const { sincronizarFormatoMes, reconstruirMesCompleto, getRutaArchivo } = require('../servicios/excel');
 const googleSheets = require('../servicios/googleSheets');
 
@@ -47,11 +47,12 @@ function partesDeHoy() {
   };
 }
 
-async function infoPendientes(empresaId, formatoId) {
+async function infoPendientes(empresaId, formatoId, carpeta) {
   const { dia, mes, anio } = partesDeHoy();
   const guardados = await Registro.find({
     empresa_id: empresaId,
     formato: formatoId,
+    carpeta,
     anio, mes,
     dia: { $lte: dia }
   }).sort({ dia: 1 }).lean();
@@ -78,19 +79,24 @@ async function infoPendientes(empresaId, formatoId) {
 
 router.get('/pendientes/:formatoId', requireEmpresa, async (req, res) => {
   const { formatoId } = req.params;
+  const carpeta = req.query.carpeta || 'cocina';
   if (!getFormato(formatoId)) {
     return res.status(404).json({ ok: false, error: 'Formato no encontrado' });
+  }
+  if (!Registro.CARPETAS_VALIDAS.includes(carpeta)) {
+    return res.status(400).json({ ok: false, error: 'Carpeta no válida' });
   }
   const habilitado = await empresaTieneFormato(req.session.empresa.id, formatoId);
   if (!habilitado) {
     return res.status(403).json({ ok: false, error: 'Esta empresa no tiene este formato habilitado' });
   }
-  const info = await infoPendientes(req.session.empresa.id, formatoId);
+  const info = await infoPendientes(req.session.empresa.id, formatoId, carpeta);
   res.json({ ok: true, ...info });
 });
 
 router.get('/hoy/:formatoId', requireEmpresa, async (req, res) => {
   const { formatoId } = req.params;
+  const carpeta = req.query.carpeta || 'cocina';
   if (!getFormato(formatoId)) {
     return res.status(404).json({ ok: false, error: 'Formato no encontrado' });
   }
@@ -98,6 +104,7 @@ router.get('/hoy/:formatoId', requireEmpresa, async (req, res) => {
   const registro = await Registro.findOne({
     empresa_id: req.session.empresa.id,
     formato: formatoId,
+    carpeta,
     dia, mes, anio
   }).lean();
   res.json({ ok: true, registro });
@@ -105,27 +112,38 @@ router.get('/hoy/:formatoId', requireEmpresa, async (req, res) => {
 
 router.post('/', requireEmpresa, async (req, res) => {
   try {
-    const { formatoId, responsable, observaciones, datos } = req.body;
+    const { formatoId, carpeta, responsable, observaciones, datos } = req.body;
     const formato = getFormato(formatoId);
     if (!formato) return res.status(400).json({ ok: false, error: 'Formato no válido' });
+    if (!carpeta || !Registro.CARPETAS_VALIDAS.includes(carpeta)) {
+      return res.status(400).json({ ok: false, error: 'Carpeta no válida' });
+    }
 
-    const { activos, restringidos } = await getConfigEmpresa(req.session.empresa.id);
+    const { activos, carpetas } = await getConfigEmpresa(req.session.empresa.id);
     if (!activos.includes(formatoId)) {
       return res.status(403).json({ ok: false, error: 'Esta empresa no tiene este formato habilitado' });
     }
+    // Verificar que el formato esté asignado a esa carpeta para esta empresa
+    if (!carpetas[carpeta] || !carpetas[carpeta].includes(formatoId)) {
+      return res.status(403).json({ ok: false, error: 'Este formato no está disponible en esa carpeta' });
+    }
 
-    const info = await infoPendientes(req.session.empresa.id, formatoId);
+    const info = await infoPendientes(req.session.empresa.id, formatoId, carpeta);
     if (info.completoHoy) {
       return res.status(409).json({ ok: false, error: 'Ya completaste todos los días de este mes hasta hoy' });
     }
 
     let nombreResponsable;
-    if (restringidos.includes(formatoId)) {
-      const adminNombre = adminVerificadoPara(req, formatoId);
-      if (!adminNombre) {
-        return res.status(401).json({ ok: false, error: 'Se requiere verificación de administrador para guardar este formato' });
-      }
+    const esCarpetaAdmin  = carpetas.administracion.includes(formatoId);
+    const tieneOtraCarpeta= carpetas.cocina.includes(formatoId) || carpetas.salon.includes(formatoId);
+    const adminNombre     = adminCarpetaAdministracionActivo(req);
+
+    if (esCarpetaAdmin && adminNombre) {
+      // El admin tiene sesión activa: registra con su nombre
       nombreResponsable = adminNombre;
+    } else if (esCarpetaAdmin && !tieneOtraCarpeta) {
+      // Solo existe en Administración y no hay sesión de admin: denegar
+      return res.status(401).json({ ok: false, error: 'Se requiere acceso a la carpeta Administración para guardar este formato' });
     } else {
       const limpio = (responsable || '').trim();
       if (!limpio) return res.status(400).json({ ok: false, error: 'El responsable es obligatorio' });
@@ -152,6 +170,7 @@ router.post('/', requireEmpresa, async (req, res) => {
     const registro = await Registro.create({
       empresa_id: req.session.empresa.id,
       formato: formatoId,
+      carpeta,
       fecha,
       dia,
       mes: info.mes,
@@ -162,7 +181,7 @@ router.post('/', requireEmpresa, async (req, res) => {
     });
 
     try {
-      await sincronizarFormatoMes(req.session.empresa.id, formatoId, info.anio, info.mes);
+      await sincronizarFormatoMes(req.session.empresa.id, formatoId, carpeta, info.anio, info.mes);
     } catch (errSync) {
       console.error('Excel sync falló:', errSync.message);
     }
@@ -170,13 +189,13 @@ router.post('/', requireEmpresa, async (req, res) => {
     try {
       const empresaDoc = await Empresa.findById(req.session.empresa.id).select('googleSheetId').lean();
       if (empresaDoc && empresaDoc.googleSheetId) {
-        await googleSheets.sincronizarFormato(empresaDoc.googleSheetId, req.session.empresa.id, formatoId);
+        await googleSheets.sincronizarFormato(empresaDoc.googleSheetId, req.session.empresa.id, formatoId, carpeta);
       }
     } catch (errGS) {
       console.error('Google Sheets sync falló:', errGS.message);
     }
 
-    const infoNuevo = await infoPendientes(req.session.empresa.id, formatoId);
+    const infoNuevo = await infoPendientes(req.session.empresa.id, formatoId, carpeta);
     res.status(201).json({ ok: true, registro, info: infoNuevo });
   } catch (err) {
     if (err.code === 11000) {
@@ -188,12 +207,13 @@ router.post('/', requireEmpresa, async (req, res) => {
 
 router.get('/meses/:formatoId', requireEmpresa, async (req, res) => {
   const { formatoId } = req.params;
+  const carpeta = req.query.carpeta || 'cocina';
   if (!getFormato(formatoId)) {
     return res.status(404).json({ ok: false, error: 'Formato no encontrado' });
   }
   const empresaId = new mongoose.Types.ObjectId(req.session.empresa.id);
   const agregados = await Registro.aggregate([
-    { $match: { empresa_id: empresaId, formato: formatoId } },
+    { $match: { empresa_id: empresaId, formato: formatoId, carpeta } },
     { $group: { _id: { anio: '$anio', mes: '$mes' }, count: { $sum: 1 } } },
     { $sort: { '_id.anio': -1, '_id.mes': -1 } }
   ]);
@@ -203,6 +223,7 @@ router.get('/meses/:formatoId', requireEmpresa, async (req, res) => {
 
 router.get('/historial/:formatoId', requireEmpresa, async (req, res) => {
   const { formatoId } = req.params;
+  const carpeta = req.query.carpeta || 'cocina';
   if (!getFormato(formatoId)) {
     return res.status(404).json({ ok: false, error: 'Formato no encontrado' });
   }
@@ -219,15 +240,14 @@ router.get('/historial/:formatoId', requireEmpresa, async (req, res) => {
   }
 
   const esMesActual = (anio === hoy.anio && mes === hoy.mes);
-  if (!esMesActual) {
-    if (!adminHistorialActivo(req)) {
-      return res.status(401).json({ ok: false, error: 'Requiere verificación de administrador para meses anteriores' });
-    }
+  if (!esMesActual && !adminHistorialActivo(req)) {
+    return res.status(401).json({ ok: false, error: 'Requiere verificación de administrador para meses anteriores' });
   }
 
   const registros = await Registro.find({
     empresa_id: req.session.empresa.id,
     formato: formatoId,
+    carpeta,
     anio, mes
   }).sort({ dia: 1 }).lean();
 

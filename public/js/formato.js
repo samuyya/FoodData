@@ -30,9 +30,10 @@ const btnCancelarEditar = document.getElementById('btn-cancelar-editar-empleado'
 
 const params = new URLSearchParams(window.location.search);
 const formatoId = params.get('id');
+const carpetaId = params.get('carpeta') || 'cocina';
 
 let formatoActual = null;
-let esRestringido = false;
+let esCarpetaAdmin = false;
 let adminNombreSesion = null;
 let estadoPendientes = null;
 
@@ -88,7 +89,7 @@ function resetearFormulario() {
   bannerPendientes.hidden = true;
   bannerInfo.hidden = true;
   diaObjetivoEl.hidden = true;
-  if (!esRestringido) {
+  if (!esCarpetaAdmin) {
     inputResponsable.value = '';
   }
   inputObservaciones.value = '';
@@ -283,7 +284,7 @@ async function cargar() {
     pintarHeader(me.empresa);
     pintarFecha();
 
-    const rFormato = await fetch(`/api/formatos/${encodeURIComponent(formatoId)}`);
+    const rFormato = await fetch(`/api/formatos/${encodeURIComponent(formatoId)}?carpeta=${encodeURIComponent(carpetaId)}`);
     if (!rFormato.ok) {
       const d = await rFormato.json();
       document.body.innerHTML = `<p style="padding:2rem;color:#b91c1c">${d.error || 'No se pudo cargar el formato'}</p>`;
@@ -291,14 +292,14 @@ async function cargar() {
     }
     const dF = await rFormato.json();
     formatoActual = dF.formato;
-    esRestringido = !!formatoActual.restringido;
+    esCarpetaAdmin = Array.isArray(formatoActual.carpetas) && formatoActual.carpetas.includes('administracion');
     tituloEl.textContent = `${formatoActual.numero}. ${formatoActual.nombre}`;
 
-    if (esRestringido) {
-      const rC = await fetch(`/api/admin/consumir?formatoId=${encodeURIComponent(formatoId)}`);
-      if (!rC.ok) { window.location.href = '/formatos.html'; return; }
-      const dC = await rC.json();
-      adminNombreSesion = dC.nombre;
+    if (esCarpetaAdmin) {
+      const rE = await fetch('/api/admin/estado-carpeta');
+      const dE = await rE.json();
+      if (!dE.activo) { window.location.href = '/formatos.html'; return; }
+      adminNombreSesion = dE.nombre;
       inputResponsable.value = adminNombreSesion;
       inputResponsable.readOnly = true;
       inputResponsable.classList.add('input-readonly');
@@ -314,7 +315,7 @@ async function cargar() {
       cargarEmpleados();
     }
 
-    const rPend = await fetch(`/api/registros/pendientes/${encodeURIComponent(formatoId)}`);
+    const rPend = await fetch(`/api/registros/pendientes/${encodeURIComponent(formatoId)}?carpeta=${encodeURIComponent(carpetaId)}`);
     if (rPend.ok) {
       const dPend = await rPend.json();
       pintarEstadoPendientes(dPend);
@@ -344,6 +345,7 @@ async function enviarRegistro(passwordAdmin) {
   msgRegistro.hidden = true;
   const cuerpo = {
     formatoId,
+    carpeta: carpetaId,
     responsable: inputResponsable.value,
     observaciones: inputObservaciones.value,
     datos: {}
@@ -407,7 +409,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 btnVerRegistros.addEventListener('click', () => {
-  window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}`;
+  window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}`;
 });
 
 btnVolver.addEventListener('click', () => { window.location.href = '/formatos.html'; });

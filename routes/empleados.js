@@ -2,7 +2,7 @@ const express = require('express');
 const EmpleadoLista = require('../models/EmpleadoLista');
 const { requireEmpresa } = require('../middleware/sesion');
 const { getConfigEmpresa } = require('../empresaConfig');
-const { adminVerificadoPara } = require('./admin');
+const { adminCarpetaAdministracionActivo } = require('./admin');
 
 const router = express.Router();
 
@@ -10,10 +10,11 @@ const REGEX_LETRAS = /^[A-Za-zÀ-ÿÑñ\s]+$/;
 
 async function requireAccesoFormato3(req, res, next) {
   try {
-    const { restringidos } = await getConfigEmpresa(req.session.empresa.id);
-    const esRestringido = restringidos.includes('presentacion_personal');
-    if (esRestringido && !adminVerificadoPara(req, 'presentacion_personal')) {
-      return res.status(401).json({ ok: false, error: 'Requiere verificación de administrador del Formato 3' });
+    const { carpetas } = await getConfigEmpresa(req.session.empresa.id);
+    const esCarpetaAdmin   = carpetas.administracion.includes('presentacion_personal');
+    const tieneOtraCarpeta = carpetas.cocina.includes('presentacion_personal') || carpetas.salon.includes('presentacion_personal');
+    if (esCarpetaAdmin && !tieneOtraCarpeta && !adminCarpetaAdministracionActivo(req)) {
+      return res.status(401).json({ ok: false, error: 'Requiere acceso a la carpeta Administración para gestionar empleados' });
     }
     next();
   } catch (err) {

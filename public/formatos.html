@@ -9,12 +9,12 @@
 <body class="sub-body">
   <header class="sub-topbar">
     <div class="sub-topbar-inner">
-      <button type="button" id="btn-volver" class="btn-secundario btn-volver-sub">← Volver al menú</button>
+      <button type="button" id="btn-volver" class="btn-secundario btn-volver-sub">← Volver</button>
 
       <div class="sub-encabezado">
         <div class="sub-titulo-grupo">
-          <h1 class="titulo-pagina">Formatos</h1>
-          <p class="subtitulo-pagina">Selecciona un formato para registrar el día de hoy.</p>
+          <h1 class="titulo-pagina" id="titulo-pagina">Formatos</h1>
+          <p class="subtitulo-pagina" id="subtitulo-pagina">Selecciona una carpeta.</p>
         </div>
 
         <section class="establecimiento">
@@ -32,13 +32,22 @@
   </header>
 
   <main class="sub-main">
-    <ul id="lista-formatos" class="lista-formatos"></ul>
+    <!-- Vista: selector de carpetas -->
+    <div id="vista-carpetas">
+      <ul id="lista-carpetas" class="grid-formatos"></ul>
+    </div>
+
+    <!-- Vista: formatos dentro de una carpeta -->
+    <div id="vista-formatos" hidden>
+      <ul id="lista-formatos" class="grid-formatos"></ul>
+    </div>
   </main>
 
+  <!-- Modal contraseña administración -->
   <div id="modal-admin" class="modal-backdrop" hidden>
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
-      <h2 id="modal-titulo">Acceso de administrador</h2>
-      <p class="subtitulo">Formato: <span id="modal-formato-nombre"></span></p>
+      <h2 id="modal-titulo">Acceso a Administración</h2>
+      <p class="subtitulo">Ingresa la contraseña de administrador para abrir esta carpeta.</p>
 
       <form id="form-admin-pass" class="form">
         <label class="campo">

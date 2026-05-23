@@ -1,42 +1,52 @@
 const express = require('express');
 const { FORMATOS, getFormato } = require('../formatos');
-const { getConfigEmpresa } = require('../empresaConfig');
+const { getConfigEmpresa, getCarpetasDeFormato } = require('../empresaConfig');
 const { requireEmpresa } = require('../middleware/sesion');
 
 const router = express.Router();
 
 router.get('/', requireEmpresa, async (req, res) => {
-  const { activos, restringidos } = await getConfigEmpresa(req.session.empresa.id);
-  const filtrados = FORMATOS
-    .filter(f => activos.includes(f.id))
-    .map((f, i) => ({
-      ...f,
-      numero: i + 1,
-      restringido: restringidos.includes(f.id)
-    }));
-  res.json({ ok: true, formatos: filtrados });
+  const { carpetas } = await getConfigEmpresa(req.session.empresa.id);
+
+  const resultado = {};
+  for (const [nombre, ids] of Object.entries(carpetas)) {
+    resultado[nombre] = FORMATOS
+      .filter(f => ids.includes(f.id))
+      .map((f, i) => ({ ...f, numero: i + 1, carpeta: nombre }));
+  }
+
+  res.json({ ok: true, carpetas: resultado });
 });
 
+// GET /api/formatos/:id?carpeta=cocina
+// La carpeta es obligatoria cuando el mismo formato aparece en varias carpetas
 router.get('/:id', requireEmpresa, async (req, res) => {
   const formato = getFormato(req.params.id);
   if (!formato) {
     return res.status(404).json({ ok: false, error: 'Formato no encontrado' });
   }
-  const { activos, restringidos } = await getConfigEmpresa(req.session.empresa.id);
+  const { activos, carpetas } = await getConfigEmpresa(req.session.empresa.id);
   if (!activos.includes(formato.id)) {
     return res.status(403).json({ ok: false, error: 'Esta empresa no tiene este formato habilitado' });
   }
-  const indiceVisible = FORMATOS
-    .filter(f => activos.includes(f.id))
-    .findIndex(f => f.id === formato.id);
-  res.json({
-    ok: true,
-    formato: {
-      ...formato,
-      numero: indiceVisible + 1,
-      restringido: restringidos.includes(formato.id)
+
+  const carpetasDelFormato = getCarpetasDeFormato(carpetas, formato.id);
+  const carpetaParam = req.query.carpeta;
+
+  let carpeta;
+  if (carpetaParam) {
+    if (!carpetasDelFormato.includes(carpetaParam)) {
+      return res.status(403).json({ ok: false, error: 'Este formato no está disponible en esa carpeta' });
     }
-  });
+    carpeta = carpetaParam;
+  } else {
+    carpeta = carpetasDelFormato[0]; // primera carpeta por defecto
+  }
+
+  const formatosEnCarpeta = FORMATOS.filter(f => carpetas[carpeta].includes(f.id));
+  const numero = formatosEnCarpeta.findIndex(f => f.id === formato.id) + 1;
+
+  res.json({ ok: true, formato: { ...formato, numero, carpeta, carpetas: carpetasDelFormato } });
 });
 
 module.exports = router;

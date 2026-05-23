@@ -18,6 +18,7 @@ const btnCancelar = document.getElementById('btn-cancelar-historial');
 
 const params = new URLSearchParams(window.location.search);
 const formatoId = params.get('id');
+const carpetaId = params.get('carpeta') || 'cocina';
 
 const MESES_LARGOS = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -133,7 +134,7 @@ async function cargarHistorial(anio, mes) {
   contenedorTabla.appendChild(estadoHistorial);
 
   try {
-    const r = await fetch(`/api/registros/historial/${encodeURIComponent(formatoId)}?anio=${anio}&mes=${mes}`);
+    const r = await fetch(`/api/registros/historial/${encodeURIComponent(formatoId)}?carpeta=${encodeURIComponent(carpetaId)}&anio=${anio}&mes=${mes}`);
     if (r.status === 401) {
       intentoPendiente = { anio, mes, accion: 'ver' };
       modalError.hidden = true;
@@ -269,7 +270,7 @@ btnDescargar.addEventListener('click', async () => {
 });
 
 btnVolverFormato.addEventListener('click', () => {
-  window.location.href = `/formato.html?id=${encodeURIComponent(formatoId)}`;
+  window.location.href = `/formato.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}`;
 });
 
 btnIrMenu.addEventListener('click', () => { window.location.href = '/formatos.html'; });
@@ -288,7 +289,7 @@ async function iniciar() {
     if (me.rol !== 'empleado') { window.location.href = '/'; return; }
     pintarHeader(me.empresa);
 
-    const rFormato = await fetch(`/api/formatos/${encodeURIComponent(formatoId)}`);
+    const rFormato = await fetch(`/api/formatos/${encodeURIComponent(formatoId)}?carpeta=${encodeURIComponent(carpetaId)}`);
     if (!rFormato.ok) {
       const d = await rFormato.json();
       document.body.innerHTML = `<p style="padding:2rem;color:#b91c1c">${d.error || 'No se pudo cargar el formato'}</p>`;
@@ -299,7 +300,7 @@ async function iniciar() {
     tituloEl.textContent = `Registros — ${formatoActual.numero}. ${formatoActual.nombre}`;
     subtituloEl.textContent = 'Los empleados solo ven el mes en curso. Los meses anteriores requieren contraseña de administrador.';
 
-    const rMeses = await fetch(`/api/registros/meses/${encodeURIComponent(formatoId)}`);
+    const rMeses = await fetch(`/api/registros/meses/${encodeURIComponent(formatoId)}?carpeta=${encodeURIComponent(carpetaId)}`);
     const dMeses = await rMeses.json();
     pintarOpcionesMes(dMeses.meses || []);
 

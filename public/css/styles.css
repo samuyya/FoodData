@@ -697,6 +697,22 @@ textarea:focus {
   border: 1px solid #b9e3d6;
 }
 
+.banner-exito {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1.5px solid #10b981;
+  font-weight: 600;
+  font-size: 1rem;
+  padding: 1rem 1.2rem;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, .15);
+  animation: bannerExitoEntrada .35s ease-out;
+}
+
+@keyframes bannerExitoEntrada {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .dia-objetivo {
   margin: 0 0 .25rem;
   padding: .6rem .85rem;
@@ -1190,6 +1206,527 @@ textarea:focus {
   .empleado-acciones {
     flex-wrap: wrap;
   }
+}
+
+/* ===== Encabezado institucional del formato ===== */
+
+.enc-inst {
+  background: #fff;
+  border: 1.5px solid #1f2937;
+  border-radius: var(--radio);
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+  font-family: Arial, sans-serif;
+}
+
+.enc-inst-centro {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 1.25rem 1.5rem;
+  gap: .55rem;
+}
+
+.enc-inst-plan,
+.enc-inst-programa,
+.enc-inst-titulo {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: #0f172a;
+  line-height: 1.3;
+  max-width: 100%;
+}
+
+.enc-inst-plan {
+  font-size: 1.05rem;
+}
+
+.enc-inst-programa {
+  font-size: 1rem;
+}
+
+.enc-inst-titulo {
+  font-size: 1.15rem;
+  padding-top: .55rem;
+  border-top: 1px dashed #cbd5e1;
+  margin-top: .35rem;
+  width: 100%;
+}
+
+@media (max-width: 720px) {
+  .enc-inst-centro {
+    padding: 1rem;
+  }
+  .enc-inst-plan,
+  .enc-inst-programa { font-size: .9rem; }
+  .enc-inst-titulo   { font-size: .95rem; }
+}
+
+/* ===== Form Calidad del agua — layout ===== */
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+
+@media (max-width: 600px) {
+  .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.param-card {
+  border: 1.5px solid var(--color-borde);
+  border-radius: var(--radio);
+  padding: .75rem 1rem 1rem;
+  margin: 1rem 0;
+  background: #fafffe;
+}
+
+.param-card legend {
+  font-weight: 700;
+  padding: 0 .5rem;
+  color: var(--color-primario-oscuro, #0e3a31);
+  font-size: 1rem;
+}
+
+.param-rango {
+  font-weight: 400;
+  color: #6b7280;
+  font-size: .82rem;
+  margin-left: .35rem;
+}
+
+.param-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: end;
+}
+
+.param-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 600px) {
+  .param-grid,
+  .param-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.campo-label {
+  display: block;
+  margin-bottom: .3rem;
+  font-weight: 600;
+  font-size: .9rem;
+  color: #374151;
+}
+
+/* ===== Badge Resultado (Cumple / No cumple) ===== */
+
+.badge-resultado {
+  display: inline-block;
+  padding: .55rem .9rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: .95rem;
+  letter-spacing: .02em;
+  text-align: center;
+  min-width: 110px;
+  border: 1.5px solid transparent;
+  transition: background .15s, color .15s, border-color .15s;
+}
+
+.badge-resultado--ok {
+  background: #d1fae5;
+  color: #065f46;
+  border-color: #10b981;
+}
+
+.badge-resultado--bad {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #ef4444;
+}
+
+.badge-resultado--vacio {
+  background: #f3f4f6;
+  color: #9ca3af;
+  border-color: #e5e7eb;
+}
+
+/* ===== Radios Cumple / No cumple ===== */
+
+.organo-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+.organo-label {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.radios-cnc {
+  display: flex;
+  gap: .5rem;
+}
+
+.radio-pill {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  padding: .55rem .75rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-borde);
+  background: #fff;
+  font-weight: 600;
+  font-size: .88rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background .15s, border-color .15s, color .15s;
+}
+
+.radio-pill input {
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--color-primario);
+}
+
+.radio-pill:hover {
+  border-color: var(--color-primario);
+}
+
+.radio-pill:has(input:checked).radio-pill--ok {
+  background: #d1fae5;
+  border-color: #10b981;
+  color: #065f46;
+}
+
+.radio-pill:has(input:checked).radio-pill--bad {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #991b1b;
+}
+
+/* ===== Nota institucional al pie del formato ===== */
+
+.nota-formato {
+  margin-top: 1rem;
+  padding: .75rem 1rem;
+  background: #fef9c3;
+  border-left: 4px solid #f59e0b;
+  border-radius: 8px;
+  font-size: .85rem;
+  line-height: 1.45;
+  color: #78350f;
+}
+
+/* ===== Checkboxes de áreas / opciones ===== */
+
+.checks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: .5rem;
+}
+
+.check-area {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .55rem .8rem;
+  border: 1.5px solid var(--color-borde);
+  border-radius: 999px;
+  background: #fff;
+  font-weight: 600;
+  font-size: .88rem;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color .15s, background .15s, color .15s;
+}
+
+.check-area:has(input:checked) {
+  background: var(--color-primario);
+  color: #fff;
+  border-color: var(--color-primario);
+}
+
+.check-area input[type="checkbox"] {
+  width: 1.05rem;
+  height: 1.05rem;
+  cursor: pointer;
+  accent-color: var(--color-primario);
+}
+
+/* ===== Áreas con checkbox + producto fijo (limpieza salón) ===== */
+
+.areas-producto-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: .6rem;
+}
+
+.area-check-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: .85rem .5rem;
+  border: 1.5px solid var(--color-borde);
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  text-align: center;
+  transition: background .15s, border-color .15s, transform .12s;
+  min-height: 110px;
+}
+
+.area-check-card:hover {
+  border-color: var(--color-primario);
+  transform: translateY(-1px);
+}
+
+.area-check-card:has(input:checked) {
+  background: #ecf9f5;
+  border-color: var(--color-primario);
+  box-shadow: 0 2px 6px rgba(22,194,163,.18);
+}
+
+.area-check-nombre {
+  font-weight: 600;
+  font-size: .82rem;
+  color: #0f172a;
+  line-height: 1.25;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.area-check-input {
+  width: 1.4rem;
+  height: 1.4rem;
+  cursor: pointer;
+  accent-color: var(--color-primario);
+  margin: 0;
+}
+
+.area-check-producto {
+  display: inline-block;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  padding: .15rem .55rem;
+  border-radius: 999px;
+}
+
+.area-check-producto--do {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #10b981;
+}
+
+.area-check-producto--hs {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #3b82f6;
+}
+
+/* ===== Items de recepción ===== */
+
+.items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.item-recepcion {
+  border: 1.5px solid var(--color-borde);
+  border-radius: var(--radio);
+  padding: 1rem;
+  background: #fafffe;
+  position: relative;
+}
+
+.item-recepcion-titulo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 .75rem;
+  font-weight: 700;
+  color: var(--color-primario-oscuro, #0e3a31);
+}
+
+.item-recepcion-borrar {
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 .35rem;
+  border-radius: 4px;
+}
+.item-recepcion-borrar:hover { background: #fee2e2; }
+
+.item-decision {
+  margin-top: .5rem;
+}
+
+.btn-agregar-item {
+  width: 100%;
+  margin-bottom: 1rem;
+  padding: .75rem;
+  border-style: dashed;
+}
+
+.recepcion-info {
+  margin-bottom: 1rem;
+}
+
+/* ===== Aviso Excel bloqueado ===== */
+
+.aviso-excel {
+  display: inline-block;
+  margin-top: .5rem;
+  padding: .35rem .7rem;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fbbf24;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: .85rem;
+}
+
+/* ===== Badge festivo (etiqueta dentro del header) ===== */
+
+.badge-festivo {
+  display: inline-block;
+  margin-left: .5rem;
+  padding: .2rem .55rem;
+  background: var(--color-primario);
+  color: #fff;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  vertical-align: middle;
+}
+
+/* ===== Día festivo (solo la casilla del día) ===== */
+
+.td-dia,
+.td-dia--festivo {
+  text-align: center;
+  font-weight: 600;
+}
+
+.td-dia--festivo {
+  background: var(--color-primario);
+  color: #fff;
+  font-weight: 700;
+  border-radius: 6px;
+  cursor: help;
+  position: relative;
+}
+
+/* ===== Badges de áreas en tabla limpieza salón ===== */
+
+.badge-area {
+  display: inline-block;
+  padding: .15rem .5rem;
+  margin: 1px 2px;
+  background: #ecf9f5;
+  color: #0e3a31;
+  border-radius: 999px;
+  font-size: .75rem;
+  border: 1px solid #b9e3d6;
+}
+
+.tabla-registros--limpieza-salon,
+.tabla-registros--limpieza-bano,
+.tabla-registros--limpieza-ct,
+.tabla-registros--recepcion {
+  font-size: .85rem;
+}
+
+.fila-item-extra {
+  border-top: 1px dashed #e5e7eb;
+}
+
+.tabla-registros--recepcion th {
+  font-size: .75rem;
+  text-align: center;
+}
+
+.tabla-registros--recepcion td {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.tabla-registros--recepcion td:nth-child(3),
+.tabla-registros--recepcion td:nth-child(4),
+.tabla-registros--recepcion td:nth-child(14) {
+  text-align: left;
+}
+
+/* ===== Píldoras C/NC en tabla de registros ===== */
+
+.cnc-pill {
+  display: inline-block;
+  padding: .2rem .55rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: .75rem;
+  letter-spacing: .02em;
+}
+
+.cnc-pill--ok {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #10b981;
+}
+
+.cnc-pill--bad {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #ef4444;
+}
+
+.tabla-registros--calidad-agua {
+  font-size: .85rem;
+}
+
+.tabla-registros--calidad-agua td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.tabla-registros--calidad-agua th {
+  font-size: .78rem;
+  text-align: center;
+}
+
+.tabla-registros--calidad-agua td {
+  text-align: center;
+}
+
+.tabla-registros--calidad-agua td:nth-child(4),
+.tabla-registros--calidad-agua td:nth-child(12) {
+  text-align: left;
 }
 
 /* ===== Carpetas de formatos ===== */

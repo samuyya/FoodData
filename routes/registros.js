@@ -8,8 +8,8 @@ const bcrypt = require('bcryptjs');
 const { FORMATOS, getFormato } = require('../formatos');
 const { getConfigEmpresa } = require('../empresaConfig');
 const { requireEmpresa } = require('../middleware/sesion');
-const { adminCarpetaAdministracionActivo, adminHistorialActivo } = require('./admin');
-const { sincronizarFormatoMes, reconstruirMesCompleto, getRutaArchivo } = require('../servicios/excel');
+const { adminCarpetaAdministracionActivo, adminHistorialActivo, adminAtrasadoActivo } = require('./admin');
+const { sincronizarFormatoCarpeta, reconstruirArchivoCompleto, getRutaArchivoActual } = require('../servicios/excel');
 const googleSheets = require('../servicios/googleSheets');
 
 const router = express.Router();
@@ -91,7 +91,17 @@ router.get('/pendientes/:formatoId', requireEmpresa, async (req, res) => {
     return res.status(403).json({ ok: false, error: 'Esta empresa no tiene este formato habilitado' });
   }
   const info = await infoPendientes(req.session.empresa.id, formatoId, carpeta);
-  res.json({ ok: true, ...info });
+
+  // Determinar si se debe pedir contraseña de administrador al entrar al formato
+  // - Solo si hay días atrasados (siguienteDia distinto de hoy) y aún no se completó hoy
+  // - Y si el formato NO está en la carpeta Administración (esa ya pide contraseña al entrar)
+  // - Y si no hay sesión activa de adminAtrasado
+  const { carpetas } = await getConfigEmpresa(req.session.empresa.id);
+  const esCarpetaAdmin = carpeta === 'administracion' && carpetas.administracion.includes(formatoId);
+  const hayAtrasados = !info.completoHoy && info.siguienteDia !== info.diaActual;
+  const requiereAdminAtrasado = hayAtrasados && !esCarpetaAdmin && !adminAtrasadoActivo(req);
+
+  res.json({ ok: true, ...info, requiereAdminAtrasado, esCarpetaAdmin });
 });
 
 router.get('/hoy/:formatoId', requireEmpresa, async (req, res) => {
@@ -180,23 +190,43 @@ router.post('/', requireEmpresa, async (req, res) => {
       datos: datos || {}
     });
 
+    let excelError = null;
     try {
-      await sincronizarFormatoMes(req.session.empresa.id, formatoId, carpeta, info.anio, info.mes);
+      await sincronizarFormatoCarpeta(req.session.empresa.id, formatoId, carpeta);
     } catch (errSync) {
       console.error('Excel sync falló:', errSync.message);
+      // EBUSY o EPERM => archivo abierto en Excel desktop (Windows lo bloquea)
+      if (errSync.code === 'EBUSY' || errSync.code === 'EPERM' || /resource busy|permission denied|access is denied/i.test(errSync.message)) {
+        excelError = 'El archivo Excel está abierto en tu computador y no se pudo actualizar. Ciérralo y vuelve a guardar (o descárgalo nuevamente desde la app).';
+      } else {
+        excelError = 'No se pudo actualizar el Excel: ' + errSync.message;
+      }
     }
 
+    let googleSheetsError = null;
     try {
       const empresaDoc = await Empresa.findById(req.session.empresa.id).select('googleSheetId').lean();
-      if (empresaDoc && empresaDoc.googleSheetId) {
+      if (!empresaDoc || !empresaDoc.googleSheetId) {
+        googleSheetsError = 'Esta empresa no tiene una hoja de Google Sheets vinculada. Pídele al superadmin que la configure.';
+      } else if (!googleSheets.estaDisponible()) {
+        googleSheetsError = 'El servidor no tiene configuradas las credenciales de Google Sheets.';
+      } else {
         await googleSheets.sincronizarFormato(empresaDoc.googleSheetId, req.session.empresa.id, formatoId, carpeta);
       }
     } catch (errGS) {
       console.error('Google Sheets sync falló:', errGS.message);
+      const msg = String(errGS.message || '');
+      if (/permission|403/i.test(msg)) {
+        googleSheetsError = `La cuenta de servicio no tiene permiso para editar esta hoja. Compártela como Editor con: ${googleSheets.getCuentaServicio()}`;
+      } else if (/not found|404/i.test(msg)) {
+        googleSheetsError = 'El ID de la hoja de Google Sheets no existe o se borró.';
+      } else {
+        googleSheetsError = 'Google Sheets no se pudo actualizar: ' + msg;
+      }
     }
 
     const infoNuevo = await infoPendientes(req.session.empresa.id, formatoId, carpeta);
-    res.status(201).json({ ok: true, registro, info: infoNuevo });
+    res.status(201).json({ ok: true, registro, info: infoNuevo, excelError, googleSheetsError });
   } catch (err) {
     if (err.code === 11000) {
       return res.status(409).json({ ok: false, error: 'Ya existe un registro para ese día' });
@@ -254,38 +284,31 @@ router.get('/historial/:formatoId', requireEmpresa, async (req, res) => {
   res.json({ ok: true, anio, mes, esMesActual, registros });
 });
 
-router.get('/excel/:anio/:mes', requireEmpresa, async (req, res) => {
-  const anio = parseInt(req.params.anio, 10);
-  const mes = parseInt(req.params.mes, 10);
-  if (isNaN(anio) || isNaN(mes) || mes < 1 || mes > 12) {
-    return res.status(400).json({ ok: false, error: 'Mes o año inválidos' });
-  }
+// Descarga el archivo Excel completo de la empresa (todas las hojas, todos los meses)
+// Si el archivo no existe o está desactualizado, lo reconstruye desde la BD.
+async function descargarExcel(req, res) {
+  try {
+    let { filePath, fileName } = await getRutaArchivoActual(req.session.empresa.id);
 
-  const hoy = partesDeHoy();
-  const esMesActual = (anio === hoy.anio && mes === hoy.mes);
-  if (!esMesActual && !adminHistorialActivo(req)) {
-    return res.status(401).json({ ok: false, error: 'Requiere verificación de administrador para meses anteriores' });
-  }
-
-  let { filePath } = getRutaArchivo(req.session.empresa.id, anio, mes);
-
-  if (!fs.existsSync(filePath)) {
-    const resultado = await reconstruirMesCompleto(req.session.empresa.id, anio, mes);
-    if (!resultado.filePath || !fs.existsSync(resultado.filePath)) {
-      return res.status(404).json({ ok: false, error: 'No hay registros para ese mes' });
+    if (!filePath || !fs.existsSync(filePath)) {
+      const resultado = await reconstruirArchivoCompleto(req.session.empresa.id);
+      if (!resultado.filePath || !fs.existsSync(resultado.filePath)) {
+        return res.status(404).json({ ok: false, error: 'No hay registros guardados todavía' });
+      }
+      filePath = resultado.filePath;
+      fileName = require('path').basename(filePath);
     }
-    filePath = resultado.filePath;
+
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    fs.createReadStream(filePath).pipe(res);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
+}
 
-  const empresa = await Empresa.findById(req.session.empresa.id).select('nombre').lean();
-  const slug = (empresa && empresa.nombre ? empresa.nombre : 'empresa')
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-zA-Z0-9\-_]/g, '_');
-  const downloadName = `${slug}_${anio}-${String(mes).padStart(2, '0')}.xlsx`;
-
-  res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"`);
-  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  fs.createReadStream(filePath).pipe(res);
-});
+router.get('/excel', requireEmpresa, descargarExcel);
+// Endpoint legacy: mismo archivo, ignora año/mes (un solo archivo por empresa)
+router.get('/excel/:anio/:mes', requireEmpresa, descargarExcel);
 
 module.exports = router;

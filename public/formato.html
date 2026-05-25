@@ -38,10 +38,23 @@
   </header>
 
   <main class="sub-main">
-    <div id="banner-pendientes" class="banner banner-warning" hidden></div>
-    <div id="banner-info" class="banner banner-info" hidden></div>
+    <!-- Encabezado institucional (solo formatos con metadatos) -->
+    <section id="encabezado-institucional" class="enc-inst" hidden>
+      <div class="enc-inst-centro">
+        <div class="enc-inst-plan"     id="enc-plan"></div>
+        <div class="enc-inst-programa" id="enc-programa"></div>
+        <div class="enc-inst-titulo"   id="enc-titulo"></div>
+      </div>
+    </section>
 
-    <form id="form-registro" class="card">
+    <div id="banner-exito"      class="banner banner-exito"   hidden></div>
+    <div id="banner-pendientes" class="banner banner-warning" hidden></div>
+    <div id="banner-info"       class="banner banner-info"    hidden></div>
+
+    <!-- ============================================================
+         FORM GENÉRICO (formatos sin plantilla específica)
+         ============================================================ -->
+    <form id="form-registro" class="card" hidden>
       <p id="formato-dia-actual" class="dia-objetivo" hidden></p>
 
       <label class="campo">
@@ -70,6 +83,467 @@
       </div>
     </form>
 
+    <!-- ============================================================
+         FORM CALIDAD DEL AGUA (plantilla específica)
+         ============================================================ -->
+    <form id="form-calidad-agua" class="card" hidden>
+      <p id="ca-dia-actual" class="dia-objetivo" hidden></p>
+
+      <div class="form-grid-2">
+        <label class="campo">
+          <span>Hora de muestreo</span>
+          <input type="time" name="hora_muestreo" id="ca-hora" required />
+        </label>
+        <label class="campo">
+          <span>Punto de muestreo</span>
+          <input type="text" name="punto_muestreo" id="ca-punto" placeholder="Ej: Llave #1" list="puntos-sugeridos" required autocomplete="off" />
+          <datalist id="puntos-sugeridos">
+            <option value="Llave #1"></option>
+            <option value="Llave #2"></option>
+            <option value="Llave #3"></option>
+            <option value="Llave #4"></option>
+            <option value="Llave #5"></option>
+            <option value="Llave #6"></option>
+            <option value="Llave #7"></option>
+            <option value="Llave #8"></option>
+            <option value="Llave #9"></option>
+            <option value="Llave #10"></option>
+          </datalist>
+        </label>
+      </div>
+
+      <fieldset class="param-card">
+        <legend>pH <span class="param-rango">rango aceptable: 6,5 a 9,0</span></legend>
+        <div class="param-grid">
+          <label class="campo">
+            <span>Valor obtenido</span>
+            <input type="number" step="0.01" min="0" max="14" name="pH_valor" id="ca-ph-valor" required />
+          </label>
+          <div class="campo">
+            <span class="campo-label">Resultado</span>
+            <output id="ca-ph-resultado" class="badge-resultado badge-resultado--vacio">—</output>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="param-card">
+        <legend>Cloro residual <span class="param-rango">rango aceptable: 0,3 a 2,0 mg/L</span></legend>
+        <div class="param-grid">
+          <label class="campo">
+            <span>Valor obtenido (mg/L)</span>
+            <input type="number" step="0.01" min="0" name="cloro_valor" id="ca-cloro-valor" required />
+          </label>
+          <div class="campo">
+            <span class="campo-label">Resultado</span>
+            <output id="ca-cloro-resultado" class="badge-resultado badge-resultado--vacio">—</output>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="param-card">
+        <legend>Características organolépticas</legend>
+        <div class="param-grid-3">
+          <div class="organo-grupo">
+            <span class="organo-label">Olor</span>
+            <div class="radios-cnc">
+              <label class="radio-pill radio-pill--ok"><input type="radio" name="olor" value="C" required />Cumple</label>
+              <label class="radio-pill radio-pill--bad"><input type="radio" name="olor" value="NC" />No cumple</label>
+            </div>
+          </div>
+          <div class="organo-grupo">
+            <span class="organo-label">Color</span>
+            <div class="radios-cnc">
+              <label class="radio-pill radio-pill--ok"><input type="radio" name="color" value="C" required />Cumple</label>
+              <label class="radio-pill radio-pill--bad"><input type="radio" name="color" value="NC" />No cumple</label>
+            </div>
+          </div>
+          <div class="organo-grupo">
+            <span class="organo-label">Sabor</span>
+            <div class="radios-cnc">
+              <label class="radio-pill radio-pill--ok"><input type="radio" name="sabor" value="C" required />Cumple</label>
+              <label class="radio-pill radio-pill--bad"><input type="radio" name="sabor" value="NC" />No cumple</label>
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
+      <label class="campo">
+        <span>Observaciones</span>
+        <textarea name="observaciones" id="ca-observaciones" rows="3" placeholder="Comentarios u observaciones del muestreo..."></textarea>
+      </label>
+
+      <label class="campo">
+        <span>Responsable</span>
+        <input
+          type="text"
+          name="responsable"
+          id="ca-responsable"
+          autocomplete="off"
+          pattern="[A-Za-zÀ-ÿÑñ\s]+"
+          title="Solo letras y espacios"
+        />
+        <small class="ayuda" id="ca-responsable-hint">Escribe tu nombre (solo letras y espacios).</small>
+      </label>
+
+      <p class="nota-formato" id="ca-nota"></p>
+
+      <p id="ca-msg" class="mensaje" hidden></p>
+
+      <div class="acciones-formato">
+        <button type="submit" id="ca-btn-guardar" class="btn-primario">Guardar día</button>
+        <button type="button" id="ca-btn-registros" class="btn-secundario">Ver registros</button>
+      </div>
+    </form>
+
+    <!-- ============================================================
+         FORM TEMPERATURA DE EQUIPOS DE FRÍO
+         ============================================================ -->
+    <form id="form-temperatura" class="card" hidden>
+      <p id="te-dia-actual" class="dia-objetivo" hidden></p>
+
+      <fieldset class="param-card">
+        <legend>Medición 1 (inicio del día)</legend>
+        <div class="param-grid">
+          <label class="campo">
+            <span>Hora</span>
+            <input type="time" name="hora1" id="te-hora1" required />
+          </label>
+          <label class="campo">
+            <span>Temperatura (°C)</span>
+            <input type="number" step="0.1" name="temp1" id="te-temp1" placeholder="Ej: 3.5" required />
+          </label>
+          <div class="campo">
+            <span class="campo-label">Cumplimiento</span>
+            <output id="te-res1" class="badge-resultado badge-resultado--vacio">—</output>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="param-card">
+        <legend>Medición 2 (final del día)</legend>
+        <div class="param-grid">
+          <label class="campo">
+            <span>Hora</span>
+            <input type="time" name="hora2" id="te-hora2" required />
+          </label>
+          <label class="campo">
+            <span>Temperatura (°C)</span>
+            <input type="number" step="0.1" name="temp2" id="te-temp2" placeholder="Ej: 3.8" required />
+          </label>
+          <div class="campo">
+            <span class="campo-label">Cumplimiento</span>
+            <output id="te-res2" class="badge-resultado badge-resultado--vacio">—</output>
+          </div>
+        </div>
+      </fieldset>
+
+      <label class="campo">
+        <span>Tipo de equipo</span>
+        <select id="te-tipo" name="tipoEquipo" required>
+          <option value="">— Selecciona —</option>
+          <option value="refrigeracion">Refrigeración (0 a 4 °C)</option>
+          <option value="congelacion">Congelación (≤ −18 °C)</option>
+        </select>
+      </label>
+
+      <label class="campo">
+        <span>Observaciones (si NO CUMPLE, indica acción correctiva)</span>
+        <textarea name="observaciones" id="te-observaciones" rows="3"></textarea>
+      </label>
+
+      <label class="campo">
+        <span>Responsable</span>
+        <input type="text" name="responsable" id="te-responsable" autocomplete="off"
+               pattern="[A-Za-zÀ-ÿÑñ\s]+" title="Solo letras y espacios" />
+        <small class="ayuda" id="te-responsable-hint">Escribe tu nombre (solo letras y espacios).</small>
+      </label>
+
+      <p class="nota-formato" id="te-nota"></p>
+      <p id="te-msg" class="mensaje" hidden></p>
+
+      <div class="acciones-formato">
+        <button type="submit" id="te-btn-guardar" class="btn-primario">Guardar día</button>
+        <button type="button" id="te-btn-registros" class="btn-secundario">Ver registros</button>
+      </div>
+    </form>
+
+    <!-- ============================================================
+         FORM VERIFICACIÓN DIARIA DE PLAGAS
+         ============================================================ -->
+    <form id="form-plagas" class="card" hidden>
+      <p id="pl-dia-actual" class="dia-objetivo" hidden></p>
+
+      <fieldset class="param-card">
+        <legend>Áreas inspeccionadas</legend>
+        <div class="checks-grid" id="pl-areas">
+          <label class="check-area"><input type="checkbox" name="area" value="Cocina" /> Cocina</label>
+          <label class="check-area"><input type="checkbox" name="area" value="Bodega" /> Bodega</label>
+          <label class="check-area"><input type="checkbox" name="area" value="Café" /> Café</label>
+          <label class="check-area"><input type="checkbox" name="area" value="Jugos" /> Jugos</label>
+          <label class="check-area"><input type="checkbox" name="area" value="Salón" /> Salón</label>
+          <label class="check-area"><input type="checkbox" name="area" value="Oficina" /> Oficina</label>
+          <label class="check-area"><input type="checkbox" name="area" value="Externas" /> Externas</label>
+          <label class="check-area"><input type="checkbox" name="area" value="Otras" /> Otras</label>
+        </div>
+      </fieldset>
+
+      <fieldset class="param-card">
+        <legend>Tipo de control</legend>
+        <div class="radios-cnc">
+          <label class="radio-pill radio-pill--ok"><input type="radio" name="tipoControl" value="Preventivo" required />Preventivo</label>
+          <label class="radio-pill radio-pill--bad"><input type="radio" name="tipoControl" value="Correctivo" />Correctivo</label>
+        </div>
+      </fieldset>
+
+      <label class="campo">
+        <span>Descripción de la novedad (vacío si no hay)</span>
+        <textarea name="novedad" id="pl-novedad" rows="3" placeholder="Ej: presencia de moscas en bodega…"></textarea>
+      </label>
+
+      <label class="campo">
+        <span>Observaciones</span>
+        <textarea name="observaciones" id="pl-observaciones" rows="2"></textarea>
+      </label>
+
+      <label class="campo">
+        <span>Responsable</span>
+        <input type="text" name="responsable" id="pl-responsable" autocomplete="off"
+               pattern="[A-Za-zÀ-ÿÑñ\s]+" title="Solo letras y espacios" />
+        <small class="ayuda" id="pl-responsable-hint">Escribe tu nombre (solo letras y espacios).</small>
+      </label>
+
+      <p class="nota-formato" id="pl-nota"></p>
+      <p id="pl-msg" class="mensaje" hidden></p>
+
+      <div class="acciones-formato">
+        <button type="submit" id="pl-btn-guardar" class="btn-primario">Guardar día</button>
+        <button type="button" id="pl-btn-registros" class="btn-secundario">Ver registros</button>
+      </div>
+    </form>
+
+    <!-- ============================================================
+         FORM CONTROL DE RESIDUOS SÓLIDOS
+         ============================================================ -->
+    <form id="form-residuos" class="card" hidden>
+      <p id="rs-dia-actual" class="dia-objetivo" hidden></p>
+
+      <fieldset class="param-card">
+        <legend>Cantidad de bolsas generadas</legend>
+        <div class="param-grid-3">
+          <label class="campo">
+            <span>🟢 Orgánicos</span>
+            <input type="number" min="0" step="1" name="organicos" id="rs-organicos" placeholder="0" required />
+          </label>
+          <label class="campo">
+            <span>🔵 Aprovechables</span>
+            <input type="number" min="0" step="1" name="aprovechables" id="rs-aprovechables" placeholder="0" required />
+          </label>
+          <label class="campo">
+            <span>⚫ No aprovechables</span>
+            <input type="number" min="0" step="1" name="noaprovechables" id="rs-noaprovechables" placeholder="0" required />
+          </label>
+        </div>
+      </fieldset>
+
+      <label class="campo">
+        <span>Fecha de evacuación</span>
+        <input type="date" name="fechaEvacuacion" id="rs-fecha-evacuacion" />
+      </label>
+
+      <label class="campo">
+        <span>Observaciones</span>
+        <textarea name="observaciones" id="rs-observaciones" rows="3"></textarea>
+      </label>
+
+      <label class="campo">
+        <span>Responsable</span>
+        <input type="text" name="responsable" id="rs-responsable" autocomplete="off"
+               pattern="[A-Za-zÀ-ÿÑñ\s]+" title="Solo letras y espacios" />
+        <small class="ayuda" id="rs-responsable-hint">Escribe tu nombre (solo letras y espacios).</small>
+      </label>
+
+      <p class="nota-formato" id="rs-nota"></p>
+      <p id="rs-msg" class="mensaje" hidden></p>
+
+      <div class="acciones-formato">
+        <button type="submit" id="rs-btn-guardar" class="btn-primario">Guardar día</button>
+        <button type="button" id="rs-btn-registros" class="btn-secundario">Ver registros</button>
+      </div>
+    </form>
+
+    <!-- ============================================================
+         FORM LIMPIEZA Y DESINFECCIÓN - SALÓN
+         ============================================================ -->
+    <form id="form-limpieza-salon" class="card" hidden>
+      <p id="ls-dia-actual" class="dia-objetivo" hidden></p>
+
+      <fieldset class="param-card">
+        <legend>Tipo de limpieza</legend>
+        <div class="radios-cnc">
+          <label class="radio-pill radio-pill--ok"><input type="radio" name="tipoLimpieza" value="Rutinaria" required />Rutinaria</label>
+          <label class="radio-pill radio-pill--ok"><input type="radio" name="tipoLimpieza" value="Profunda" />Profunda</label>
+        </div>
+      </fieldset>
+
+      <fieldset class="param-card">
+        <legend>Áreas y producto utilizado <span class="param-rango">DO = Desinfectante orgánico · HS = Hipoclorito de sodio 13%</span></legend>
+        <div id="ls-areas" class="areas-producto-grid"></div>
+      </fieldset>
+
+      <label class="campo">
+        <span>Observaciones</span>
+        <textarea name="observaciones" id="ls-observaciones" rows="3"></textarea>
+      </label>
+
+      <label class="campo">
+        <span>Responsable</span>
+        <input type="text" name="responsable" id="ls-responsable" autocomplete="off"
+               pattern="[A-Za-zÀ-ÿÑñ\s]+" title="Solo letras y espacios" />
+        <small class="ayuda" id="ls-responsable-hint">Escribe tu nombre (solo letras y espacios).</small>
+      </label>
+
+      <p class="nota-formato" id="ls-nota"></p>
+      <p id="ls-msg" class="mensaje" hidden></p>
+
+      <div class="acciones-formato">
+        <button type="submit" id="ls-btn-guardar" class="btn-primario">Guardar día</button>
+        <button type="button" id="ls-btn-registros" class="btn-secundario">Ver registros</button>
+      </div>
+    </form>
+
+    <!-- ============================================================
+         FORM LIMPIEZA Y DESINFECCIÓN - BAÑO
+         ============================================================ -->
+    <form id="form-limpieza-bano" class="card" hidden>
+      <p id="lb-dia-actual" class="dia-objetivo" hidden></p>
+
+      <fieldset class="param-card">
+        <legend>Tipo de limpieza</legend>
+        <div class="radios-cnc">
+          <label class="radio-pill radio-pill--ok"><input type="radio" name="tipoLimpieza" value="Rutinaria" required />Rutinaria</label>
+          <label class="radio-pill radio-pill--ok"><input type="radio" name="tipoLimpieza" value="Profunda" />Profunda</label>
+        </div>
+      </fieldset>
+
+      <fieldset class="param-card">
+        <legend>Áreas limpiadas (marca las que aplican)</legend>
+        <div class="checks-grid" id="lb-areas"></div>
+      </fieldset>
+
+      <label class="campo">
+        <span>Observaciones</span>
+        <textarea name="observaciones" id="lb-observaciones" rows="3"></textarea>
+      </label>
+
+      <label class="campo">
+        <span>Responsable</span>
+        <input type="text" name="responsable" id="lb-responsable" autocomplete="off"
+               pattern="[A-Za-zÀ-ÿÑñ\s]+" title="Solo letras y espacios" />
+        <small class="ayuda" id="lb-responsable-hint">Escribe tu nombre (solo letras y espacios).</small>
+      </label>
+
+      <p class="nota-formato" id="lb-nota"></p>
+      <p id="lb-msg" class="mensaje" hidden></p>
+
+      <div class="acciones-formato">
+        <button type="submit" id="lb-btn-guardar" class="btn-primario">Guardar día</button>
+        <button type="button" id="lb-btn-registros" class="btn-secundario">Ver registros</button>
+      </div>
+    </form>
+
+    <!-- ============================================================
+         FORM LIMPIEZA Y DESINFECCIÓN - CAMPANA Y TRAMPA
+         ============================================================ -->
+    <form id="form-limpieza-ct" class="card" hidden>
+      <p id="lct-dia-actual" class="dia-objetivo" hidden></p>
+
+      <fieldset class="param-card">
+        <legend>Equipo(s) limpiado(s)</legend>
+        <div class="checks-grid">
+          <label class="check-area"><input type="checkbox" name="equipo" value="Campana" /> Campana</label>
+          <label class="check-area"><input type="checkbox" name="equipo" value="Trampa" /> Trampa</label>
+        </div>
+      </fieldset>
+
+      <div class="form-grid-2">
+        <label class="campo">
+          <span>Hora</span>
+          <input type="time" name="hora" id="lct-hora" required />
+        </label>
+        <label class="campo">
+          <span>Desinfectante</span>
+          <input type="text" name="desinfectante" id="lct-desinfectante" placeholder="Ej: Hipoclorito de sodio 13%" required />
+        </label>
+      </div>
+
+      <div class="form-grid-2">
+        <label class="campo">
+          <span>Cantidad de agua (litros)</span>
+          <input type="number" min="0" step="0.1" name="agua" id="lct-agua" required />
+        </label>
+        <label class="campo">
+          <span>Cantidad de producto (mL)</span>
+          <input type="number" min="0" step="0.1" name="producto" id="lct-producto" required />
+        </label>
+      </div>
+
+      <label class="campo">
+        <span>Observaciones</span>
+        <textarea name="observaciones" id="lct-observaciones" rows="3"></textarea>
+      </label>
+
+      <label class="campo">
+        <span>Responsable</span>
+        <input type="text" name="responsable" id="lct-responsable" autocomplete="off"
+               pattern="[A-Za-zÀ-ÿÑñ\s]+" title="Solo letras y espacios" />
+        <small class="ayuda" id="lct-responsable-hint">Escribe tu nombre (solo letras y espacios).</small>
+      </label>
+
+      <p class="nota-formato" id="lct-nota"></p>
+      <p id="lct-msg" class="mensaje" hidden></p>
+
+      <div class="acciones-formato">
+        <button type="submit" id="lct-btn-guardar" class="btn-primario">Guardar día</button>
+        <button type="button" id="lct-btn-registros" class="btn-secundario">Ver registros</button>
+      </div>
+    </form>
+
+    <!-- ============================================================
+         FORM RECEPCIÓN DE MATERIAS PRIMAS (multi-ítems por día)
+         ============================================================ -->
+    <form id="form-recepcion" class="card" hidden>
+      <p id="rec-dia-actual" class="dia-objetivo" hidden></p>
+
+      <div class="recepcion-info">
+        <p class="ayuda">📦 Cada día puedes registrar varias recepciones. Agrega una por cada producto/proveedor.</p>
+      </div>
+
+      <div id="rec-items" class="items-list"></div>
+
+      <button type="button" id="rec-btn-agregar" class="btn-secundario btn-agregar-item">+ Agregar recepción</button>
+
+      <label class="campo">
+        <span>Observaciones generales del día</span>
+        <textarea name="observaciones" id="rec-observaciones" rows="2"></textarea>
+      </label>
+
+      <label class="campo">
+        <span>Responsable</span>
+        <input type="text" name="responsable" id="rec-responsable" autocomplete="off"
+               pattern="[A-Za-zÀ-ÿÑñ\s]+" title="Solo letras y espacios" />
+        <small class="ayuda" id="rec-responsable-hint">Escribe tu nombre (solo letras y espacios).</small>
+      </label>
+
+      <p class="nota-formato" id="rec-nota"></p>
+      <p id="rec-msg" class="mensaje" hidden></p>
+
+      <div class="acciones-formato">
+        <button type="submit" id="rec-btn-guardar" class="btn-primario">Guardar día</button>
+        <button type="button" id="rec-btn-registros" class="btn-secundario">Ver registros</button>
+      </div>
+    </form>
+
+    <!-- Sección empleados (solo para presentacion_personal) -->
     <section id="seccion-empleados" class="card" hidden>
       <h2>Empleados registrados</h2>
       <p class="ayuda">Crea, edita o elimina los empleados de tu empresa. Toca un empleado para abrir su formulario individual.</p>
@@ -120,8 +594,8 @@
 
   <div id="modal-admin-atrasado" class="modal-backdrop" hidden>
     <div class="modal">
-      <h2>Formato atrasado</h2>
-      <p class="subtitulo">Estás registrando un día anterior. Solo el administrador puede llenar días atrasados — ingresa la contraseña para continuar.</p>
+      <h2>Días pendientes por registrar</h2>
+      <p class="subtitulo" id="modal-admin-atrasado-info">Este formato tiene días atrasados. Solo el administrador puede llenarlos — ingresa la contraseña para continuar.</p>
       <form id="form-admin-atrasado" class="form">
         <label class="campo">
           <span>Contraseña de administrador</span>
@@ -129,7 +603,7 @@
         </label>
         <p id="modal-admin-atrasado-error" class="mensaje mensaje-error" hidden></p>
         <div class="modal-acciones">
-          <button type="button" id="btn-cancelar-admin-atrasado" class="btn-secundario">Cancelar</button>
+          <button type="button" id="btn-cancelar-admin-atrasado" class="btn-secundario">Volver a formatos</button>
           <button type="submit" class="btn-primario">Continuar</button>
         </div>
       </form>
@@ -137,6 +611,7 @@
   </div>
 
   <script src="/js/util.js"></script>
+  <script src="/js/festivos.js"></script>
   <script src="/js/formato.js"></script>
 </body>
 </html>

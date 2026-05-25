@@ -1,12 +1,17 @@
 const mongoose = require('mongoose');
 
 const FORMATOS_VALIDOS = [
+  'recepcion_materias_primas',
   'calidad_agua',
-  'control_plagas',
-  'presentacion_personal',
   'control_temperatura',
-  'limpieza_desinfeccion',
-  'manejo_residuos'
+  'control_plagas',
+  'limpieza_salon',
+  'limpieza_bano',
+  'limpieza_campana_trampa',
+  'manejo_residuos',
+  'presentacion_personal',
+  // alias retrocompatible (registros antiguos antes de la separación)
+  'limpieza_desinfeccion'
 ];
 
 const CARPETAS_VALIDAS = ['cocina', 'salon', 'administracion'];

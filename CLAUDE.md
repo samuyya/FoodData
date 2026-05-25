@@ -47,12 +47,17 @@ alimentaria exigidos por sanidad en **Colombia**. Multiempresa: cada empresa
 - 🗂️ **Programas** → placeholder (sin contenido aún)
 
 ## Formatos
-- 6 en el catálogo: `calidad_agua`, `control_plagas`, `presentacion_personal`, `control_temperatura`, `limpieza_desinfeccion`, `manejo_residuos`. (Se eliminó `capacitacion_continua`.)
-- Por empresa: `formatosActivos` (cuáles usa) y `formatosRestringidos` (cuáles piden contraseña de admin). El menú los **renumera dinámicamente** por empresa.
-- **El contenido interno (preguntas/checks) NO está construido** — solo la base: campo Responsable, Observaciones, botón Guardar. Pendiente: armar los formularios (el usuario enviará los modelos; se empieza con uno de prueba).
-- **Días pendientes:** hay que llenar en orden cronológico los días faltantes del mes en curso antes del día de hoy; el servidor decide qué día se guarda. Llenar un día **atrasado** exige contraseña de admin (una vez por sesión en no-restringidos; los restringidos usan el marcador de entrada).
-- **Historial:** mes actual visible para todos; meses anteriores requieren contraseña de admin.
-- Al guardar: sincroniza Excel (`datos/excel/{empresa}/{anio-mes}.xlsx`, una hoja por formato) y, si la empresa tiene `googleSheetId`, sincroniza Google Sheets.
+- 9 en el catálogo: `recepcion_materias_primas`, `calidad_agua`, `control_temperatura`, `control_plagas`, `limpieza_salon`, `limpieza_bano`, `limpieza_campana_trampa`, `manejo_residuos`, `presentacion_personal`.
+- Cada formato del catálogo (`formatos.js`) lleva metadatos institucionales: `codigo`, `version`, `fechaVersion`, `plan`, `programa`, `titulo`, `nota`.
+- **Carpetas** (Cocina/Salón/Administración): el superadmin asigna cada formato a 1+ carpetas. La carpeta Administración pide contraseña de admin para entrar (una vez por sesión). Un mismo formato en dos carpetas tiene **registros independientes** (el modelo `Registro` indexa por `empresa_id + formato + carpeta + año + mes + día`).
+- **Plantillas de UI por formato:** cada formato tiene su `iniciarFormX(infoInicial)` registrado en `PLANTILLAS` dentro de `public/js/formato.js`. El HTML del form vive en `public/formato.html`. Helpers compartidos: `postRegistro`, `configurarResponsableEsCarpetaAdmin`, `pintarBanners`, `mostrarBannerExito`.
+- **Encabezado institucional de los formatos (norma):** dentro del card del formato hay un bloque `<section class="enc-inst">` que muestra Plan / Programa / Título (tomados del catálogo). **NO lleva logo** (el logo va solo en la `.sub-topbar`). **NO lleva caja de Código/Versión/Fecha/Página** a la derecha. El contenido va **centrado** ocupando todo el ancho del card, sin líneas divisorias internas. Esta es la estructura para todo formato nuevo.
+- **Días pendientes:** hay que llenar en orden cronológico los días faltantes del mes en curso antes del día de hoy; el servidor decide qué día se guarda. Llenar un día **atrasado** exige contraseña de admin (`adminAtrasado` se setea **una sola vez por sesión** y vale para cualquier formato).
+- **Historial:** mes actual visible para todos; meses anteriores requieren contraseña de admin (`adminHistorial`).
+- **Festivos colombianos** (`festivos.js` + `public/js/festivos.js`): la **casilla del día** se pinta turquoise con tooltip "Día feriado" en tabla de registros, tabla de asistencia, Excel y Google Sheets.
+- **Excel:** un solo archivo por empresa `datos/excel/{empresaId}/Registros - {slug}.xlsx`, **una hoja por (formato, carpeta)**, **organizado por meses** apilados dentro de la hoja. Festivos resaltados solo en la celda del día. Reconstruye en cada guardado.
+- **Google Sheets:** misma estructura (hoja por instancia, meses apilados, festivos). Sync por API con la cuenta de servicio.
+- **Multi-ítems por día (recepción):** cuando un formato necesita varias filas por día (`recepcion_materias_primas`), `columnasYFila()` devuelve `{ columnas, expandirFilas }` en lugar de `{ columnas, fila }`. `expandirFilas(r)` regresa un array; el día solo aparece en la primera fila del bloque.
 
 ## Asistencia
 - El empleado selecciona su nombre (de `EmpleadoLista`), toma una foto (cámara, comprimida ~100KB). 1ª foto del día = ingreso, 2ª = salida, 3ª bloqueada.

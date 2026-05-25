@@ -16,6 +16,7 @@ const registrosRoutes = require('./routes/registros');
 const empleadosRoutes = require('./routes/empleados');
 const asistenciaRoutes = require('./routes/asistencia');
 const googleSheets = require('./servicios/googleSheets');
+const Registro = require('./models/Registro');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -107,9 +108,37 @@ async function seedSuperadmin() {
   }
 }
 
+// Sincroniza los índices de Registro: elimina índices viejos (sin `carpeta`)
+// y crea el nuevo índice único (empresa_id, formato, carpeta, anio, mes, dia).
+// Necesario porque Mongoose no elimina índices viejos automáticamente.
+async function sincronizarIndicesRegistro() {
+  try {
+    // Antes de sincronizar índices, asegurar que registros viejos (anteriores
+    // a la introducción del campo `carpeta`) tengan un valor por defecto.
+    const upd = await Registro.updateMany(
+      { carpeta: { $in: [null, undefined, ''] } },
+      { $set: { carpeta: 'cocina' } }
+    );
+    if (upd.modifiedCount > 0) {
+      console.log(`Migración registros: ${upd.modifiedCount} documento(s) actualizados con carpeta='cocina'.`);
+    }
+
+    // syncIndexes() elimina los índices que no están en el schema y crea los nuevos
+    const resultado = await Registro.syncIndexes();
+    if (Array.isArray(resultado) && resultado.length > 0) {
+      console.log('Índices de Registro eliminados (obsoletos):', resultado);
+    } else {
+      console.log('Índices de Registro sincronizados.');
+    }
+  } catch (err) {
+    console.error('Error sincronizando índices de Registro:', err.message);
+  }
+}
+
 async function iniciar() {
   try {
     await conectarDB();
+    await sincronizarIndicesRegistro();
     await seedSuperadmin();
     googleSheets.inicializar();
     const server = app.listen(PORT, () => {

@@ -137,8 +137,13 @@ function renderTabla(data) {
         <button type="button" class="btn-secundario btn-corregir" data-id="${d.registroId}" data-dia="${d.dia}">Corregir</button>`;
     }
 
+    const fest = window.FestivosCO && window.FestivosCO.esFestivo(data.anio, data.mes, d.dia);
+    const tdDia = fest
+      ? `<td class="td-dia td-dia--festivo" title="Día feriado">${d.dia}</td>`
+      : `<td class="td-dia">${d.dia}</td>`;
+
     tr.innerHTML = `
-      <td>${d.dia}</td>
+      ${tdDia}
       <td>${entrada}</td>
       <td>${salida}</td>
       <td>${horas}</td>

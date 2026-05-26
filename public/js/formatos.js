@@ -168,7 +168,7 @@ formAdminPass.addEventListener('submit', async (e) => {
       cerrarModal();
       mostrarFormatos('administracion');
     } catch {
-      modalError.textContent = 'Error de conexión';
+      modalError.textContent = 'no hay conexion';
       modalError.hidden = false;
     }
   });

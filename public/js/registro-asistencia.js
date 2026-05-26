@@ -195,7 +195,7 @@ async function cargarRegistro() {
     }
     renderTabla(data);
   } catch (err) {
-    estadoRegistro.textContent = 'Error de red';
+    estadoRegistro.textContent = 'no hay conexion';
   }
 }
 
@@ -249,7 +249,7 @@ formCorregir.addEventListener('submit', async (e) => {
       cerrarCorregir();
       cargarRegistro();
     } catch (err) {
-      corregirError.textContent = 'Error de red';
+      corregirError.textContent = 'no hay conexion';
       corregirError.hidden = false;
     }
   });

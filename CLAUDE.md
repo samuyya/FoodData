@@ -1,5 +1,19 @@
 # FoodData — Contexto del proyecto
 
+## Estilo de código (IMPORTANTE)
+El proyecto es de un estudiante; el código debe verse hecho por estudiante, no por máquina. Reglas:
+- **NO uses banners grandes** tipo `// ====== SECCIÓN ======`. Si necesitas separar, una línea con `// nombre breve` basta.
+- **NO comentes lo obvio.** No pongas `// Recoger datos` arriba de `recogerDatos()`. Solo comenta el *porqué*, no el *qué*.
+- **Mensajes al usuario en español natural**, no técnico: `"Algo salió mal, intenta de nuevo"` mejor que `"Server returned 500: internal error"`. Si hay detalle técnico útil, va aparte.
+- **Funciones cortas** con nombres claros pero no exagerados (`recoger()` mejor que `recogerDatosCompletosDelFormulario()`).
+- **Permite mezcla y pequeñas inconsistencias** entre archivos (un `let` aquí, un `const` allá; abreviar variables locales como `r`, `d`, `cb`). Si el código respira humano, mejor.
+- **No exageres con validaciones defensivas.** Si el llamador siempre pasa un array, no chequees `Array.isArray()`. Confiar en el caller está bien.
+- **Comentarios cortos en español, conversacionales.** `// ojo: esto se queda viejo si cambias el modelo`, no `// Note: This must be updated when…`.
+- **Errores se loguean con `console.log` o `console.warn`,** no con stack traces formales. `console.log('no se pudo escribir excel:', err.message)`.
+- **JSDoc: no.** Si la función es clara con su nombre y firma, sobra.
+
+
+
 App **web (PWA)** para digitalizar formatos de control de calidad e inocuidad
 alimentaria exigidos por sanidad en **Colombia**. Multiempresa: cada empresa
 (restaurante, cafetería, etc.) tiene su propia sesión y solo ve sus datos.

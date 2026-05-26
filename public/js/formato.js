@@ -1,72 +1,68 @@
-// =============================================================================
-//  Elementos generales
-// =============================================================================
-const logoEl = document.getElementById('logo-empresa');
-const logoPlaceholder = document.getElementById('logo-placeholder');
-const nombreEmpresaEl = document.getElementById('nombre-empresa');
-const tituloEl = document.getElementById('formato-titulo');
-const fechaEl = document.getElementById('formato-fecha');
-const badgeAdminEl = document.getElementById('badge-admin-activo');
-const badgeAdminNombreEl = document.getElementById('badge-admin-nombre');
-const btnVolver = document.getElementById('btn-volver');
+const $ = (id) => document.getElementById(id);
 
-const bannerPendientes = document.getElementById('banner-pendientes');
-const bannerInfo = document.getElementById('banner-info');
-const bannerExito = document.getElementById('banner-exito');
+// elementos del header
+const logoEl = $('logo-empresa');
+const logoPlaceholder = $('logo-placeholder');
+const nombreEmpresaEl = $('nombre-empresa');
+const tituloEl = $('formato-titulo');
+const fechaEl = $('formato-fecha');
+const badgeAdminEl = $('badge-admin-activo');
+const badgeAdminNombreEl = $('badge-admin-nombre');
+const btnVolver = $('btn-volver');
 
-// Encabezado institucional (Plan / Programa / Título — centrado, sin logo)
-const encInst = document.getElementById('encabezado-institucional');
-const encPlan = document.getElementById('enc-plan');
-const encPrograma = document.getElementById('enc-programa');
-const encTitulo = document.getElementById('enc-titulo');
+const bannerPendientes = $('banner-pendientes');
+const bannerInfo = $('banner-info');
+const bannerExito = $('banner-exito');
 
-// Form genérico
-const formGenerico = document.getElementById('form-registro');
-const diaObjetivoGen = document.getElementById('formato-dia-actual');
-const inputResponsable = document.getElementById('input-responsable');
-const responsableHint = document.getElementById('responsable-hint');
-const inputObservaciones = document.getElementById('input-observaciones');
-const msgRegistro = document.getElementById('msg-registro');
-const btnGuardar = document.getElementById('btn-guardar');
-const btnVerRegistros = document.getElementById('btn-ver-registros');
+const encInst = $('encabezado-institucional');
+const encPlan = $('enc-plan');
+const encPrograma = $('enc-programa');
+const encTitulo = $('enc-titulo');
 
-// Form calidad de agua
-const formCA = document.getElementById('form-calidad-agua');
-const caDiaActual = document.getElementById('ca-dia-actual');
-const caHora = document.getElementById('ca-hora');
-const caPunto = document.getElementById('ca-punto');
-const caPhValor = document.getElementById('ca-ph-valor');
-const caPhRes = document.getElementById('ca-ph-resultado');
-const caCloroValor = document.getElementById('ca-cloro-valor');
-const caCloroRes = document.getElementById('ca-cloro-resultado');
-const caObservaciones = document.getElementById('ca-observaciones');
-const caResponsable = document.getElementById('ca-responsable');
-const caResponsableHint = document.getElementById('ca-responsable-hint');
-const caNota = document.getElementById('ca-nota');
-const caMsg = document.getElementById('ca-msg');
-const caBtnGuardar = document.getElementById('ca-btn-guardar');
-const caBtnRegistros = document.getElementById('ca-btn-registros');
+// form genérico (formatos sin plantilla propia)
+const formGenerico = $('form-registro');
+const diaObjetivoGen = $('formato-dia-actual');
+const inputResponsable = $('input-responsable');
+const responsableHint = $('responsable-hint');
+const inputObservaciones = $('input-observaciones');
+const msgRegistro = $('msg-registro');
+const btnGuardar = $('btn-guardar');
+const btnVerRegistros = $('btn-ver-registros');
 
-// Empleados (formato 3)
-const seccionEmpleados = document.getElementById('seccion-empleados');
-const formNuevoEmpleado = document.getElementById('form-nuevo-empleado');
-const msgEmpleado = document.getElementById('msg-empleado');
-const listaEmpleados = document.getElementById('lista-empleados');
-const modalEmpleado = document.getElementById('modal-empleado');
-const formEditarEmpleado = document.getElementById('form-editar-empleado');
-const modalEmpleadoError = document.getElementById('modal-empleado-error');
-const btnCancelarEditar = document.getElementById('btn-cancelar-editar-empleado');
+// calidad de agua
+const formCA = $('form-calidad-agua');
+const caDiaActual = $('ca-dia-actual');
+const caHora = $('ca-hora');
+const caPunto = $('ca-punto');
+const caPhValor = $('ca-ph-valor');
+const caPhRes = $('ca-ph-resultado');
+const caCloroValor = $('ca-cloro-valor');
+const caCloroRes = $('ca-cloro-resultado');
+const caObservaciones = $('ca-observaciones');
+const caResponsable = $('ca-responsable');
+const caResponsableHint = $('ca-responsable-hint');
+const caNota = $('ca-nota');
+const caMsg = $('ca-msg');
+const caBtnGuardar = $('ca-btn-guardar');
+const caBtnRegistros = $('ca-btn-registros');
 
-// Modal admin atrasado
-const modalAdminAtrasado = document.getElementById('modal-admin-atrasado');
-const modalAdminAtrasadoInfo = document.getElementById('modal-admin-atrasado-info');
-const formAdminAtrasado = document.getElementById('form-admin-atrasado');
-const modalAdminAtrasadoError = document.getElementById('modal-admin-atrasado-error');
-const btnCancelarAdminAtrasado = document.getElementById('btn-cancelar-admin-atrasado');
+// empleados (lo usa presentacion_personal)
+const seccionEmpleados = $('seccion-empleados');
+const formNuevoEmpleado = $('form-nuevo-empleado');
+const msgEmpleado = $('msg-empleado');
+const listaEmpleados = $('lista-empleados');
+const modalEmpleado = $('modal-empleado');
+const formEditarEmpleado = $('form-editar-empleado');
+const modalEmpleadoError = $('modal-empleado-error');
+const btnCancelarEditar = $('btn-cancelar-editar-empleado');
 
-// =============================================================================
-//  Estado
-// =============================================================================
+// modal de admin atrasado (compartido)
+const modalAdminAtrasado = $('modal-admin-atrasado');
+const modalAdminAtrasadoInfo = $('modal-admin-atrasado-info');
+const formAdminAtrasado = $('form-admin-atrasado');
+const modalAdminAtrasadoError = $('modal-admin-atrasado-error');
+const btnCancelarAdminAtrasado = $('btn-cancelar-admin-atrasado');
+
 const params = new URLSearchParams(window.location.search);
 const formatoId = params.get('id');
 const carpetaId = params.get('carpeta') || 'cocina';
@@ -75,19 +71,14 @@ let formatoActual = null;
 let esCarpetaAdmin = false;
 let adminNombreSesion = null;
 
-const MESES_LARGOS = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-];
+const MESES_LARGOS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
 const RANGOS = {
   pH:    { min: 6.5, max: 9.0 },
   cloro: { min: 0.3, max: 2.0 }
 };
 
-// =============================================================================
-//  Utilidades
-// =============================================================================
 function escapeHTML(s) {
   return String(s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -146,9 +137,7 @@ function pintarEncabezadoInstitucional(formato) {
   encInst.hidden = false;
 }
 
-// =============================================================================
-//  Banners pendientes
-// =============================================================================
+// Banners pendientes
 function mostrarBannerExito(texto) {
   bannerExito.innerHTML = texto;
   bannerExito.hidden = false;
@@ -199,9 +188,7 @@ function pintarBanners(info, diaObjetivoEl) {
   diaObjetivoEl.hidden = false;
 }
 
-// =============================================================================
-//  Empleados (formato presentacion_personal)
-// =============================================================================
+// Empleados (formato presentacion_personal)
 function pintarEmpleados(empleados) {
   listaEmpleados.innerHTML = '';
   if (empleados.length === 0) {
@@ -282,7 +269,7 @@ if (formNuevoEmpleado) {
         mostrarMsgEmpleado(`Empleado "${data.empleado.nombre}" agregado.`);
         cargarEmpleados();
       } catch (err) {
-        mostrarMsgEmpleado('Error de red', true);
+        mostrarMsgEmpleado('no hay conexion', true);
       }
     });
   });
@@ -310,7 +297,7 @@ formEditarEmpleado.addEventListener('submit', async (e) => {
       cerrarModalEditar();
       cargarEmpleados();
     } catch (err) {
-      modalEmpleadoError.textContent = 'Error de red';
+      modalEmpleadoError.textContent = 'no hay conexion';
       modalEmpleadoError.hidden = false;
     }
   });
@@ -325,13 +312,11 @@ async function confirmarEliminar(emp) {
     mostrarMsgEmpleado(`Empleado "${emp.nombre}" eliminado.`);
     cargarEmpleados();
   } catch (err) {
-    mostrarMsgEmpleado('Error de red', true);
+    mostrarMsgEmpleado('no hay conexion', true);
   }
 }
 
-// =============================================================================
-//  Modal admin atrasado — UPFRONT (al entrar al formato)
-// =============================================================================
+// Modal admin atrasado — UPFRONT (al entrar al formato)
 function mostrarModalAdminAtrasadoUpfront(info, onVerificadoOk) {
   modalAdminAtrasadoError.hidden = true;
   formAdminAtrasado.reset();
@@ -369,7 +354,7 @@ function mostrarModalAdminAtrasadoUpfront(info, onVerificadoOk) {
       modalAdminAtrasado.hidden = true;
       onVerificadoOk();
     } catch (err) {
-      modalAdminAtrasadoError.textContent = 'Error de conexión';
+      modalAdminAtrasadoError.textContent = 'no hay conexion';
       modalAdminAtrasadoError.hidden = false;
     } finally {
       btn.disabled = false;
@@ -378,9 +363,7 @@ function mostrarModalAdminAtrasadoUpfront(info, onVerificadoOk) {
   };
 }
 
-// =============================================================================
-//  Llamada para guardar
-// =============================================================================
+// Llamada para guardar
 async function enviarRegistro(cuerpo) {
   try {
     const r = await fetch('/api/registros', {
@@ -390,17 +373,15 @@ async function enviarRegistro(cuerpo) {
     });
     const data = await r.json();
     if (!r.ok) {
-      return { error: data.error || 'Error al guardar', requiereClaveAdmin: data.requiereClaveAdmin };
+      return { error: data.error || 'algo salio mal al guardar', requiereClaveAdmin: data.requiereClaveAdmin };
     }
     return { ok: true, registro: data.registro, info: data.info };
   } catch (err) {
-    return { error: 'Error de red al guardar' };
+    return { error: 'no se pudo guardar, intenta otra vez' };
   }
 }
 
-// =============================================================================
-//  FORM GENÉRICO
-// =============================================================================
+// FORM GENÉRICO
 function iniciarFormGenerico(infoInicial) {
   formGenerico.hidden = false;
 
@@ -442,8 +423,7 @@ function iniciarFormGenerico(infoInicial) {
     let res;
     try {
       res = await enviarRegistro(cuerpo);
-      console.log('[Form genérico] Respuesta:', res);
-    } finally {
+          } finally {
       btnGuardar.disabled = false;
       btnGuardar.textContent = txt;
     }
@@ -484,9 +464,7 @@ function iniciarFormGenerico(infoInicial) {
   });
 }
 
-// =============================================================================
-//  FORM CALIDAD DEL AGUA
-// =============================================================================
+// FORM CALIDAD DEL AGUA
 function evaluarCNC(valor, rango) {
   const num = parseFloat(valor);
   if (isNaN(num)) return null;
@@ -613,8 +591,7 @@ function iniciarFormCalidadAgua(infoInicial) {
     let res;
     try {
       res = await enviarRegistro(cuerpo);
-      console.log('[Calidad Agua] Respuesta del servidor:', res);
-    } finally {
+          } finally {
       caBtnGuardar.disabled = false;
       caBtnGuardar.textContent = txt;
     }
@@ -661,9 +638,7 @@ function iniciarFormCalidadAgua(infoInicial) {
   });
 }
 
-// =============================================================================
-//  Helpers comunes para formatos con campos diarios
-// =============================================================================
+// helpers compartidos
 function configurarResponsableEsCarpetaAdmin(input, hint) {
   if (esCarpetaAdmin) {
     input.value = adminNombreSesion;
@@ -682,8 +657,7 @@ async function postRegistro(cuerpo, btn, msgEl, diaObjEl, formEl, opciones = {})
   let res;
   try {
     res = await enviarRegistro(cuerpo);
-    console.log('[Form] Respuesta:', res);
-  } finally {
+      } finally {
     btn.disabled = false;
     btn.textContent = txt;
   }
@@ -718,9 +692,7 @@ async function postRegistro(cuerpo, btn, msgEl, diaObjEl, formEl, opciones = {})
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// =============================================================================
-//  FORM TEMPERATURA DE EQUIPOS DE FRÍO
-// =============================================================================
+// FORM TEMPERATURA DE EQUIPOS DE FRÍO
 function iniciarFormTemperatura(infoInicial) {
   const formTE = document.getElementById('form-temperatura');
   const teDia = document.getElementById('te-dia-actual');
@@ -823,9 +795,7 @@ function iniciarFormTemperatura(infoInicial) {
   });
 }
 
-// =============================================================================
-//  FORM VERIFICACIÓN DE PLAGAS
-// =============================================================================
+// FORM VERIFICACIÓN DE PLAGAS
 function iniciarFormPlagas(infoInicial) {
   const formPL = document.getElementById('form-plagas');
   const plDia = document.getElementById('pl-dia-actual');
@@ -910,9 +880,7 @@ function iniciarFormPlagas(infoInicial) {
   });
 }
 
-// =============================================================================
-//  FORM CONTROL DE RESIDUOS SÓLIDOS
-// =============================================================================
+// FORM CONTROL DE RESIDUOS SÓLIDOS
 function iniciarFormResiduos(infoInicial) {
   const formRS = document.getElementById('form-residuos');
   const rsDia = document.getElementById('rs-dia-actual');
@@ -992,19 +960,15 @@ function iniciarFormResiduos(infoInicial) {
   });
 }
 
-// =============================================================================
 //  Catálogos de áreas para los formatos de limpieza
 //  (Salón viene del catálogo del servidor; baño es fijo aquí)
-// =============================================================================
 const AREAS_BANO = [
   'Ambiente', 'Sanitario', 'Lavamanos', 'Dispensadores', 'Decoración',
   'Techo', 'Lámparas', 'Paredes', 'Piso', 'Puertas',
   'Accesorios', 'Recipiente residuos', 'Implementos de aseo'
 ];
 
-// =============================================================================
-//  FORM LIMPIEZA Y DESINFECCIÓN — SALÓN
-// =============================================================================
+// FORM LIMPIEZA Y DESINFECCIÓN — SALÓN
 function iniciarFormLimpiezaSalon(infoInicial) {
   const form = document.getElementById('form-limpieza-salon');
   const diaEl = document.getElementById('ls-dia-actual');
@@ -1047,7 +1011,7 @@ function iniciarFormLimpiezaSalon(infoInicial) {
       const r = form.querySelector(`input[name="tipoLimpieza"][value="${d.tipoLimpieza}"]`);
       if (r) r.checked = true;
     }
-    // Compatibilidad: si el registro viejo guardó { areas: { 'Ambiente': 'DO', ... } } lo migramos a array de claves
+    // compat registros viejos
     let areasArr = [];
     if (Array.isArray(d.areas)) areasArr = d.areas;
     else if (d.areas && typeof d.areas === 'object') areasArr = Object.keys(d.areas);
@@ -1096,9 +1060,7 @@ function iniciarFormLimpiezaSalon(infoInicial) {
   });
 }
 
-// =============================================================================
-//  FORM LIMPIEZA Y DESINFECCIÓN — BAÑO
-// =============================================================================
+// FORM LIMPIEZA Y DESINFECCIÓN — BAÑO
 function iniciarFormLimpiezaBano(infoInicial) {
   const form = document.getElementById('form-limpieza-bano');
   const diaEl = document.getElementById('lb-dia-actual');
@@ -1179,9 +1141,7 @@ function iniciarFormLimpiezaBano(infoInicial) {
   });
 }
 
-// =============================================================================
-//  FORM LIMPIEZA Y DESINFECCIÓN — CAMPANA Y TRAMPA
-// =============================================================================
+// FORM LIMPIEZA Y DESINFECCIÓN — CAMPANA Y TRAMPA
 function iniciarFormLimpiezaCT(infoInicial) {
   const form = document.getElementById('form-limpieza-ct');
   const diaEl = document.getElementById('lct-dia-actual');
@@ -1264,9 +1224,7 @@ function iniciarFormLimpiezaCT(infoInicial) {
   });
 }
 
-// =============================================================================
-//  FORM RECEPCIÓN DE MATERIAS PRIMAS — multi-ítems por día
-// =============================================================================
+// FORM RECEPCIÓN DE MATERIAS PRIMAS — multi-ítems por día
 function iniciarFormRecepcion(infoInicial) {
   const form = document.getElementById('form-recepcion');
   const diaEl = document.getElementById('rec-dia-actual');
@@ -1421,7 +1379,7 @@ function iniciarFormRecepcion(infoInicial) {
     Array.from(form.querySelectorAll('input, textarea, button:not(#rec-btn-registros)')).forEach(el => el.disabled = true);
   }
 
-  // Inicialización: al menos un item
+  // arranco con un item
   crearItem();
   btnAgregar.addEventListener('click', () => crearItem());
 
@@ -1461,9 +1419,7 @@ function iniciarFormRecepcion(infoInicial) {
   });
 }
 
-// =============================================================================
-//  Boot
-// =============================================================================
+// Boot
 const PLANTILLAS = {
   'calidad_agua':              iniciarFormCalidadAgua,
   'control_temperatura':       iniciarFormTemperatura,

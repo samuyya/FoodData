@@ -450,7 +450,7 @@ async function cargarHistorial(anio, mes) {
     const data = await r.json();
     pintarTabla(data.registros, data.anio, data.mes, data.esMesActual);
   } catch (err) {
-    estadoHistorial.textContent = 'Error de red';
+    estadoHistorial.textContent = 'no hay conexion';
   }
 }
 
@@ -513,7 +513,7 @@ formVerificar.addEventListener('submit', async (e) => {
         }
       }
     } catch (err) {
-      modalError.textContent = 'Error de red';
+      modalError.textContent = 'no hay conexion';
       modalError.hidden = false;
     }
   });
@@ -560,7 +560,6 @@ btnVolverFormato.addEventListener('click', () => {
 });
 
 btnIrMenu.addEventListener('click', () => { window.location.href = '/formatos.html'; });
-
 
 async function iniciar() {
   if (!formatoId) {

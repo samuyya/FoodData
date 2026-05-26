@@ -211,7 +211,7 @@ async function desactivarEmpresa(emp) {
     if (!r.ok) { alert(data.error || 'Error al desactivar'); return; }
     cargarEmpresas();
   } catch (err) {
-    alert('Error de red');
+    alert('no hay conexion');
   }
 }
 
@@ -223,7 +223,7 @@ async function reactivarEmpresa(emp) {
     if (!r.ok) { alert(data.error || 'Error al reactivar'); return; }
     cargarEmpresas();
   } catch (err) {
-    alert('Error de red');
+    alert('no hay conexion');
   }
 }
 
@@ -250,7 +250,7 @@ async function eliminarEmpresa(emp) {
     alert(`Empresa "${emp.nombre}" eliminada definitivamente.`);
     cargarEmpresas();
   } catch (err) {
-    alert('Error de red');
+    alert('no hay conexion');
   }
 }
 
@@ -308,7 +308,7 @@ async function abrirModalEditar(empresaId) {
 
     modalEditar.hidden = false;
   } catch (err) {
-    alert('Error de red');
+    alert('no hay conexion');
   }
 }
 
@@ -360,7 +360,7 @@ formEditar.addEventListener('submit', async (e) => {
       cargarEmpresas();
       setTimeout(cerrarModalEditar, 800);
     } catch (err) {
-      mostrarMensaje(msgEditar, 'Error de red', true);
+      mostrarMensaje(msgEditar, 'no hay conexion', true);
     }
   });
 });
@@ -392,7 +392,7 @@ formEmpresa.addEventListener('submit', async (e) => {
       pintarTablaCarpetas(tablaCarpetas, idsTodos(), null);
       cargarEmpresas();
     } catch (err) {
-      mostrarMensaje(msgEmpresa, 'Error de red', true);
+      mostrarMensaje(msgEmpresa, 'no hay conexion', true);
     }
   });
 });
@@ -422,7 +422,7 @@ formAdmin.addEventListener('submit', async (e) => {
       formAdmin.reset();
       cargarAdmins();
     } catch (err) {
-      mostrarMensaje(msgAdmin, 'Error de red', true);
+      mostrarMensaje(msgAdmin, 'no hay conexion', true);
     }
   });
 });

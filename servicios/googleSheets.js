@@ -30,7 +30,7 @@ const COLOR_TEXTO_OSC  = { red: 0.055, green: 0.227, blue: 0.192 };  // #0E3A31
 
 function inicializar() {
   if (!fs.existsSync(RUTA_CREDENCIALES)) {
-    console.warn('Google Sheets: sin archivo de credenciales, sincronización desactivada.');
+    console.log('sin credenciales de google sheets, no sincroniza');
     return;
   }
   try {
@@ -44,7 +44,7 @@ function inicializar() {
     disponible = true;
     console.log(`Google Sheets: sincronización activada (cuenta: ${cuentaServicioEmail})`);
   } catch (err) {
-    console.error('Google Sheets: error al inicializar:', err.message);
+    console.log('google sheets no arranco:', err.message);
     disponible = false;
   }
 }
@@ -63,9 +63,7 @@ function nombrePestana(formato, carpeta) {
   return `${formato.numero}. ${formato.nombreCorto || formato.nombre}${sufijo}`.slice(0, 90);
 }
 
-// =============================================================================
-//  Columnas por formato
-// =============================================================================
+// Columnas por formato
 function columnasGenericas() {
   return [
     { header: 'Día',           key: 'dia' },
@@ -303,12 +301,9 @@ function columnasYFila(formatoId) {
   }
 }
 
-// =============================================================================
-//  Sincronización
-// =============================================================================
+// Sincronización
 async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) {
-  console.log(`[GS] Iniciando sync — formato=${formatoId} carpeta=${carpeta} sheetId=${spreadsheetId}`);
-  if (!disponible) throw new Error('Google Sheets no está configurado en el servidor');
+    if (!disponible) throw new Error('Google Sheets no está configurado en el servidor');
   if (!spreadsheetId) throw new Error('Esta empresa no tiene una hoja de Google Sheets vinculada');
 
   const formato = getFormato(formatoId);
@@ -318,12 +313,10 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
   const pestana = nombrePestana(formato, carpetaReal);
   const { columnas, fila, expandirFilas } = columnasYFila(formatoId);
   const numCols = columnas.length;
-  console.log(`[GS] Pestaña destino: "${pestana}", columnas: ${numCols}`);
-
+  
   // ----- Obtener / crear pestaña -----
   const meta = await sheets.spreadsheets.get({ spreadsheetId });
-  console.log(`[GS] Metadatos OK. Pestañas existentes: ${meta.data.sheets.length}`);
-  const existente = (meta.data.sheets || []).find(s => s.properties.title === pestana);
+    const existente = (meta.data.sheets || []).find(s => s.properties.title === pestana);
 
   let sheetId;
   if (existente) {
@@ -352,8 +345,7 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
     formato: formatoId,
     carpeta: carpetaReal
   }).sort({ anio: 1, mes: 1, dia: 1 }).lean();
-  console.log(`[GS] Registros a escribir: ${registros.length}`);
-
+  
   // Construir filas con secciones por mes
   const valores = [];                  // matriz de strings
   const formatRequests = [];           // requests de formato para batchUpdate
@@ -466,7 +458,7 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
         }
       });
 
-      // Para recepción: columnas C/NC y decisión
+      // recepcion tiene mas columnas C/NC
       const cncRecepcion = ['color', 'olor', 'apariencia', 'empaque'].map(k => columnas.findIndex(c => c.key === k)).filter(i => i >= 0);
       const idxDecision = columnas.findIndex(c => c.key === 'decision');
 
@@ -482,7 +474,7 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
           });
           const idxFila = pushFila(arr);
 
-          // Festivo: solo en la 1ra fila del día y solo en la celda del día
+          // feriado solo en la primera fila del dia
           if (esFest && idxItem === 0) {
             formatRequests.push({
               repeatCell: {
@@ -582,13 +574,12 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
       }
     });
   } catch (errLimpieza) {
-    console.warn('[GS] No se pudo limpiar formato previo (no es crítico):', errLimpieza.message);
+    console.log('gs: No se pudo limpiar formato previo (no es crítico):', err.message);
   }
 
   // ----- Escribir valores -----
   if (valores.length > 0) {
-    console.log(`[GS] Escribiendo ${valores.length} filas...`);
-    await sheets.spreadsheets.values.update({
+        await sheets.spreadsheets.values.update({
       spreadsheetId,
       range: `'${pestana}'!A1`,
       valueInputOption: 'RAW',
@@ -598,8 +589,7 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
 
   // ----- Aplicar formato en batch (chunks de 100 requests) -----
   if (formatRequests.length > 0) {
-    console.log(`[GS] Aplicando ${formatRequests.length} requests de formato...`);
-    const CHUNK = 100;
+        const CHUNK = 100;
     for (let i = 0; i < formatRequests.length; i += CHUNK) {
       await sheets.spreadsheets.batchUpdate({
         spreadsheetId,
@@ -607,8 +597,7 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
       });
     }
   }
-  console.log(`[GS] ✅ Sync completado para pestaña "${pestana}"`);
-}
+  }
 
 function rango(sheetId, startRow, endRow, startCol, endCol) {
   return {

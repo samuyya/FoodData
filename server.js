@@ -131,7 +131,7 @@ async function sincronizarIndicesRegistro() {
       console.log('Índices de Registro sincronizados.');
     }
   } catch (err) {
-    console.error('Error sincronizando índices de Registro:', err.message);
+    console.log('error sincronizando indices:', err.message);
   }
 }
 

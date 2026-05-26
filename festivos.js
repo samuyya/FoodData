@@ -1,9 +1,6 @@
-// =============================================================================
 //  Festivos de Colombia
 //  Incluye: festivos fijos, festivos trasladados (Ley Emiliani) y festivos
 //  religiosos basados en la Pascua.
-// =============================================================================
-
 const cache = new Map();
 
 // Algoritmo de Meeus/Jones/Butcher para calcular el Domingo de Pascua

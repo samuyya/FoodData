@@ -1,7 +1,5 @@
-// =============================================================================
 //  Catálogo de los 11 programas del Plan de Saneamiento Básico
 //  Tomado de "INFORMACION ADMINISTRADOR_CARPETA SANIDAD.docx" — punto 2.
-// =============================================================================
 const PROGRAMAS = [
   {
     numero: 1,
@@ -127,9 +125,7 @@ const PROGRAMAS = [
   }
 ];
 
-// =============================================================================
-//  Elementos
-// =============================================================================
+// Elementos
 const logoEl = document.getElementById('logo-empresa');
 const logoPlaceholder = document.getElementById('logo-placeholder');
 const nombreEmpresaEl = document.getElementById('nombre-empresa');
@@ -145,9 +141,7 @@ const mpDocs = document.getElementById('mp-docs');
 const mpCerrar = document.getElementById('mp-cerrar');
 const mpCerrarBtn = document.getElementById('mp-cerrar-btn');
 
-// =============================================================================
-//  Renderizado
-// =============================================================================
+// Renderizado
 function escapeHTML(s) {
   return String(s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -222,9 +216,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.h
 
 btnVolver.addEventListener('click', () => { window.location.href = '/menu.html'; });
 
-// =============================================================================
-//  Boot
-// =============================================================================
+// Boot
 async function iniciar() {
   try {
     const rMe = await fetch('/api/auth/me');

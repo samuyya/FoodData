@@ -21,9 +21,7 @@ const MESES_LARGOS = [
 
 const SUFIJO_CARPETA = { cocina: '', salon: ' (Sal)', administracion: ' (Adm)' };
 
-// =============================================================================
-//  Utilidades
-// =============================================================================
+// Utilidades
 function slug(s) {
   return String(s || 'empresa')
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -67,9 +65,7 @@ async function abrirWorkbook(filePath, nombreEmpresa) {
   return wb;
 }
 
-// =============================================================================
-//  Columnas por formato
-// =============================================================================
+// Columnas por formato
 function columnasGenericas() {
   return [
     { header: 'Día',           key: 'dia',           width: 8  },
@@ -227,9 +223,7 @@ function pintarCeldaCNC(cell) {
   cell.alignment = { vertical: 'middle', horizontal: 'center' };
 }
 
-// =============================================================================
-//  Pintar una hoja: todos los meses apilados con sus encabezados
-// =============================================================================
+// Pintar una hoja: todos los meses apilados con sus encabezados
 function columnasLimpiezaSalon() {
   return [
     { header: 'Día',           key: 'dia',           width: 6  },
@@ -329,7 +323,7 @@ function columnasRecepcion() {
     { header: 'Responsable',  key: 'responsable',  width: 22 }
   ];
 }
-// Para recepción NO usamos `fila(r)` — necesitamos expandir cada item del día
+// recepcion
 function filasRecepcion(r) {
   const items = (r.datos && Array.isArray(r.datos.items)) ? r.datos.items : [];
   if (items.length === 0) {
@@ -341,7 +335,7 @@ function filasRecepcion(r) {
     }];
   }
   return items.map((it, idx) => ({
-    dia: idx === 0 ? r.dia : '',  // solo el primer item muestra el día
+    dia: idx === 0 ? r.dia : '',  // solo el 1er item muestra el dia
     fecha: idx === 0 ? fechaLargaEs(r.anio, r.mes, r.dia) : '',
     proveedor: it.proveedor || '',
     producto: it.producto || '',
@@ -456,7 +450,7 @@ function pintarHojaMultiMes(sheet, registros, formatoId, formato) {
         const row = sheet.addRow(columnas.map(c => data[c.key]));
         row.alignment = { vertical: 'top', wrapText: true };
 
-        // Festivo: solo en la primera fila del día (idxItem===0) y solo la celda del día
+        // feriado solo en la primera fila del dia
         if (esFest && idxItem === 0) {
           const cell = row.getCell(idxColDia);
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR_PRIMARIO } };
@@ -467,16 +461,16 @@ function pintarHojaMultiMes(sheet, registros, formatoId, formato) {
           row.getCell(idxColDia).alignment = { horizontal: 'center', vertical: 'middle' };
         }
 
-        // Resaltar columnas C/NC
+        // C/NC se pinta
         cncIdxs.forEach(i => pintarCeldaCNC(row.getCell(i)));
 
-        // Para recepción: resaltar columnas adicionales (color, olor, apariencia, empaque, decisión)
+        // recepcion
         if (formatoId === 'recepcion_materias_primas') {
           ['color', 'olor', 'apariencia', 'empaque'].forEach(key => {
             const i = columnas.findIndex(c => c.key === key) + 1;
             if (i > 0) pintarCeldaCNC(row.getCell(i));
           });
-          // Decisión: verde si Acepta, rojo si Rechaza
+          // acepta verde, rechaza rojo
           const iDec = columnas.findIndex(c => c.key === 'decision') + 1;
           if (iDec > 0) {
             const cell = row.getCell(iDec);
@@ -496,9 +490,7 @@ function pintarHojaMultiMes(sheet, registros, formatoId, formato) {
   });
 }
 
-// =============================================================================
-//  Sincronizar la hoja de (formato, carpeta) en el archivo de la empresa
-// =============================================================================
+// Sincronizar la hoja de (formato, carpeta) en el archivo de la empresa
 async function sincronizarFormatoCarpeta(empresaId, formatoId, carpeta) {
   const formato = getFormato(formatoId);
   if (!formato) throw new Error(`Formato desconocido: ${formatoId}`);
@@ -594,9 +586,7 @@ async function getRutaArchivoActual(empresaId) {
   return rutaArchivoEmpresa(empresaId, empresa && empresa.nombre);
 }
 
-// =============================================================================
-//  ASISTENCIA (no cambia su estructura — pero ahora resalta festivos)
-// =============================================================================
+// ASISTENCIA (no cambia su estructura — pero ahora resalta festivos)
 function horaCorta(fecha) {
   if (!fecha) return '';
   return new Date(fecha).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });

@@ -178,30 +178,57 @@ function pintarProgramas() {
   });
 }
 
-function abrirModal(programa) {
+function pesoLegible(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
+async function cargarDocsDelPrograma(numero) {
+  try {
+    const r = await fetch(`/api/documentos/programa/${numero}`);
+    if (!r.ok) return [];
+    const data = await r.json();
+    return data.documentos || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+async function abrirModal(programa) {
   mpNumero.textContent = programa.numero;
   mpIcono.textContent = programa.icono;
   mpTitulo.textContent = programa.titulo;
   mpDescripcion.textContent = programa.descripcion;
+  modal.querySelector('.modal-programa').dataset.color = programa.color;
+
+  // muestro el modal de una con loading mientras pido los docs
+  mpDocs.innerHTML = '<li class="modal-programa-doc-vacio">Cargando documentos...</li>';
+  modal.hidden = false;
+  document.body.style.overflow = 'hidden';
+
+  const docsReales = await cargarDocsDelPrograma(programa.numero);
 
   mpDocs.innerHTML = '';
-  if (programa.documentos.length === 0) {
+  if (docsReales.length === 0) {
     const li = document.createElement('li');
     li.className = 'modal-programa-doc-vacio';
-    li.textContent = 'Sin documentos asociados todavía.';
+    li.textContent = 'Aún no se han cargado documentos para este programa.';
     mpDocs.appendChild(li);
   } else {
-    programa.documentos.forEach(d => {
+    docsReales.forEach(d => {
       const li = document.createElement('li');
-      li.innerHTML = `<span class="modal-programa-doc-icono">📄</span> ${escapeHTML(d)}`;
+      li.innerHTML = `
+        <a href="/api/documentos/${d._id}/descargar" target="_blank" class="modal-programa-doc-link">
+          <span class="modal-programa-doc-icono">📄</span>
+          <span class="modal-programa-doc-nombre">${escapeHTML(d.nombreOriginal)}</span>
+          <span class="modal-programa-doc-meta">${pesoLegible(d.tamanoBytes)}</span>
+        </a>
+        ${d.descripcion ? `<small class="modal-programa-doc-desc">${escapeHTML(d.descripcion)}</small>` : ''}
+      `;
       mpDocs.appendChild(li);
     });
   }
-
-  // Color de marca según el programa
-  modal.querySelector('.modal-programa').dataset.color = programa.color;
-  modal.hidden = false;
-  document.body.style.overflow = 'hidden';
 }
 
 function cerrarModal() {

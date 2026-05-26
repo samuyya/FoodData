@@ -15,6 +15,7 @@ const adminRoutes = require('./routes/admin');
 const registrosRoutes = require('./routes/registros');
 const empleadosRoutes = require('./routes/empleados');
 const asistenciaRoutes = require('./routes/asistencia');
+const documentosRoutes = require('./routes/documentos');
 const googleSheets = require('./servicios/googleSheets');
 const Registro = require('./models/Registro');
 
@@ -115,6 +116,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/registros', registrosRoutes);
 app.use('/api/empleados', empleadosRoutes);
 app.use('/api/asistencia', asistenciaRoutes);
+app.use('/api/documentos', documentosRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, mensaje: 'Servidor en linea' });

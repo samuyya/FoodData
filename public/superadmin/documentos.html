@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Documentos por programa - Superadmin</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body class="sub-body">
+  <header class="sub-topbar">
+    <div class="sub-topbar-inner">
+      <button type="button" id="btn-volver" class="btn-secundario btn-volver-sub">← Volver al panel</button>
+
+      <div class="sub-encabezado">
+        <div class="sub-titulo-grupo">
+          <h1 class="titulo-pagina">Documentos por programa</h1>
+          <p class="subtitulo-pagina">
+            Empresa: <strong id="nombre-empresa">...</strong>
+          </p>
+        </div>
+        <img src="/img/logo-solo.fooddata.png" class="menu-marca-logo" alt="FoodData" />
+      </div>
+    </div>
+  </header>
+
+  <main class="sub-main">
+    <p class="ayuda">
+      Sube los documentos físicos (fichas técnicas, certificados, cronogramas…) que esta empresa
+      tiene asociados a cada uno de los 11 programas. Solo tú (superadmin) puedes subirlos o borrarlos.
+      La empresa los verá en su sección de Programas.
+    </p>
+
+    <ul id="lista-programas-doc" class="lista-programas-doc"></ul>
+  </main>
+
+  <script src="/js/util.js"></script>
+  <script src="/js/superadmin-documentos.js"></script>
+</body>
+</html>

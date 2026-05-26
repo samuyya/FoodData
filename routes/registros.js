@@ -77,6 +77,56 @@ async function infoPendientes(empresaId, formatoId, carpeta) {
   };
 }
 
+// suma de dias pendientes a lo largo de todos los formatos activos de la empresa
+// para el mes en curso. lo uso en el menu principal para mostrar el badge rojo.
+router.get('/resumen-pendientes', requireEmpresa, async (req, res) => {
+  const empresaId = req.session.empresa.id;
+  const config = await getConfigEmpresa(empresaId);
+  const { dia: hoy, mes, anio } = partesDeHoy();
+
+  // junto las instancias unicas (formato, carpeta canonica) para no contar 2 veces los compartidos
+  const instancias = new Set();
+  for (const carpeta of ['cocina', 'salon', 'administracion']) {
+    for (const formatoId of (config.carpetas[carpeta] || [])) {
+      // presentacion_personal es solo lista de empleados, no hay registro diario por ahora
+      if (formatoId === 'presentacion_personal') continue;
+      const c = carpetaCanonica(formatoId, carpeta, config);
+      instancias.add(`${formatoId}|${c}`);
+    }
+  }
+
+  let totalDiasPendientes = 0;
+  let formatosConPendientes = 0;
+
+  for (const key of instancias) {
+    const [formatoId, carpeta] = key.split('|');
+    const guardados = await Registro.find({
+      empresa_id: empresaId,
+      formato: formatoId,
+      carpeta,
+      anio, mes,
+      dia: { $lte: hoy }
+    }).select('dia').lean();
+    const setDias = new Set(guardados.map(g => g.dia));
+    let pendientes = 0;
+    for (let d = 1; d <= hoy; d++) {
+      if (!setDias.has(d)) pendientes++;
+    }
+    if (pendientes > 0) {
+      formatosConPendientes++;
+      totalDiasPendientes += pendientes;
+    }
+  }
+
+  res.json({
+    ok: true,
+    totalDiasPendientes,
+    formatosConPendientes,
+    totalFormatos: instancias.size,
+    mes, anio
+  });
+});
+
 router.get('/pendientes/:formatoId', requireEmpresa, async (req, res) => {
   const { formatoId } = req.params;
   const carpetaPedida = req.query.carpeta || 'cocina';

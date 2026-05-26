@@ -45,6 +45,28 @@ btnLogout.addEventListener('click', async () => {
   window.location.href = '/';
 });
 
+async function cargarBadgePendientes() {
+  try {
+    const r = await fetch('/api/registros/resumen-pendientes');
+    if (!r.ok) return;
+    const d = await r.json();
+    const badge = document.getElementById('badge-pendientes');
+    if (!badge) return;
+    if (d.totalDiasPendientes > 0) {
+      const dias = d.totalDiasPendientes;
+      const formatos = d.formatosConPendientes;
+      badge.textContent = dias === 1
+        ? '1 día pendiente'
+        : `${dias} días pendientes (${formatos} formato${formatos === 1 ? '' : 's'})`;
+      badge.hidden = false;
+    } else if (d.totalFormatos > 0) {
+      badge.textContent = '✓ al día';
+      badge.classList.add('menu-badge--ok');
+      badge.hidden = false;
+    }
+  } catch (e) { /* silencio: si falla, el menu sigue funcionando */ }
+}
+
 async function iniciar() {
   try {
     const rMe = await fetch('/api/auth/me');
@@ -53,6 +75,7 @@ async function iniciar() {
     if (me.rol !== 'empleado') { window.location.href = '/'; return; }
     pintarHeader(me.empresa);
     await fetch('/api/admin/limpiar', { method: 'POST' });
+    cargarBadgePendientes();
   } catch (err) {
     document.body.innerHTML = '<p style="padding:2rem;color:#b91c1c">Error cargando el menú. Recarga la página.</p>';
   }

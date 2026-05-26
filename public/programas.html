@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Programas - FoodData</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body class="sub-body">
+  <header class="sub-topbar">
+    <div class="sub-topbar-inner">
+      <button type="button" id="btn-volver" class="btn-secundario btn-volver-sub">← Volver al menú</button>
+
+      <div class="sub-encabezado">
+        <div class="sub-titulo-grupo">
+          <h1 class="titulo-pagina">Programas</h1>
+          <p class="subtitulo-pagina">Los 11 programas del Plan de Saneamiento Básico de tu establecimiento.</p>
+        </div>
+
+        <section class="establecimiento">
+          <div class="establecimiento-logo">
+            <img id="logo-empresa" class="establecimiento-logo-img" alt="" hidden />
+            <span id="logo-placeholder" class="establecimiento-logo-ph">Logo</span>
+          </div>
+          <div class="establecimiento-info">
+            <span class="establecimiento-label">Restaurante</span>
+            <strong id="nombre-empresa" class="establecimiento-nombre">...</strong>
+          </div>
+        </section>
+      </div>
+    </div>
+  </header>
+
+  <main class="sub-main">
+    <ul id="lista-programas" class="lista-programas"></ul>
+  </main>
+
+  <!-- Modal de detalle del programa -->
+  <div id="modal-programa" class="modal-backdrop" hidden>
+    <div class="modal modal-programa" role="dialog" aria-modal="true" aria-labelledby="mp-titulo">
+      <div class="modal-programa-cabecera">
+        <div class="modal-programa-numero" id="mp-numero">1</div>
+        <div class="modal-programa-titulo-grupo">
+          <span class="modal-programa-icono" id="mp-icono">📋</span>
+          <h2 class="modal-programa-titulo" id="mp-titulo">Título</h2>
+        </div>
+        <button type="button" id="mp-cerrar" class="modal-cerrar-x" aria-label="Cerrar">✕</button>
+      </div>
+
+      <div class="modal-programa-cuerpo">
+        <section class="modal-programa-seccion">
+          <h3 class="modal-programa-subtitulo">📝 Descripción</h3>
+          <p class="modal-programa-descripcion" id="mp-descripcion"></p>
+        </section>
+
+        <section class="modal-programa-seccion">
+          <h3 class="modal-programa-subtitulo">📎 Documentos asociados</h3>
+          <ul class="modal-programa-docs" id="mp-docs"></ul>
+        </section>
+
+        <section class="modal-programa-seccion modal-programa-proximamente">
+          <p class="ayuda">
+            ⏳ <strong>Próximamente:</strong> aquí podrás cargar y descargar los documentos físicos
+            (fichas técnicas, certificados, cronogramas, etc.) de este programa.
+          </p>
+        </section>
+      </div>
+
+      <div class="modal-programa-acciones">
+        <button type="button" id="mp-cerrar-btn" class="btn-primario">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/util.js"></script>
+  <script src="/js/programas.js"></script>
+</body>
+</html>

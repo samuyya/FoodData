@@ -36,7 +36,9 @@ btnAsistencia.addEventListener('click', () => {
   window.location.href = '/asistencia.html';
 });
 btnCapacitaciones.addEventListener('click', () => avisoPendiente('Capacitaciones'));
-btnProgramas.addEventListener('click', () => avisoPendiente('Programas'));
+btnProgramas.addEventListener('click', () => {
+  window.location.href = '/programas.html';
+});
 
 btnLogout.addEventListener('click', async () => {
   await fetch('/api/auth/logout', { method: 'POST' });

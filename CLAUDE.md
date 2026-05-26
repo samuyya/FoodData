@@ -94,15 +94,74 @@ Tokens en `public/css/styles.css` (`:root`): `--color-primario: #16c2a3` (turquo
 - **PWA:** `sw.js` usa red-primero para estáticos, **nunca cachea `/api/`** (datos siempre frescos), respaldo offline.
 
 ## Seguridad
-- helmet con CSP (no hay scripts inline en el front), express-rate-limit (login y verificaciones de admin), cors con lista blanca (`ALLOWED_ORIGINS`), bcryptjs para hashes, cookie de sesión `httpOnly`/`sameSite: lax`/`secure` en producción.
+- helmet con CSP (no hay scripts inline en el front), HSTS en prod, `frameAncestors: 'none'` anti-clickjacking, `referrerPolicy: same-origin`.
+- express-rate-limit (login 15/15min, verificaciones admin 20/15min), CORS con lista blanca (`ALLOWED_ORIGINS`).
+- bcryptjs con 12 rounds para hashes nuevos. Cookie `fd.sid` `httpOnly`/`sameSite: lax`/`secure` en producción + `rolling: true` (refresca 8h en cada request).
+- Login con `req.session.regenerate()` (anti session fixation) + comparación contra hash falso si el email no existe (anti timing attack).
+- Body parser limitado a `256kb`. Middleware global sanitiza llaves con `$` o `.` en body/query/params (anti NoSQL injection).
+- Error handler global no expone stacks al cliente (`"Algo salió mal"` para 500).
+- En producción el server **revienta al arrancar** si `SESSION_SECRET` no existe o tiene <32 caracteres. `app.set('trust proxy', 1)` activo en prod.
 - Aislamiento multiempresa: **toda consulta filtra por `empresa_id`** a nivel de aplicación (manual, revisado; no hay inyección automática en Mongoose).
+- Upload de logos: solo `png/jpg/webp` (SVG fuera porque puede traer `<script>`), validación de extensión Y `mimetype`, máx 2MB.
+- Fotos de asistencia: privadas, servidas por endpoint con check de `empresa_id` + bloqueo de `..` en path.
+
+## ⚠️ ANTES DE DESPLEGAR — CHECKLIST OBLIGATORIO
+Cuando el usuario diga "vamos a desplegar" o "subir a producción" o "Render", **detente y revisa esta lista con él**. NO desplegar sin completar:
+
+### 1. Variables de entorno en producción
+- [ ] `SESSION_SECRET` con 32+ caracteres aleatorios (`openssl rand -base64 48`)
+- [ ] `NODE_ENV=production`
+- [ ] `ALLOWED_ORIGINS=https://dominio-real.com` (no `localhost`)
+- [ ] `MONGODB_URI` apuntando a Atlas
+- [ ] `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` con valores fuertes (cambiar los de desarrollo)
+- [ ] `GOOGLE_CREDENTIALS_PATH` o las credenciales como JSON en una variable de entorno (no como archivo en el filesystem efímero)
+
+### 2. Sesiones persistentes (CRÍTICO)
+- [ ] `npm install connect-mongo`
+- [ ] En `server.js` agregar `store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI, ttl: 8 * 60 * 60 })` dentro de `session({...})`
+- [ ] Sin esto, **las sesiones se pierden cada deploy** de Render
+
+### 3. Storage de archivos (CRÍTICO en Render/host gratis — disco efímero)
+- [ ] Migrar `servicios/almacenamiento.js` (fotos de asistencia) a **Cloudinary** o S3
+- [ ] Migrar logos de empresa (`public/img/logos/`) también a Cloudinary/S3
+- [ ] El campo `logo` y `fotoIngreso/fotoSalida` deben guardar URL completa de Cloudinary, no path local
+
+### 4. MongoDB Atlas
+- [ ] Network Access: cambiar `0.0.0.0/0` por las IPs específicas de Render (no dejar abierto al mundo)
+- [ ] Crear usuario de DB específico de producción (no reusar el de desarrollo)
+
+### 5. Dependencias vulnerables
+- [ ] `npm audit` — actualmente 5 moderate transitorias en `googleapis → uuid` (DoS bajo)
+- [ ] Cuando salga `googleapis@150+` corre `npm update googleapis` y verifica que `npm audit` quede limpio
+
+### 6. Logs y monitoreo
+- [ ] Reemplazar `console.log` por un logger real (`pino` o `winston`) que pueda enviar a un servicio (Better Stack, Logtail)
+- [ ] Agregar alertas en Render para errores 500 y caídas
+
+### 7. Cosas que ya están parchadas en código (NO tocar)
+- ✅ `passwordHash` ya no se expone en `/api/superadmin/administradores`
+- ✅ Login con tiempo constante + `session.regenerate()`
+- ✅ Body parser con `limit: 256kb`
+- ✅ Middleware anti-NoSQL injection
+- ✅ Error handler global sin stack traces al cliente
+- ✅ HSTS, frameguard, referrer policy
+- ✅ bcrypt rounds = 12
+- ✅ SVG bloqueado en upload de logos
+- ✅ Cookie `fd.sid` httpOnly/secure/sameSite + rolling
+
+### 8. Post-deploy
+- [ ] Probar login con superadmin y crear empresa de prueba
+- [ ] Probar guardar un formato → verificar que Excel y Google Sheets se sincronizan
+- [ ] Probar asistencia con foto → verificar que se sube a Cloudinary
+- [ ] Probar logout → verificar que la sesión se invalida
+- [ ] Verificar HSTS con: `curl -I https://tudominio.com` (debe haber header `strict-transport-security`)
 
 ## Pendiente / roadmap
 - **Contenido de los formularios** de cada formato (empezar con uno de prueba; el usuario enviará los modelos).
 - **Capacitaciones:** contenido del módulo + estudiar hacerlo un **servicio público pago** (cualquiera entra, ve la capacitación, paga, recibe certificado BPM) → requiere acceso público, pasarela de pago (Wompi/MercadoPago/PayU en Colombia) y certificados en PDF.
 - **Programas:** definir contenido.
 - **Migración a React** (planeada).
-- **Despliegue** (host recomendado: Render). Antes hay que: `app.set('trust proxy', 1)`, sesiones en MongoDB (`connect-mongo`), credenciales de Google por variable de entorno, y mover fotos/logos a **Cloudinary** (el disco de los hosting gratis es efímero).
+- **Despliegue** (host recomendado: Render). **NO desplegar sin completar la sección "⚠️ ANTES DE DESPLEGAR — CHECKLIST OBLIGATORIO"** más arriba en este archivo. Faltan: `connect-mongo` (sesiones persistentes), Cloudinary (storage), credenciales de Google por env var, restricción de IP en Atlas, logger real.
 
 ## Gotchas
 - Si "Could not connect to MongoDB Atlas": agregar la IP actual o usar `0.0.0.0/0` en Network Access.

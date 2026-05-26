@@ -7,6 +7,7 @@ const Empresa = require('../models/Empresa');
 const Asistencia = require('../models/Asistencia');
 const { getFormato } = require('../formatos');
 const { esFestivo, nombreFestivo } = require('../festivos');
+const { getConfigEmpresa, carpetaCanonica } = require('../empresaConfig');
 
 const CARPETA_EXCEL = path.join(__dirname, '..', 'datos', 'excel');
 const COLOR_PRIMARIO = 'FF16C2A3';   // turquoise FoodData
@@ -495,22 +496,28 @@ async function sincronizarFormatoCarpeta(empresaId, formatoId, carpeta) {
   const formato = getFormato(formatoId);
   if (!formato) throw new Error(`Formato desconocido: ${formatoId}`);
 
+  const config = await getConfigEmpresa(empresaId);
+  const esCompartido = config.compartidos.includes(formatoId);
+  const carpetaReal = carpetaCanonica(formatoId, carpeta || 'cocina', config);
+
   const empresa = await Empresa.findById(empresaId).select('nombre').lean();
   const { dir, filePath } = rutaArchivoEmpresa(empresaId, empresa && empresa.nombre);
   await fs.promises.mkdir(dir, { recursive: true });
 
   const wb = await abrirWorkbook(filePath, empresa && empresa.nombre);
 
-  const sheetName = nombreHoja(formato, carpeta || 'cocina');
+  // si es compartido, una sola hoja sin sufijo (no '(Sal)', no '(Adm)')
+  const sheetName = esCompartido
+    ? nombreHoja(formato, 'cocina')
+    : nombreHoja(formato, carpetaReal);
   const existente = wb.getWorksheet(sheetName);
   if (existente) wb.removeWorksheet(existente.id);
   const sheet = wb.addWorksheet(sheetName, { properties: { tabColor: { argb: COLOR_PRIMARIO } } });
 
-  // TODOS los registros de esta instancia (todos los meses)
   const registros = await Registro.find({
     empresa_id: empresaId,
     formato: formatoId,
-    carpeta: carpeta || 'cocina'
+    carpeta: carpetaReal
   }).sort({ anio: 1, mes: 1, dia: 1 }).lean();
 
   pintarHojaMultiMes(sheet, registros, formatoId, formato);

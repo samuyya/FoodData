@@ -5,7 +5,7 @@ const TODOS_IDS = FORMATOS.map(f => f.id);
 
 async function getConfigEmpresa(empresaId) {
   const e = await Empresa.findById(empresaId)
-    .select('formatosActivos formatosCarpeta')
+    .select('formatosActivos formatosCarpeta formatosCompartidos')
     .lean();
 
   const activos = (e && Array.isArray(e.formatosActivos) && e.formatosActivos.length > 0)
@@ -21,14 +21,30 @@ async function getConfigEmpresa(empresaId) {
   const conAlgunaCarpeta = new Set([...cocina, ...salon, ...administracion]);
   const sinAsignar = activos.filter(id => !conAlgunaCarpeta.has(id));
 
+  const compartidos = Array.isArray(e && e.formatosCompartidos) ? e.formatosCompartidos : [];
+
   return {
     activos,
     carpetas: {
       cocina: [...cocina, ...sinAsignar],
       salon,
       administracion
-    }
+    },
+    compartidos: compartidos.filter(id => activos.includes(id))
   };
+}
+
+// Si el formato es "compartido" en varias carpetas, todos los registros viven bajo
+// UNA carpeta canonica (la primera en el orden cocina > salon > administracion).
+// Si no es compartido, devuelve la carpeta tal cual.
+function carpetaCanonica(formatoId, carpetaSolicitada, config) {
+  if (!config || !Array.isArray(config.compartidos)) return carpetaSolicitada;
+  if (!config.compartidos.includes(formatoId)) return carpetaSolicitada;
+  const orden = ['cocina', 'salon', 'administracion'];
+  for (const c of orden) {
+    if (config.carpetas[c].includes(formatoId)) return c;
+  }
+  return carpetaSolicitada;
 }
 
 // Devuelve TODAS las carpetas a las que pertenece un formato (puede ser más de una)
@@ -40,4 +56,4 @@ function getCarpetasDeFormato(carpetas, formatoId) {
   return resultado.length > 0 ? resultado : ['cocina'];
 }
 
-module.exports = { getConfigEmpresa, getCarpetasDeFormato };
+module.exports = { getConfigEmpresa, getCarpetasDeFormato, carpetaCanonica };

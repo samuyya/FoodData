@@ -35,14 +35,17 @@ const storage = multer.diskStorage({
     cb(null, safe);
   }
 });
+// ojo: SVG fuera de la lista porque puede traer <script> y nos hace XSS
 const upload = multer({
   storage,
   limits: { fileSize: 2 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const ok = ['.png', '.jpg', '.jpeg', '.webp', '.svg'].includes(
-      path.extname(file.originalname).toLowerCase()
-    );
-    cb(ok ? null : new Error('Solo imágenes png/jpg/webp/svg'), ok);
+    const ext = path.extname(file.originalname).toLowerCase();
+    const mime = (file.mimetype || '').toLowerCase();
+    const extOk = ['.png', '.jpg', '.jpeg', '.webp'].includes(ext);
+    const mimeOk = ['image/png', 'image/jpeg', 'image/webp'].includes(mime);
+    if (!extOk || !mimeOk) return cb(new Error('Solo imágenes png/jpg/webp'), false);
+    cb(null, true);
   }
 });
 
@@ -87,6 +90,18 @@ function parsearCarpetas(body, activos) {
   return { cocina, salon, administracion };
 }
 
+function parsearCompartidos(body, activos, carpetas) {
+  // solo marca como compartido los formatos que estan en 2+ carpetas
+  // (no tiene sentido marcar como compartido un formato que solo esta en una)
+  const ids = parsearListaFormatos(body.formatosCompartidos);
+  return ids.filter(id => {
+    if (!activos.includes(id)) return false;
+    const en = [carpetas.cocina, carpetas.salon, carpetas.administracion]
+      .filter(arr => arr.includes(id)).length;
+    return en >= 2;
+  });
+}
+
 router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, res) => {
   try {
     const { nombre, email, password } = req.body;
@@ -100,12 +115,13 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
     }
 
     const formatosCarpeta = parsearCarpetas(req.body, formatosActivos);
+    const formatosCompartidos = parsearCompartidos(req.body, formatosActivos, formatosCarpeta);
 
     const yaExiste = await Empresa.findOne({ email: email.toLowerCase().trim() });
     if (yaExiste) {
       return res.status(409).json({ ok: false, error: 'Ya existe una empresa con ese email' });
     }
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 12);
     const logoRuta = req.file ? `/img/logos/${req.file.filename}` : '';
     const empresa = await Empresa.create({
       nombre: nombre.trim(),
@@ -114,7 +130,8 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
       logo: logoRuta,
       googleSheetId: extraerSheetId(req.body.googleSheetId),
       formatosActivos,
-      formatosCarpeta
+      formatosCarpeta,
+      formatosCompartidos
     });
     res.status(201).json({
       ok: true,
@@ -125,7 +142,8 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
         logo: empresa.logo,
         googleSheetId: empresa.googleSheetId,
         formatosActivos: empresa.formatosActivos,
-        formatosCarpeta: empresa.formatosCarpeta
+        formatosCarpeta: empresa.formatosCarpeta,
+        formatosCompartidos: empresa.formatosCompartidos
       }
     });
   } catch (err) {
@@ -153,7 +171,7 @@ router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req
     }
 
     if (req.body.password !== undefined && String(req.body.password).trim() !== '') {
-      empresa.passwordHash = await bcrypt.hash(req.body.password, 10);
+      empresa.passwordHash = await bcrypt.hash(req.body.password, 12);
     }
 
     if (req.file) {
@@ -173,6 +191,7 @@ router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req
     }
 
     empresa.formatosCarpeta = parsearCarpetas(req.body, empresa.formatosActivos);
+    empresa.formatosCompartidos = parsearCompartidos(req.body, empresa.formatosActivos, empresa.formatosCarpeta);
 
     await empresa.save();
     res.json({
@@ -184,7 +203,8 @@ router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req
         logo: empresa.logo,
         googleSheetId: empresa.googleSheetId,
         formatosActivos: empresa.formatosActivos,
-        formatosCarpeta: empresa.formatosCarpeta
+        formatosCarpeta: empresa.formatosCarpeta,
+        formatosCompartidos: empresa.formatosCompartidos
       }
     });
   } catch (err) {
@@ -250,7 +270,7 @@ router.post('/administradores', requireSuperadmin, async (req, res) => {
     const empresa = await Empresa.findById(empresa_id);
     if (!empresa) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 12);
     const admin = await Administrador.create({ nombre: nombre.trim(), passwordHash, empresa_id });
     res.status(201).json({ ok: true, administrador: { id: admin._id, nombre: admin.nombre, empresa_id: admin.empresa_id } });
   } catch (err) {
@@ -259,7 +279,11 @@ router.post('/administradores', requireSuperadmin, async (req, res) => {
 });
 
 router.get('/administradores', requireSuperadmin, async (req, res) => {
-  const admins = await Administrador.find().populate('empresa_id', 'nombre').sort({ nombre: 1 }).lean();
+  const admins = await Administrador.find()
+    .select('-passwordHash')
+    .populate('empresa_id', 'nombre')
+    .sort({ nombre: 1 })
+    .lean();
   res.json({ ok: true, administradores: admins });
 });
 

@@ -4,6 +4,7 @@ const fs = require('fs');
 const Registro = require('../models/Registro');
 const { getFormato } = require('../formatos');
 const { esFestivo } = require('../festivos');
+const { getConfigEmpresa, carpetaCanonica } = require('../empresaConfig');
 
 const RUTA_CREDENCIALES = process.env.GOOGLE_CREDENTIALS_PATH
   || path.join(__dirname, '..', 'google-credentials.json');
@@ -309,8 +310,11 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
   const formato = getFormato(formatoId);
   if (!formato) throw new Error(`Formato desconocido: ${formatoId}`);
 
-  const carpetaReal = carpeta || 'cocina';
-  const pestana = nombrePestana(formato, carpetaReal);
+  const config = await getConfigEmpresa(empresaId);
+  const esCompartido = config.compartidos.includes(formatoId);
+  const carpetaReal = carpetaCanonica(formatoId, carpeta || 'cocina', config);
+  // si es compartido, sin sufijo de carpeta — todas apuntan a la misma pestaña
+  const pestana = esCompartido ? nombrePestana(formato, 'cocina') : nombrePestana(formato, carpetaReal);
   const { columnas, fila, expandirFilas } = columnasYFila(formatoId);
   const numCols = columnas.length;
   

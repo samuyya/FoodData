@@ -6,7 +6,7 @@ const Empresa = require('../models/Empresa');
 const Administrador = require('../models/Administrador');
 const bcrypt = require('bcryptjs');
 const { FORMATOS, getFormato } = require('../formatos');
-const { getConfigEmpresa } = require('../empresaConfig');
+const { getConfigEmpresa, carpetaCanonica } = require('../empresaConfig');
 const { requireEmpresa } = require('../middleware/sesion');
 const { adminCarpetaAdministracionActivo, adminHistorialActivo, adminAtrasadoActivo } = require('./admin');
 const { sincronizarFormatoCarpeta, reconstruirArchivoCompleto, getRutaArchivoActual } = require('../servicios/excel');
@@ -79,25 +79,22 @@ async function infoPendientes(empresaId, formatoId, carpeta) {
 
 router.get('/pendientes/:formatoId', requireEmpresa, async (req, res) => {
   const { formatoId } = req.params;
-  const carpeta = req.query.carpeta || 'cocina';
+  const carpetaPedida = req.query.carpeta || 'cocina';
   if (!getFormato(formatoId)) {
     return res.status(404).json({ ok: false, error: 'Formato no encontrado' });
   }
-  if (!Registro.CARPETAS_VALIDAS.includes(carpeta)) {
+  if (!Registro.CARPETAS_VALIDAS.includes(carpetaPedida)) {
     return res.status(400).json({ ok: false, error: 'Carpeta no válida' });
   }
   const habilitado = await empresaTieneFormato(req.session.empresa.id, formatoId);
   if (!habilitado) {
     return res.status(403).json({ ok: false, error: 'Esta empresa no tiene este formato habilitado' });
   }
+  const config = await getConfigEmpresa(req.session.empresa.id);
+  const carpeta = carpetaCanonica(formatoId, carpetaPedida, config);  // si es compartido, redirige
   const info = await infoPendientes(req.session.empresa.id, formatoId, carpeta);
 
-  // Determinar si se debe pedir contraseña de administrador al entrar al formato
-  // - Solo si hay días atrasados (siguienteDia distinto de hoy) y aún no se completó hoy
-  // - Y si el formato NO está en la carpeta Administración (esa ya pide contraseña al entrar)
-  // - Y si no hay sesión activa de adminAtrasado
-  const { carpetas } = await getConfigEmpresa(req.session.empresa.id);
-  const esCarpetaAdmin = carpeta === 'administracion' && carpetas.administracion.includes(formatoId);
+  const esCarpetaAdmin = carpetaPedida === 'administracion' && config.carpetas.administracion.includes(formatoId);
   const hayAtrasados = !info.completoHoy && info.siguienteDia !== info.diaActual;
   const requiereAdminAtrasado = hayAtrasados && !esCarpetaAdmin && !adminAtrasadoActivo(req);
 
@@ -106,10 +103,12 @@ router.get('/pendientes/:formatoId', requireEmpresa, async (req, res) => {
 
 router.get('/hoy/:formatoId', requireEmpresa, async (req, res) => {
   const { formatoId } = req.params;
-  const carpeta = req.query.carpeta || 'cocina';
+  const carpetaPedida = req.query.carpeta || 'cocina';
   if (!getFormato(formatoId)) {
     return res.status(404).json({ ok: false, error: 'Formato no encontrado' });
   }
+  const config = await getConfigEmpresa(req.session.empresa.id);
+  const carpeta = carpetaCanonica(formatoId, carpetaPedida, config);
   const { dia, mes, anio } = partesDeHoy();
   const registro = await Registro.findOne({
     empresa_id: req.session.empresa.id,
@@ -122,21 +121,32 @@ router.get('/hoy/:formatoId', requireEmpresa, async (req, res) => {
 
 router.post('/', requireEmpresa, async (req, res) => {
   try {
-    const { formatoId, carpeta, responsable, observaciones, datos } = req.body;
+    const { formatoId, carpeta: carpetaPedida, responsable, observaciones, datos } = req.body;
     const formato = getFormato(formatoId);
     if (!formato) return res.status(400).json({ ok: false, error: 'Formato no válido' });
-    if (!carpeta || !Registro.CARPETAS_VALIDAS.includes(carpeta)) {
+    if (!carpetaPedida || !Registro.CARPETAS_VALIDAS.includes(carpetaPedida)) {
       return res.status(400).json({ ok: false, error: 'Carpeta no válida' });
     }
+    // sanidad: que el campo `datos` no traiga porquerias gigantes
+    if (datos && JSON.stringify(datos).length > 32000) {
+      return res.status(413).json({ ok: false, error: 'Los datos son demasiado grandes' });
+    }
+    if (observaciones && String(observaciones).length > 2000) {
+      return res.status(413).json({ ok: false, error: 'Las observaciones son muy largas (máx 2000 caracteres)' });
+    }
 
-    const { activos, carpetas } = await getConfigEmpresa(req.session.empresa.id);
+    const config = await getConfigEmpresa(req.session.empresa.id);
+    const { activos, carpetas } = config;
     if (!activos.includes(formatoId)) {
       return res.status(403).json({ ok: false, error: 'Esta empresa no tiene este formato habilitado' });
     }
     // Verificar que el formato esté asignado a esa carpeta para esta empresa
-    if (!carpetas[carpeta] || !carpetas[carpeta].includes(formatoId)) {
+    if (!carpetas[carpetaPedida] || !carpetas[carpetaPedida].includes(formatoId)) {
       return res.status(403).json({ ok: false, error: 'Este formato no está disponible en esa carpeta' });
     }
+
+    // si es compartido, redirige a la carpeta canonica para que el registro sea uno solo
+    const carpeta = carpetaCanonica(formatoId, carpetaPedida, config);
 
     const info = await infoPendientes(req.session.empresa.id, formatoId, carpeta);
     if (info.completoHoy) {
@@ -237,10 +247,12 @@ router.post('/', requireEmpresa, async (req, res) => {
 
 router.get('/meses/:formatoId', requireEmpresa, async (req, res) => {
   const { formatoId } = req.params;
-  const carpeta = req.query.carpeta || 'cocina';
+  const carpetaPedida = req.query.carpeta || 'cocina';
   if (!getFormato(formatoId)) {
     return res.status(404).json({ ok: false, error: 'Formato no encontrado' });
   }
+  const config = await getConfigEmpresa(req.session.empresa.id);
+  const carpeta = carpetaCanonica(formatoId, carpetaPedida, config);
   const empresaId = new mongoose.Types.ObjectId(req.session.empresa.id);
   const agregados = await Registro.aggregate([
     { $match: { empresa_id: empresaId, formato: formatoId, carpeta } },
@@ -253,10 +265,12 @@ router.get('/meses/:formatoId', requireEmpresa, async (req, res) => {
 
 router.get('/historial/:formatoId', requireEmpresa, async (req, res) => {
   const { formatoId } = req.params;
-  const carpeta = req.query.carpeta || 'cocina';
+  const carpetaPedida = req.query.carpeta || 'cocina';
   if (!getFormato(formatoId)) {
     return res.status(404).json({ ok: false, error: 'Formato no encontrado' });
   }
+  const config = await getConfigEmpresa(req.session.empresa.id);
+  const carpeta = carpetaCanonica(formatoId, carpetaPedida, config);
   const habilitado = await empresaTieneFormato(req.session.empresa.id, formatoId);
   if (!habilitado) {
     return res.status(403).json({ ok: false, error: 'Esta empresa no tiene este formato habilitado' });

@@ -20,6 +20,17 @@ const Registro = require('./models/Registro');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const EN_PRODUCCION = process.env.NODE_ENV === 'production';
+
+// si me olvido de poner SESSION_SECRET en produccion, mejor que reviente al arranque
+// y no que use un secreto adivinable
+if (EN_PRODUCCION && (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32)) {
+  console.error('FATAL: en produccion necesitas SESSION_SECRET con minimo 32 caracteres en .env');
+  process.exit(1);
+}
+
+// si estoy detras de un proxy (Render, Cloudflare) sin esto el secure cookie y el rate-limit fallan
+if (EN_PRODUCCION) app.set('trust proxy', 1);
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -29,14 +40,22 @@ app.use(helmet({
       scriptSrc: ["'self'"],
       scriptSrcAttr: ["'none'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:'],
+      imgSrc: ["'self'", 'data:', 'blob:'],
       fontSrc: ["'self'"],
       connectSrc: ["'self'"],
       objectSrc: ["'none'"],
       formAction: ["'self'"],
-      frameAncestors: ["'self'"]
+      frameAncestors: ["'none'"]
     }
-  }
+  },
+  // HSTS solo aplica en HTTPS, helmet lo activa por defecto. lo dejo explicito
+  // para que en produccion el browser fuerce HTTPS por un anio
+  strictTransportSecurity: EN_PRODUCCION
+    ? { maxAge: 31536000, includeSubDomains: true }
+    : false,
+  // bloquea que mi sitio pueda ser embebido en un iframe externo (anti clickjacking)
+  frameguard: { action: 'deny' },
+  referrerPolicy: { policy: 'same-origin' }
 }));
 
 const origenesPermitidos = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
@@ -54,18 +73,36 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// limito el tamano del body para que no me hagan DoS mandandome 100MB de basura
+app.use(express.json({ limit: '256kb' }));
+app.use(express.urlencoded({ extended: true, limit: '256kb' }));
+
+// quita las llaves que empiezan con $ o tienen . — bloquea inyeccion tipo {"$ne": null}
+function sanitizar(obj) {
+  if (!obj || typeof obj !== 'object') return;
+  for (const k of Object.keys(obj)) {
+    if (k.startsWith('$') || k.includes('.')) { delete obj[k]; continue; }
+    if (typeof obj[k] === 'object') sanitizar(obj[k]);
+  }
+}
+app.use((req, res, next) => {
+  sanitizar(req.body);
+  sanitizar(req.query);
+  sanitizar(req.params);
+  next();
+});
 
 app.use(session({
+  name: 'fd.sid',  // nombre custom, no delata que uso express-session
   secret: process.env.SESSION_SECRET || 'desarrollo-cambiar-en-produccion',
   resave: false,
   saveUninitialized: false,
+  rolling: true,   // refresca el maxAge en cada request para que la sesion no expire si esta activo
   cookie: {
     maxAge: 1000 * 60 * 60 * 8,
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production'
+    secure: EN_PRODUCCION
   }
 }));
 
@@ -83,6 +120,18 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, mensaje: 'Servidor en linea' });
 });
 
+// si una ruta llama a next(err) o explota inesperadamente, no expongo el stack
+// al cliente — lo logueo aca y devuelvo algo generico
+app.use((err, req, res, next) => {
+  console.log('error sin atrapar:', req.method, req.path, '-', err.message);
+  if (res.headersSent) return next(err);
+  const codigo = err.status || err.statusCode || 500;
+  res.status(codigo).json({
+    ok: false,
+    error: codigo === 500 ? 'Algo salió mal en el servidor' : err.message
+  });
+});
+
 async function seedSuperadmin() {
   const email = process.env.SUPERADMIN_EMAIL;
   const password = process.env.SUPERADMIN_PASSWORD;
@@ -94,7 +143,7 @@ async function seedSuperadmin() {
   const existe = await Superadmin.findOne({ email: emailNorm });
 
   if (!existe) {
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 12);
     await Superadmin.create({ email: emailNorm, passwordHash });
     console.log(`Superadmin inicial creado: ${email}`);
     return;
@@ -102,7 +151,7 @@ async function seedSuperadmin() {
 
   const coincide = await bcrypt.compare(password, existe.passwordHash);
   if (!coincide) {
-    existe.passwordHash = await bcrypt.hash(password, 10);
+    existe.passwordHash = await bcrypt.hash(password, 12);
     await existe.save();
     console.log(`Superadmin: contraseña sincronizada desde .env (${email})`);
   }

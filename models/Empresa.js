@@ -22,7 +22,10 @@ const empresaSchema = new mongoose.Schema({
     cocina:        { type: [String], default: () => IDS_FORMATOS.slice() },
     salon:         { type: [String], default: () => [] },
     administracion:{ type: [String], default: () => [] }
-  }
+  },
+  // formatos que estan en varias carpetas pero son la MISMA fuente de datos
+  // (los registros se comparten, no se duplican)
+  formatosCompartidos: { type: [String], default: () => [] }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Empresa', empresaSchema);

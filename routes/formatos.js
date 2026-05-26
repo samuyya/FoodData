@@ -25,7 +25,7 @@ router.get('/:id', requireEmpresa, async (req, res) => {
   if (!formato) {
     return res.status(404).json({ ok: false, error: 'Formato no encontrado' });
   }
-  const { activos, carpetas } = await getConfigEmpresa(req.session.empresa.id);
+  const { activos, carpetas, compartidos } = await getConfigEmpresa(req.session.empresa.id);
   if (!activos.includes(formato.id)) {
     return res.status(403).json({ ok: false, error: 'Esta empresa no tiene este formato habilitado' });
   }
@@ -40,13 +40,14 @@ router.get('/:id', requireEmpresa, async (req, res) => {
     }
     carpeta = carpetaParam;
   } else {
-    carpeta = carpetasDelFormato[0]; // primera carpeta por defecto
+    carpeta = carpetasDelFormato[0];
   }
 
   const formatosEnCarpeta = FORMATOS.filter(f => carpetas[carpeta].includes(f.id));
   const numero = formatosEnCarpeta.findIndex(f => f.id === formato.id) + 1;
+  const compartido = compartidos.includes(formato.id);
 
-  res.json({ ok: true, formato: { ...formato, numero, carpeta, carpetas: carpetasDelFormato } });
+  res.json({ ok: true, formato: { ...formato, numero, carpeta, carpetas: carpetasDelFormato, compartido } });
 });
 
 module.exports = router;

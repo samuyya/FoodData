@@ -58,13 +58,15 @@ function pintarCheckboxes(contenedor, nombreCampo, marcadosIds) {
   });
 }
 
-// Pinta una tabla con checkboxes para asignar carpetas a cada formato activo
-// Un formato puede estar en una o varias carpetas a la vez
-function pintarTablaCarpetas(contenedor, activosIds, carpetaDoc) {
+// tabla de asignacion: para cada formato activo, marcar en cuales carpetas va.
+// la 5ta columna "Compartido" solo se habilita si el formato esta en 2+ carpetas:
+// si esta marcado, las carpetas apuntan al MISMO conjunto de registros.
+function pintarTablaCarpetas(contenedor, activosIds, carpetaDoc, compartidosIds) {
   const cDoc = carpetaDoc || {};
-  const enCocina        = Array.isArray(cDoc.cocina)        ? cDoc.cocina        : activosIds.slice();
-  const enSalon         = Array.isArray(cDoc.salon)         ? cDoc.salon         : [];
-  const enAdministracion= Array.isArray(cDoc.administracion)? cDoc.administracion: [];
+  const enCocina         = Array.isArray(cDoc.cocina)         ? cDoc.cocina         : activosIds.slice();
+  const enSalon          = Array.isArray(cDoc.salon)          ? cDoc.salon          : [];
+  const enAdministracion = Array.isArray(cDoc.administracion) ? cDoc.administracion : [];
+  const compartidos      = Array.isArray(compartidosIds)      ? compartidosIds      : [];
 
   contenedor.innerHTML = '';
   const tabla = document.createElement('table');
@@ -76,6 +78,7 @@ function pintarTablaCarpetas(contenedor, activosIds, carpetaDoc) {
         <th>🍳 Cocina</th>
         <th>🪑 Salón</th>
         <th>🔒 Administración</th>
+        <th title="Si marcas el mismo formato en 2+ carpetas, puedes elegir que compartan los mismos registros (en vez de duplicar)">🔗 Compartido</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -85,19 +88,46 @@ function pintarTablaCarpetas(contenedor, activosIds, carpetaDoc) {
   catalogoFormatos
     .filter(f => activosIds.includes(f.id))
     .forEach(f => {
-      const enC = enCocina.includes(f.id)         || (!enSalon.includes(f.id) && !enAdministracion.includes(f.id));
+      const enC = enCocina.includes(f.id) || (!enSalon.includes(f.id) && !enAdministracion.includes(f.id));
       const enS = enSalon.includes(f.id);
       const enA = enAdministracion.includes(f.id);
+      const enCuantas = [enC, enS, enA].filter(Boolean).length;
+      const compChecked = compartidos.includes(f.id);
+      const compDisabled = enCuantas < 2;
 
       const tr = document.createElement('tr');
+      tr.dataset.formatoId = f.id;
       tr.innerHTML = `
         <td>${escapeHTML(f.nombre)}</td>
         <td class="td-radio"><input type="checkbox" name="carpeta_cocina"         value="${f.id}" ${enC ? 'checked' : ''} /></td>
         <td class="td-radio"><input type="checkbox" name="carpeta_salon"          value="${f.id}" ${enS ? 'checked' : ''} /></td>
         <td class="td-radio"><input type="checkbox" name="carpeta_administracion" value="${f.id}" ${enA ? 'checked' : ''} /></td>
+        <td class="td-radio td-compartido">
+          <input type="checkbox" name="formatosCompartidos" value="${f.id}"
+                 ${compChecked && !compDisabled ? 'checked' : ''} ${compDisabled ? 'disabled' : ''}
+                 title="${compDisabled ? 'Marca el formato en 2 o más carpetas primero' : 'Compartir registros entre las carpetas'}" />
+        </td>
       `;
       tbody.appendChild(tr);
     });
+
+  // habilitar/deshabilitar la columna "Compartido" al vuelo cuando cambian los chequeos de carpeta
+  tbody.addEventListener('change', (e) => {
+    if (!e.target.matches('input[name^="carpeta_"]')) return;
+    const fila = e.target.closest('tr');
+    if (!fila) return;
+    const marcadas = fila.querySelectorAll('input[name^="carpeta_"]:checked').length;
+    const compChk = fila.querySelector('input[name="formatosCompartidos"]');
+    if (!compChk) return;
+    if (marcadas < 2) {
+      compChk.checked = false;
+      compChk.disabled = true;
+      compChk.title = 'Marca el formato en 2 o más carpetas primero';
+    } else {
+      compChk.disabled = false;
+      compChk.title = 'Compartir registros entre las carpetas';
+    }
+  });
 
   contenedor.appendChild(tabla);
 }
@@ -296,14 +326,14 @@ async function abrirModalEditar(empresaId) {
 
     const activos = activosDeEmpresa(emp);
     pintarCheckboxes(contenedorCheckboxesEditar, 'formatosActivos', activos);
-    pintarTablaCarpetas(tablaCarpetasEditar, activos, emp.formatosCarpeta || {});
+    pintarTablaCarpetas(tablaCarpetasEditar, activos, emp.formatosCarpeta || {}, emp.formatosCompartidos || []);
 
     // Actualizar tabla de carpetas cuando cambie la selección de formatos activos
     contenedorCheckboxesEditar.onchange = () => {
       const marcados = Array.from(
         contenedorCheckboxesEditar.querySelectorAll('input[name="formatosActivos"]:checked')
       ).map(i => i.value);
-      pintarTablaCarpetas(tablaCarpetasEditar, marcados, emp.formatosCarpeta || {});
+      pintarTablaCarpetas(tablaCarpetasEditar, marcados, emp.formatosCarpeta || {}, emp.formatosCompartidos || []);
     };
 
     modalEditar.hidden = false;

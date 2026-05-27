@@ -146,7 +146,8 @@ router.get('/pendientes/:formatoId', requireEmpresa, async (req, res) => {
 
   const esCarpetaAdmin = carpetaPedida === 'administracion' && config.carpetas.administracion.includes(formatoId);
   const hayAtrasados = !info.completoHoy && info.siguienteDia !== info.diaActual;
-  const requiereAdminAtrasado = hayAtrasados && !esCarpetaAdmin && !adminAtrasadoActivo(req);
+  // la verificacion atrasado es por carpeta: cocina y salon van por separado
+  const requiereAdminAtrasado = hayAtrasados && !esCarpetaAdmin && !adminAtrasadoActivo(req, carpetaPedida);
 
   res.json({ ok: true, ...info, requiereAdminAtrasado, esCarpetaAdmin });
 });
@@ -221,15 +222,16 @@ router.post('/', requireEmpresa, async (req, res) => {
       nombreResponsable = limpio;
 
       if (info.siguienteDia !== info.diaActual) {
-        const TTL = 8 * 60 * 60 * 1000;
-        const marca = req.session.adminAtrasado;
-        const yaVerificado = marca && (Date.now() - marca.ts <= TTL);
-        if (!yaVerificado) {
+        // marcador por carpeta (cocina y salon llevan password separada)
+        if (!adminAtrasadoActivo(req, carpetaPedida)) {
           const v = await verificarPasswordAdmin(req.session.empresa.id, req.body.password);
           if (v.error) {
             return res.status(v.status).json({ ok: false, error: v.error, requiereClaveAdmin: !!v.requiereClave });
           }
-          req.session.adminAtrasado = { ts: Date.now() };
+          if (!req.session.adminAtrasado || typeof req.session.adminAtrasado.ts === 'number') {
+            req.session.adminAtrasado = {};
+          }
+          req.session.adminAtrasado[carpetaPedida] = { ts: Date.now() };
         }
       }
     }

@@ -22,10 +22,16 @@ function adminHistorialActivo(req) {
   return true;
 }
 
-function adminAtrasadoActivo(req) {
+// la verificacion para dias atrasados es INDEPENDIENTE por carpeta.
+// la sesion guarda { cocina: { ts }, salon: { ts }, administracion: { ts } }.
+// si la sesion vieja tiene formato distinto (un solo { ts }) lo trato como invalido.
+function adminAtrasadoActivo(req, carpeta) {
+  if (!carpeta) return false;
   const m = req.session && req.session.adminAtrasado;
-  if (!m) return false;
-  if (Date.now() - m.ts > MAX_EDAD_MS) return false;
+  if (!m || typeof m !== 'object') return false;
+  const sub = m[carpeta];
+  if (!sub || !sub.ts) return false;
+  if (Date.now() - sub.ts > MAX_EDAD_MS) return false;
   return true;
 }
 
@@ -54,11 +60,13 @@ router.get('/estado-carpeta', requireEmpresa, (req, res) => {
   res.json({ ok: true, activo: !!nombre, nombre: nombre || null });
 });
 
-// Verifica contraseña para llenar días atrasados (se pide al entrar al formato)
+// Verifica contraseña para llenar días atrasados (se pide al entrar al formato).
+// Requiere ahora la carpeta para guardar el marcador especifico de esa seccion.
 router.post('/verificar-atrasado', limiteAdmin, requireEmpresa, async (req, res) => {
-  const { password } = req.body;
-  if (!password) {
-    return res.status(400).json({ ok: false, error: 'Falta la contraseña' });
+  const { password, carpeta } = req.body;
+  if (!password) return res.status(400).json({ ok: false, error: 'Falta la contraseña' });
+  if (!['cocina', 'salon', 'administracion'].includes(carpeta)) {
+    return res.status(400).json({ ok: false, error: 'Carpeta inválida' });
   }
   const admins = await Administrador.find({ empresa_id: req.session.empresa.id });
   if (admins.length === 0) {
@@ -66,7 +74,11 @@ router.post('/verificar-atrasado', limiteAdmin, requireEmpresa, async (req, res)
   }
   for (const a of admins) {
     if (await bcrypt.compare(password, a.passwordHash)) {
-      req.session.adminAtrasado = { ts: Date.now() };
+      // si la sesion tiene formato viejo (sin sub-objetos por carpeta), la reseteo
+      if (!req.session.adminAtrasado || typeof req.session.adminAtrasado.ts === 'number') {
+        req.session.adminAtrasado = {};
+      }
+      req.session.adminAtrasado[carpeta] = { ts: Date.now() };
       return res.json({ ok: true });
     }
   }

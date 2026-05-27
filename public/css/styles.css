@@ -1245,6 +1245,17 @@ textarea:focus {
   }
 }
 
+/* recepcion: condiciones de calidad en 2 columnas visuales con centro vacio */
+.cond-calidad-grid .organo-vacio {
+  min-height: 1px;
+}
+
+@media (max-width: 600px) {
+  /* en mobile, oculto el espaciador para que no quede una fila vacia */
+  .cond-calidad-grid { grid-template-columns: 1fr 1fr; }
+  .cond-calidad-grid .organo-vacio { display: none; }
+}
+
 /* documentos por programa (vista superadmin) */
 .lista-programas-doc {
   list-style: none;

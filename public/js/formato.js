@@ -321,7 +321,8 @@ function mostrarModalAdminAtrasadoUpfront(info, onVerificadoOk) {
   modalAdminAtrasadoError.hidden = true;
   formAdminAtrasado.reset();
   const dias = (info.pendientes || []).join(', ');
-  modalAdminAtrasadoInfo.innerHTML = `Este formato tiene <strong>${info.pendientes.length} día(s) atrasado(s)</strong> sin registrar (${dias}). Solo el administrador puede llenarlos — ingresa la contraseña para continuar.`;
+  const nombreCarpeta = carpetaId === 'cocina' ? 'Cocina' : (carpetaId === 'salon' ? 'Salón' : 'Administración');
+  modalAdminAtrasadoInfo.innerHTML = `Este formato de <strong>${nombreCarpeta}</strong> tiene <strong>${info.pendientes.length} día(s) atrasado(s)</strong> sin registrar (${dias}). Solo el administrador puede llenarlos — ingresa la contraseña para continuar.`;
   modalAdminAtrasado.hidden = false;
   setTimeout(() => formAdminAtrasado.password.focus(), 80);
 
@@ -343,7 +344,7 @@ function mostrarModalAdminAtrasadoUpfront(info, onVerificadoOk) {
       const r = await fetch('/api/admin/verificar-atrasado', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: formAdminAtrasado.password.value })
+        body: JSON.stringify({ password: formAdminAtrasado.password.value, carpeta: carpetaId })
       });
       const data = await r.json();
       if (!r.ok) {
@@ -1288,16 +1289,26 @@ function iniciarFormRecepcion(infoInicial) {
 
       <fieldset class="param-card">
         <legend>Condiciones de calidad</legend>
-        <div class="param-grid-3">
-          ${['color', 'olor', 'apariencia', 'empaque'].map(c => `
-            <div class="organo-grupo">
-              <span class="organo-label">${c.charAt(0).toUpperCase() + c.slice(1)}</span>
-              <div class="radios-cnc">
-                <label class="radio-pill radio-pill--ok"><input type="radio" name="${c}_${idx}" value="C" ${datos[c] === 'C' ? 'checked' : ''} required />C</label>
-                <label class="radio-pill radio-pill--bad"><input type="radio" name="${c}_${idx}" value="NC" ${datos[c] === 'NC' ? 'checked' : ''} />NC</label>
+        <div class="param-grid-3 cond-calidad-grid">
+          ${[
+            { campo: 'color',      label: 'Color' },
+            { campo: '',           label: '' },
+            { campo: 'apariencia', label: 'Apariencia' },
+            { campo: 'empaque',    label: 'Empaque' },
+            { campo: '',           label: '' },
+            { campo: 'olor',       label: 'Olor' }
+          ].map(({ campo, label }) => {
+            if (!campo) return '<div class="organo-vacio"></div>';
+            return `
+              <div class="organo-grupo">
+                <span class="organo-label">${label}</span>
+                <div class="radios-cnc">
+                  <label class="radio-pill radio-pill--ok"><input type="radio" name="${campo}_${idx}" value="C" ${datos[campo] === 'C' ? 'checked' : ''} required />C</label>
+                  <label class="radio-pill radio-pill--bad"><input type="radio" name="${campo}_${idx}" value="NC" ${datos[campo] === 'NC' ? 'checked' : ''} />NC</label>
+                </div>
               </div>
-            </div>
-          `).join('')}
+            `;
+          }).join('')}
         </div>
       </fieldset>
 

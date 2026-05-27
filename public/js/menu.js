@@ -53,11 +53,7 @@ async function cargarBadgePendientes() {
     const badge = document.getElementById('badge-pendientes');
     if (!badge) return;
     if (d.totalDiasPendientes > 0) {
-      const dias = d.totalDiasPendientes;
-      const formatos = d.formatosConPendientes;
-      badge.textContent = dias === 1
-        ? '1 día pendiente'
-        : `${dias} días pendientes (${formatos} formato${formatos === 1 ? '' : 's'})`;
+      badge.textContent = 'Hay formatos pendientes por llenar';
       badge.hidden = false;
     } else if (d.totalFormatos > 0) {
       badge.textContent = '✓ al día';

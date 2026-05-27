@@ -959,6 +959,15 @@ textarea:focus {
   line-height: 1;
 }
 
+.menu-footer-firma {
+  display: block;
+  margin-top: .3rem;
+  font-size: .78rem;
+  color: var(--color-primario-oscuro, #0e3a31);
+  font-style: italic;
+  letter-spacing: .02em;
+}
+
 .menu-footer {
   text-align: center;
   padding: 1.25rem 1.5rem;

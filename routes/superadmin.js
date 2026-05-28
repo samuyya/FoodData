@@ -90,6 +90,15 @@ function parsearCarpetas(body, activos) {
   return { cocina, salon, administracion };
 }
 
+const MODULOS_VALIDOS = ['formatos', 'asistencia', 'capacitaciones', 'programas'];
+function parsearModulos(valor) {
+  let lista = Array.isArray(valor) ? valor : (typeof valor === 'string' && valor.length > 0 ? [valor] : []);
+  lista = lista.map(s => String(s).trim()).filter(s => MODULOS_VALIDOS.includes(s));
+  // si no marcan ninguno, por seguridad les dejo formatos al menos (no quiero empresas zombi sin nada)
+  if (lista.length === 0) lista = ['formatos'];
+  return Array.from(new Set(lista));
+}
+
 function parsearCompartidos(body, activos, carpetas) {
   // solo marca como compartido los formatos que estan en 2+ carpetas
   // (no tiene sentido marcar como compartido un formato que solo esta en una)
@@ -116,6 +125,7 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
 
     const formatosCarpeta = parsearCarpetas(req.body, formatosActivos);
     const formatosCompartidos = parsearCompartidos(req.body, formatosActivos, formatosCarpeta);
+    const modulosActivos = parsearModulos(req.body.modulosActivos);
 
     const yaExiste = await Empresa.findOne({ email: email.toLowerCase().trim() });
     if (yaExiste) {
@@ -131,7 +141,8 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
       googleSheetId: extraerSheetId(req.body.googleSheetId),
       formatosActivos,
       formatosCarpeta,
-      formatosCompartidos
+      formatosCompartidos,
+      modulosActivos
     });
     res.status(201).json({
       ok: true,
@@ -192,6 +203,9 @@ router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req
 
     empresa.formatosCarpeta = parsearCarpetas(req.body, empresa.formatosActivos);
     empresa.formatosCompartidos = parsearCompartidos(req.body, empresa.formatosActivos, empresa.formatosCarpeta);
+    if (req.body.modulosActivos !== undefined) {
+      empresa.modulosActivos = parsearModulos(req.body.modulosActivos);
+    }
 
     await empresa.save();
     res.json({

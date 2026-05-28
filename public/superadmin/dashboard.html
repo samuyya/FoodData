@@ -57,6 +57,17 @@
         </label>
 
         <fieldset class="campo campo-fieldset">
+          <legend>Módulos habilitados</legend>
+          <div id="checkboxes-modulos" class="checkboxes-formatos">
+            <label class="check-formato"><input type="checkbox" name="modulosActivos" value="formatos" checked /> <span>📋 Formatos</span></label>
+            <label class="check-formato"><input type="checkbox" name="modulosActivos" value="asistencia" checked /> <span>📅 Asistencia</span></label>
+            <label class="check-formato"><input type="checkbox" name="modulosActivos" value="capacitaciones" checked /> <span>🎓 Capacitaciones</span></label>
+            <label class="check-formato"><input type="checkbox" name="modulosActivos" value="programas" checked /> <span>🗂️ Programas</span></label>
+          </div>
+          <p class="ayuda">Marca los botones del menú principal que verá esta empresa. (Si desmarcas todo, queda al menos Formatos.)</p>
+        </fieldset>
+
+        <fieldset class="campo campo-fieldset">
           <legend>Formatos que usará esta empresa</legend>
           <div id="checkboxes-formatos" class="checkboxes-formatos"></div>
           <p class="ayuda">Marca al menos uno. La empresa solo verá los formatos seleccionados.</p>
@@ -143,6 +154,17 @@
           <input type="text" name="googleSheetId" placeholder="Pega el enlace o el ID de la hoja" />
           <small class="ayuda" id="ayuda-google-editar">Deja vacío para desvincular la hoja.</small>
         </label>
+
+        <fieldset class="campo campo-fieldset">
+          <legend>Módulos habilitados</legend>
+          <div id="checkboxes-modulos-editar" class="checkboxes-formatos">
+            <label class="check-formato"><input type="checkbox" name="modulosActivos" value="formatos" /> <span>📋 Formatos</span></label>
+            <label class="check-formato"><input type="checkbox" name="modulosActivos" value="asistencia" /> <span>📅 Asistencia</span></label>
+            <label class="check-formato"><input type="checkbox" name="modulosActivos" value="capacitaciones" /> <span>🎓 Capacitaciones</span></label>
+            <label class="check-formato"><input type="checkbox" name="modulosActivos" value="programas" /> <span>🗂️ Programas</span></label>
+          </div>
+          <p class="ayuda">Si cambias esto, la empresa debe volver a iniciar sesión para que aplique en el menú.</p>
+        </fieldset>
 
         <fieldset class="campo campo-fieldset">
           <legend>Formatos activos</legend>

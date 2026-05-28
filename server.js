@@ -16,6 +16,7 @@ const registrosRoutes = require('./routes/registros');
 const empleadosRoutes = require('./routes/empleados');
 const asistenciaRoutes = require('./routes/asistencia');
 const documentosRoutes = require('./routes/documentos');
+const { requireModulo } = require('./middleware/sesion');
 const googleSheets = require('./servicios/googleSheets');
 const Registro = require('./models/Registro');
 
@@ -111,11 +112,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/superadmin', superadminRoutes);
-app.use('/api/formatos', formatosRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/registros', registrosRoutes);
-app.use('/api/empleados', empleadosRoutes);
-app.use('/api/asistencia', asistenciaRoutes);
+// rutas protegidas por modulo (superadmin siempre puede pasar)
+app.use('/api/formatos',  requireModulo('formatos'),  formatosRoutes);
+app.use('/api/registros', requireModulo('formatos'),  registrosRoutes);
+app.use('/api/empleados', requireModulo('formatos'),  empleadosRoutes);
+app.use('/api/asistencia',requireModulo('asistencia'),asistenciaRoutes);
+// documentos: el superadmin sube; las empresas leen los suyos solo si tienen el modulo "programas"
 app.use('/api/documentos', documentosRoutes);
 
 app.get('/api/health', (req, res) => {

@@ -62,7 +62,10 @@ router.post('/login', limiteLogin, async (req, res) => {
       id: empresa._id.toString(),
       nombre: empresa.nombre,
       email: empresa.email,
-      logo: empresa.logo
+      logo: empresa.logo,
+      modulosActivos: (empresa.modulosActivos && empresa.modulosActivos.length > 0)
+        ? empresa.modulosActivos
+        : ['formatos', 'asistencia', 'capacitaciones', 'programas']
     };
     res.json({ ok: true, rol: 'empresa', redirect: '/menu.html', empresa: req.session.empresa });
   });

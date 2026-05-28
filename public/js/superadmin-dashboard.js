@@ -332,6 +332,14 @@ async function abrirModalEditar(empresaId) {
     pintarCheckboxes(contenedorCheckboxesEditar, 'formatosActivos', activos);
     pintarTablaCarpetas(tablaCarpetasEditar, activos, emp.formatosCarpeta || {}, emp.formatosCompartidos || []);
 
+    // marcar los modulos habilitados de la empresa en el modal
+    const mods = (emp.modulosActivos && emp.modulosActivos.length > 0)
+      ? emp.modulosActivos
+      : ['formatos', 'asistencia', 'capacitaciones', 'programas'];
+    document.querySelectorAll('#checkboxes-modulos-editar input[name="modulosActivos"]').forEach(c => {
+      c.checked = mods.includes(c.value);
+    });
+
     // Actualizar tabla de carpetas cuando cambie la selección de formatos activos
     contenedorCheckboxesEditar.onchange = () => {
       const marcados = Array.from(

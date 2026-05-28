@@ -24,6 +24,21 @@ function pintarHeader(empresa) {
   }
 }
 
+// oculto los botones de modulos que el superadmin no le habilito a esta empresa
+function aplicarModulos(modulos) {
+  if (!Array.isArray(modulos) || modulos.length === 0) return; // sin info, dejo todo visible
+  const mapa = {
+    formatos: btnFormatos,
+    asistencia: btnAsistencia,
+    capacitaciones: btnCapacitaciones,
+    programas: btnProgramas
+  };
+  Object.entries(mapa).forEach(([mod, btn]) => {
+    if (!btn) return;
+    if (!modulos.includes(mod)) btn.style.display = 'none';
+  });
+}
+
 function avisoPendiente(nombre) {
   msgMenu.textContent = `La sección "${nombre}" se habilitará en un paso siguiente.`;
   msgMenu.hidden = false;
@@ -70,8 +85,11 @@ async function iniciar() {
     const me = await rMe.json();
     if (me.rol !== 'empleado') { window.location.href = '/'; return; }
     pintarHeader(me.empresa);
+    aplicarModulos(me.empresa.modulosActivos);
     await fetch('/api/admin/limpiar', { method: 'POST' });
-    cargarBadgePendientes();
+    if (!Array.isArray(me.empresa.modulosActivos) || me.empresa.modulosActivos.includes('formatos')) {
+      cargarBadgePendientes();
+    }
   } catch (err) {
     document.body.innerHTML = '<p style="padding:2rem;color:#b91c1c">Error cargando el menú. Recarga la página.</p>';
   }

@@ -34,6 +34,11 @@ router.get('/programa/:numero', async (req, res) => {
 
   let empresaId;
   if (req.session && req.session.empresa) {
+    // las empresas solo ven sus docs si tienen activo el modulo "programas"
+    const mods = req.session.empresa.modulosActivos || ['formatos', 'asistencia', 'capacitaciones', 'programas'];
+    if (!mods.includes('programas')) {
+      return res.status(403).json({ ok: false, error: 'Tu empresa no tiene el módulo de Programas habilitado' });
+    }
     empresaId = req.session.empresa.id;
   } else if (req.session && req.session.superadmin) {
     empresaId = req.query.empresa_id;

@@ -166,9 +166,7 @@ function pintarProgramas() {
   PROGRAMAS.forEach((p, i) => {
     const li = document.createElement('li');
     li.className = `programa-card programa-card--${p.color}`;
-    li.style.animationDelay = (i * 40) + 'ms';
     li.innerHTML = `
-      <div class="programa-card-numero">${p.numero}</div>
       <div class="programa-card-icono">${p.icono}</div>
       <h3 class="programa-card-titulo">${escapeHTML(p.titulo)}</h3>
       <span class="programa-card-flecha">Ver detalle ›</span>

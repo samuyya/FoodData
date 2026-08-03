@@ -134,6 +134,12 @@ function pintarEncabezadoInstitucional(formato) {
   encPlan.textContent = formato.plan || '';
   encPrograma.textContent = formato.programa || '';
   encTitulo.textContent = formato.titulo || formato.nombre;
+  const sumTit = document.getElementById('enc-summary-titulo');
+  if (sumTit) sumTit.textContent = formato.titulo || 'Detalle del formato';
+  // si el usuario ya vio este formato, lo dejo cerrado por defecto
+  const yaVisto = localStorage.getItem('foodata.encVisto.' + formato.id) === '1';
+  encInst.open = !yaVisto;
+  if (!yaVisto) localStorage.setItem('foodata.encVisto.' + formato.id, '1');
   encInst.hidden = false;
 }
 
@@ -216,7 +222,7 @@ function pintarEmpleados(empleados) {
         </div>
       </div>
       <div class="empleado-formulario" hidden>
-        <p class="ayuda">Formulario individual de <strong>${escapeHTML(emp.nombre)}</strong> — pendiente.</p>
+        <p class="ayuda">Formulario individual de <strong>${escapeHTML(emp.nombre)}</strong>: pendiente.</p>
       </div>
     `;
     li.querySelector('.empleado-row').addEventListener('click', () => {
@@ -322,7 +328,7 @@ function mostrarModalAdminAtrasadoUpfront(info, onVerificadoOk) {
   formAdminAtrasado.reset();
   const dias = (info.pendientes || []).join(', ');
   const nombreCarpeta = carpetaId === 'cocina' ? 'Cocina' : (carpetaId === 'salon' ? 'Salón' : 'Administración');
-  modalAdminAtrasadoInfo.innerHTML = `Este formato de <strong>${nombreCarpeta}</strong> tiene <strong>${info.pendientes.length} día(s) atrasado(s)</strong> sin registrar (${dias}). Solo el administrador puede llenarlos — ingresa la contraseña para continuar.`;
+  modalAdminAtrasadoInfo.innerHTML = `Este formato de <strong>${nombreCarpeta}</strong> tiene <strong>${info.pendientes.length} día(s) atrasado(s)</strong> sin registrar (${dias}). Solo el administrador puede llenarlos; ingresa la contraseña para continuar.`;
   modalAdminAtrasado.hidden = false;
   setTimeout(() => formAdminAtrasado.password.focus(), 80);
 
@@ -1505,5 +1511,24 @@ async function cargar() {
 }
 
 btnVolver.addEventListener('click', () => { window.location.href = '/formatos.html'; });
+
+// atajos globales: Ctrl+S guarda, Esc cierra modal abierto
+document.addEventListener('keydown', (e) => {
+  // Ctrl+S / Cmd+S => guarda el form visible
+  if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+    const formVisible = Array.from(document.querySelectorAll('form'))
+      .find(f => !f.hidden && f.offsetParent !== null && f.querySelector('button[type="submit"]'));
+    if (!formVisible) return;
+    e.preventDefault();
+    if (formVisible.requestSubmit) formVisible.requestSubmit();
+    else formVisible.dispatchEvent(new Event('submit', { cancelable: true }));
+    return;
+  }
+  // Esc => cierra cualquier modal visible (modal-backdrop sin hidden)
+  if (e.key === 'Escape') {
+    const modal = Array.from(document.querySelectorAll('.modal-backdrop')).find(m => !m.hidden);
+    if (modal) modal.hidden = true;
+  }
+});
 
 cargar();

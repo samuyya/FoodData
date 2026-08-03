@@ -19,7 +19,7 @@
 
         <section class="establecimiento">
           <div class="establecimiento-logo">
-            <img id="logo-empresa" class="establecimiento-logo-img" alt="" hidden />
+            <img loading="lazy" decoding="async" id="logo-empresa" class="establecimiento-logo-img" alt="Logo de la empresa" hidden />
             <span id="logo-placeholder" class="establecimiento-logo-ph">Logo</span>
           </div>
           <div class="establecimiento-info">
@@ -52,17 +52,17 @@
     </section>
   </main>
 
-  <div id="modal-foto" class="modal-backdrop" hidden>
+  <div id="modal-foto" class="modal-backdrop" hidden role="dialog" aria-modal="true">
     <div class="modal">
       <h2 id="modal-foto-titulo">Evidencia</h2>
-      <img id="modal-foto-img" class="foto-grande" alt="Evidencia de asistencia" />
+      <img loading="lazy" decoding="async" id="modal-foto-img" class="foto-grande" alt="Evidencia de asistencia" />
       <div class="modal-acciones">
         <button type="button" id="btn-cerrar-foto" class="btn-secundario">Cerrar</button>
       </div>
     </div>
   </div>
 
-  <div id="modal-corregir" class="modal-backdrop" hidden>
+  <div id="modal-corregir" class="modal-backdrop" hidden role="dialog" aria-modal="true">
     <div class="modal">
       <h2>Corregir hora de salida</h2>
       <p class="subtitulo">Día <span id="corregir-dia"></span> — solo el administrador puede corregir.</p>

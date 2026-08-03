@@ -25,7 +25,7 @@
 
         <section class="establecimiento">
           <div class="establecimiento-logo">
-            <img id="logo-empresa" class="establecimiento-logo-img" alt="" hidden />
+            <img loading="lazy" decoding="async" id="logo-empresa" class="establecimiento-logo-img" alt="Logo de la empresa" hidden />
             <span id="logo-placeholder" class="establecimiento-logo-ph">Logo</span>
           </div>
           <div class="establecimiento-info">
@@ -39,13 +39,17 @@
 
   <main class="sub-main">
     <!-- Encabezado institucional (solo formatos con metadatos) -->
-    <section id="encabezado-institucional" class="enc-inst" hidden>
+    <details id="encabezado-institucional" class="enc-inst" hidden>
+      <summary class="enc-inst-summary">
+        <span class="enc-inst-summary-titulo" id="enc-summary-titulo">Detalle del formato</span>
+        <span class="enc-inst-summary-toggle">Ver/ocultar</span>
+      </summary>
       <div class="enc-inst-centro">
         <div class="enc-inst-plan"     id="enc-plan"></div>
         <div class="enc-inst-programa" id="enc-programa"></div>
         <div class="enc-inst-titulo"   id="enc-titulo"></div>
       </div>
-    </section>
+    </details>
 
     <div id="banner-exito"      class="banner banner-exito"   hidden></div>
     <div id="banner-pendientes" class="banner banner-warning" hidden></div>
@@ -568,7 +572,7 @@
     </section>
   </main>
 
-  <div id="modal-empleado" class="modal-backdrop" hidden>
+  <div id="modal-empleado" class="modal-backdrop" hidden role="dialog" aria-modal="true">
     <div class="modal">
       <h2>Editar empleado</h2>
       <form id="form-editar-empleado" class="form">
@@ -592,10 +596,10 @@
     </div>
   </div>
 
-  <div id="modal-admin-atrasado" class="modal-backdrop" hidden>
+  <div id="modal-admin-atrasado" class="modal-backdrop" hidden role="dialog" aria-modal="true">
     <div class="modal">
       <h2>Días pendientes por registrar</h2>
-      <p class="subtitulo" id="modal-admin-atrasado-info">Este formato tiene días atrasados. Solo el administrador puede llenarlos — ingresa la contraseña para continuar.</p>
+      <p class="subtitulo" id="modal-admin-atrasado-info">Este formato tiene días atrasados. Solo el administrador puede llenarlos; ingresa la contraseña para continuar.</p>
       <form id="form-admin-atrasado" class="form">
         <label class="campo">
           <span>Contraseña de administrador</span>

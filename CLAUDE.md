@@ -36,42 +36,62 @@ alimentaria exigidos por sanidad en **Colombia**. Multiempresa: cada empresa
 - **Deps:** bcryptjs, cors, dotenv, exceljs, express, express-rate-limit, express-session, googleapis, helmet, mongoose, multer. Dev: nodemon.
 
 ## Estructura
-- `server.js` — arranque: helmet (CSP), cors, sesión, estáticos, rutas, `seedSuperadmin()`, `googleSheets.inicializar()`. Maneja `EADDRINUSE` con mensaje claro.
+- `server.js` — arranque: helmet (CSP, HSTS, frameguard), cors, body-parser con `limit: 256kb`, middleware anti-NoSQL, sesión con `connect-mongo` (pendiente), estáticos, rutas, `seedSuperadmin()`, `sincronizarIndicesRegistro()`, `googleSheets.inicializar()`. Error handler global. Maneja `EADDRINUSE` con mensaje claro.
 - `db.js` — conexión Mongoose.
-- `formatos.js` — catálogo de **6 formatos** (`FORMATOS`, `getFormato`).
-- `empresaConfig.js` — `getConfigEmpresa(empresaId)` → `{ activos, restringidos }` (con fallback para empresas viejas).
-- `models/` — Empresa, Administrador, EmpleadoLista, Registro, Superadmin, Asistencia.
-- `routes/` — auth, superadmin, formatos, admin, registros, empleados, asistencia.
-- `middleware/` — `sesion.js` (requireEmpresa, requireSuperadmin), `limites.js` (rate limiters).
-- `servicios/` — `excel.js`, `googleSheets.js`, `almacenamiento.js` (guarda fotos en disco; intercambiable a Cloudinary).
-- `public/` — páginas .html, `css/styles.css`, `js/*`, `img/`, `manifest.json`, `sw.js`.
-- `datos/` — `excel/{empresaId}/`, `asistencia/{empresaId}/{anio-mes}/` (no versionado).
+- `formatos.js` — catálogo de **9 formatos** (`FORMATOS`, `getFormato`).
+- `festivos.js` + `public/js/festivos.js` — módulo de festivos colombianos (algoritmo Meeus para Pascua + Ley Emiliani + religiosos). Cache por año.
+- `empresaConfig.js` — `getConfigEmpresa(empresaId)` → `{ activos, carpetas: { cocina, salon, administracion }, compartidos }`. Helper `carpetaCanonica(formatoId, carpeta, config)` (legacy, ya no se usa en registros pero sí en Excel/GS para detectar formatos compartidos).
+- `models/` — Empresa, Administrador, EmpleadoLista, Registro, Superadmin, Asistencia, **Documento** (programa N de la empresa X).
+- `routes/` — auth, superadmin, formatos, admin, registros, empleados, asistencia, **documentos**.
+- `middleware/` — `sesion.js` (`requireEmpresa`, `requireSuperadmin`, **`requireModulo(nombre)`**), `limites.js` (rate limiters).
+- `servicios/` — `excel.js`, `googleSheets.js`, `almacenamiento.js` (guarda fotos en disco + documentos de programa; intercambiable a Cloudinary).
+- `public/` — páginas .html, `css/styles.css`, `js/*`, `img/`, `manifest.json`, `sw.js`. **`js/util.js`** inyecta skip-link + focus trap global + PWA.
+- `datos/` — `excel/{empresaId}/Registros - {slug}.xlsx`, `asistencia/{empresaId}/{anio-mes}/`, **`documentos/{empresaId}/programa-{n}/`** (no versionado).
+- `scripts/` — utilitarios de mantenimiento: `diagnostico-registros.js`, `limpiar-registros-mes.js`, `diagnostico-google-sheets.js`, `ensuciar.js` (mantiene el estilo "humano" del código).
+- `.claude/skills/impeccable/` — skill instalada (no versionada). Ver sección "Skill impeccable" más abajo.
 
 ## Roles y autenticación
-- **Login único** (`POST /api/auth/login`, email+password): detecta superadmin o empresa.
-- **Superadmin:** crea empresas y administradores; edita/desactiva/elimina empresas. Panel en `/superadmin/dashboard.html`. Una empresa **desactivada** no puede iniciar sesión. Eliminación definitiva solo si está desactivada y escribiendo el nombre exacto.
+- **Login único** (`POST /api/auth/login`, email+password): detecta superadmin o empresa. `session.regenerate()` al login (anti session fixation) + compare contra hash falso si email no existe (anti timing attack).
+- **Superadmin:** crea empresas y administradores; edita/desactiva/elimina empresas; gestiona documentos de programas por empresa. Panel en `/superadmin/dashboard.html`. Una empresa **desactivada** no puede iniciar sesión. Eliminación definitiva solo si está desactivada y escribiendo el nombre exacto.
 - **Empresa** = rol "empleado" por defecto en la sesión.
-- **Administrador:** no tiene login propio; se verifica por **contraseña** (hay 1+ `Administrador` por empresa). Se usa para: abrir formatos restringidos, ver historial de meses anteriores, corregir asistencia, y llenar formatos atrasados.
-- **Marcadores en sesión:** `adminPendiente` (por formato, para entrar a restringidos), `adminHistorial` (meses anteriores), `adminAtrasado` (llenar días atrasados — **una sola vez por sesión**).
+- **Administrador:** no tiene login propio; se verifica por **contraseña** (hay 1+ `Administrador` por empresa). Se usa para: entrar a la carpeta Administración, ver historial de meses anteriores, corregir asistencia, llenar formatos atrasados.
+- **Marcadores en sesión:** `adminCarpetaAdministracion` (al entrar a esa carpeta), `adminHistorial` (meses anteriores), `adminAtrasado` (llenar días atrasados — **por carpeta, una verificación por carpeta y por sesión**: cocina, salón y administración llevan su propia validación).
 
-## Módulos del menú principal
-- 📋 **Formatos** → `/formatos.html`
-- 📅 **Asistencia** → `/asistencia.html`
-- 🎓 **Capacitaciones** → placeholder (sin contenido aún)
-- 🗂️ **Programas** → placeholder (sin contenido aún)
+## Módulos del menú principal (controlados por empresa)
+Cada botón aparece u oculta según `empresa.modulosActivos`:
+- 📋 **Formatos** → `/formatos.html` (módulo `formatos`)
+- 📅 **Asistencia** → `/asistencia.html` (módulo `asistencia`)
+- 🎓 **Capacitaciones** → placeholder (módulo `capacitaciones`, sin contenido aún)
+- 🗂️ **Programas** → `/programas.html` (módulo `programas`, **con contenido funcional**)
+
+**Sistema de módulos:**
+- Modelo `Empresa.modulosActivos: [String]` — default: los 4 habilitados
+- Middleware `requireModulo(nombre)` en `middleware/sesion.js`: el superadmin pasa siempre; las empresas reciben 403 si el módulo está deshabilitado
+- Aplicado en `server.js` a las rutas: `/api/formatos`, `/api/registros`, `/api/empleados` (módulo `formatos`), `/api/asistencia` (módulo `asistencia`), `/api/documentos` (módulo `programas`, chequeado dentro del route porque el superadmin debe poder subir aunque la empresa no lo tenga)
+- En el menú principal, `aplicarModulos(modulos)` esconde los botones de módulos no activos
+- Si el superadmin cambia los módulos a una empresa que ya está logueada, la empresa **debe reloguearse** para que aplique al menú (el cache vive en `req.session.empresa.modulosActivos`)
 
 ## Formatos
 - 9 en el catálogo: `recepcion_materias_primas`, `calidad_agua`, `control_temperatura`, `control_plagas`, `limpieza_salon`, `limpieza_bano`, `limpieza_campana_trampa`, `manejo_residuos`, `presentacion_personal`.
 - Cada formato del catálogo (`formatos.js`) lleva metadatos institucionales: `codigo`, `version`, `fechaVersion`, `plan`, `programa`, `titulo`, `nota`.
 - **Carpetas** (Cocina/Salón/Administración): el superadmin asigna cada formato a 1+ carpetas. La carpeta Administración pide contraseña de admin para entrar (una vez por sesión). Un mismo formato en dos carpetas tiene **registros independientes** (el modelo `Registro` indexa por `empresa_id + formato + carpeta + año + mes + día`).
+- **Formatos compartidos:** el superadmin puede marcar un formato (que esté en 2+ carpetas) como "compartido" (`empresa.formatosCompartidos`). En modo compartido los **registros siguen siendo independientes por carpeta** (cada carpeta lleva su propia secuencia de días/pendientes), pero en **Excel/Sheets se ven en UNA sola hoja sin sufijo**, con una columna extra "Carpeta" que distingue de cuál vino cada fila. Default: duplicado (hojas separadas por carpeta).
 - **Plantillas de UI por formato:** cada formato tiene su `iniciarFormX(infoInicial)` registrado en `PLANTILLAS` dentro de `public/js/formato.js`. El HTML del form vive en `public/formato.html`. Helpers compartidos: `postRegistro`, `configurarResponsableEsCarpetaAdmin`, `pintarBanners`, `mostrarBannerExito`.
 - **Encabezado institucional de los formatos (norma):** dentro del card del formato hay un bloque `<section class="enc-inst">` que muestra Plan / Programa / Título (tomados del catálogo). **NO lleva logo** (el logo va solo en la `.sub-topbar`). **NO lleva caja de Código/Versión/Fecha/Página** a la derecha. El contenido va **centrado** ocupando todo el ancho del card, sin líneas divisorias internas. Esta es la estructura para todo formato nuevo.
 - **Días pendientes:** hay que llenar en orden cronológico los días faltantes del mes en curso antes del día de hoy; el servidor decide qué día se guarda. Llenar un día **atrasado** exige contraseña de admin (`adminAtrasado` se setea **una sola vez por sesión** y vale para cualquier formato).
 - **Historial:** mes actual visible para todos; meses anteriores requieren contraseña de admin (`adminHistorial`).
 - **Festivos colombianos** (`festivos.js` + `public/js/festivos.js`): la **casilla del día** se pinta turquoise con tooltip "Día feriado" en tabla de registros, tabla de asistencia, Excel y Google Sheets.
 - **Excel:** un solo archivo por empresa `datos/excel/{empresaId}/Registros - {slug}.xlsx`, **una hoja por (formato, carpeta)**, **organizado por meses** apilados dentro de la hoja. Festivos resaltados solo en la celda del día. Reconstruye en cada guardado.
+- **Encabezado de cada hoja de Excel/Google Sheets (norma):** la primera fila es el **título institucional** (`formato.titulo`) merged a lo ancho, fuente 14 bold, color oscuro, centrado. La segunda fila es el subtítulo merged: `Plan · Programa · Código XX-F-NN` (en gris cursiva, tamaño 10, centrado, `wrapText: true`). **NO incluir "Versión" ni "Fecha"** en el subtítulo. Después una fila vacía y empiezan los meses apilados.
 - **Google Sheets:** misma estructura (hoja por instancia, meses apilados, festivos). Sync por API con la cuenta de servicio.
 - **Multi-ítems por día (recepción):** cuando un formato necesita varias filas por día (`recepcion_materias_primas`), `columnasYFila()` devuelve `{ columnas, expandirFilas }` en lugar de `{ columnas, fila }`. `expandirFilas(r)` regresa un array; el día solo aparece en la primera fila del bloque.
+
+## Programas
+- 11 programas del Plan de Saneamiento Básico colombiano, hardcoded en `public/js/programas.js` (catálogo `PROGRAMAS`: Limpieza y Desinfección, Residuos Sólidos, Plagas, Agua Potable, Capacitaciones, Mantenimiento, Trazabilidad, Proveedores, Muestreo, PQRS, Recall).
+- **Documentos por programa** (modelo `Documento`): cada empresa tiene N documentos por cada uno de los 11 programas (PDF, imagen, Word, Excel, txt — máx 10MB c/u). Almacenamiento en disco: `datos/documentos/{empresaId}/programa-{n}/{timestamp}-{nombre}`.
+- **Solo el superadmin sube/borra** desde `/superadmin/documentos.html?empresa={id}` (botón "📎 Documentos" en cada empresa del dashboard).
+- **La empresa solo lee los suyos** desde el modal del programa en `/programas.html`. Requiere módulo `programas` activo (validado dentro de `routes/documentos.js`).
+- Endpoint de descarga: `GET /api/documentos/:id/descargar` — verifica `empresa_id` de la sesión contra el del documento (o superadmin pasa siempre).
 
 ## Asistencia
 - El empleado selecciona su nombre (de `EmpleadoLista`), toma una foto (cámara, comprimida ~100KB). 1ª foto del día = ingreso, 2ª = salida, 3ª bloqueada.
@@ -81,17 +101,60 @@ alimentaria exigidos por sanidad en **Colombia**. Multiempresa: cada empresa
 - Empleados (lista del Formato 3 `presentacion_personal`) se gestionan dentro de ese formato; requiere admin si ese formato está restringido para la empresa.
 
 ## Sistema de diseño FoodData
-Tokens en `public/css/styles.css` (`:root`): `--color-primario: #16c2a3` (turquoise), `--color-primario-oscuro: #11a98d`, `--color-fondo: #f3faf8`, `--color-borde: #d8e7e1`, `--radio: 14px`, sombra suave verdosa.
-- **Verdes de marca:** `#16c2a3` (acento turquoise), `#a4ddcd` (menta), `#c8ede2`/`#ecf9f5` (más claros), `#0e3a31` (texto verde oscuro).
+**Tokens semánticos en `:root`** (`public/css/styles.css`):
+- **Marca:** `--color-primario: #16c2a3` (turquoise), `--color-primario-oscuro: #11a98d`
+- **Superficies:** `--color-fondo`, `--color-superficie`, `--color-superficie-alt`, `--color-superficie-suave`
+- **Texto (todos WCAG AA sobre blanco):** `--color-texto` (17:1, body), `--color-texto-medio` (11:1), `--color-texto-suave` (7.5:1, hints), `--color-texto-debil` (4.83:1, límite AA — solo meta sutil)
+- **Bordes:** `--color-borde`, `--color-borde-suave`
+- **Estados:** `--color-error`/`--color-error-bg`/`--color-error-borde`, `--color-ok`/`--color-ok-bg`/`--color-ok-borde`, `--color-aviso`/`--color-aviso-bg`/`--color-aviso-borde`
+- `--radio: 14px`, `--sombra: 0 4px 14px rgba(15, 40, 32, .06)`
+
+**Verdes de marca:** `#16c2a3` (turquoise), `#a4ddcd` (menta), `#c8ede2`/`#ecf9f5`/`#f3faf8` (más claros), `#0e3a31` (verde oscuro).
+
+**Estilo visual general (después de impeccable quieter + audit harden):**
+- **Sin gradients decorativos en headers de modales** — color sólido por programa
+- **Sin side-tab borders** (`border-left: 4px solid color`) — el anti-pattern más común de AI slop
+- **Sin animaciones de entrada decorativas** (`keyframes ...Entrada` eliminadas)
+- **Sin marca de agua de números** (los `programa-card-numero` 3rem semi-transparentes fueron eliminados)
+- **Cards con `border: 1px solid` en vez de `box-shadow` glow** (más Linear/Stripe, menos SaaS-2024)
+- **Hover sutil:** cambio de border-color, no `transform: translateY`
+
+**Pantallas con identidad de marca preservada:**
 - **Login:** fondo degradado menta, tarjeta blanca, logo `logo-fooddata.png` (lockup con lema), botón turquoise.
-- **Menú:** fondo blanco; cabecera **verde difuminada** (`linear-gradient(180deg, #a4ddcd, #fff)`) con `logo-solo.fooddata.png`; **tarjeta del establecimiento** (logo + etiqueta "RESTAURANTE" + nombre); botones blancos con borde verde claro y hover turquoise.
-- **Subpáginas** (formato, formatos, registros, asistencia, registro-asistencia, superadmin): cabecera verde difuminada (`.sub-topbar` > `.sub-topbar-inner`), botón(es) "Volver" arriba-izquierda, tarjeta del establecimiento a la derecha (el superadmin lleva el logo de FoodData en vez de la tarjeta). Contenido en `.sub-main`. Logout solo existe en menú y superadmin (no en subpáginas).
-- **Logos en `public/img/`:** `logo-fooddata.png` (lockup con lema — login), `logo-solo.fooddata.png` (solo wordmark — cabeceras), `icon-fooddata.png` (ícono PWA). Logos de empresas (subidos) en `public/img/logos/`.
+- **Menú principal:** cabecera **verde difuminada** (`linear-gradient(180deg, #a4ddcd, #fff)`) con `logo-solo.fooddata.png` y botón "Cerrar sesión"; tarjeta del establecimiento (logo grande + "RESTAURANTE" + nombre); botones del menú blancos con icono + texto + flecha y badge "Hay formatos pendientes por llenar"/"✓ al día".
+- **Subpáginas:** misma cabecera verde difuminada (`.sub-topbar`), botón(es) "Volver" arriba-izquierda, tarjeta del establecimiento **compacta** a la derecha (logo 96×80px, nombre 1.5rem). Logout solo existe en menú y superadmin.
+- **Encabezado institucional del formato:** `<details>` colapsable — abierto la 1ra vez, cerrado después (recordado por formato en `localStorage`). Indicador visual ▼/▲ que rota.
+
+**Logos en `public/img/`:** `logo-fooddata.png` (lockup con lema — login), `logo-solo.fooddata.png` (solo wordmark — cabeceras), `icon-fooddata.png` (ícono PWA). Logos de empresas (subidos) en `public/img/logos/`.
+
+## Accesibilidad (WCAG AA)
+- **Skip-link** "Saltar al contenido" — inyectado en todas las páginas por `util.js`, oculto excepto en focus de teclado.
+- **Modales:** `role="dialog"` + `aria-modal="true"` en todos los `.modal-backdrop`. Focus trap global en `util.js` (MutationObserver detecta apertura/cierre, captura `Tab`, restaura foco al elemento que abrió). `Esc` cierra cualquier modal abierto.
+- **Atajos de teclado:** `Ctrl+S`/`Cmd+S` → guarda el form visible. `Esc` → cierra modal.
+- **Información no-color:** badges Cumple/No cumple muestran `✓`/`✕` además del color (con `::before content`). Festivos en tabla muestran superíndice `F` además del fondo turquoise. Daltónicos distinguen sin depender del color.
+- **Touch targets:** `.radio-pill` con `min-height: 44px`, `.btn-pequeno` con `min-height: 36px` para acciones secundarias.
+- **`@media (prefers-reduced-motion: reduce)`** global: animaciones y transiciones se reducen a `0.01ms`.
+- **`<img alt>` siempre con texto descriptivo** ("Logo de la empresa" inicial, sobrescrito a "Logo de {nombre real}" por el JS al cargar).
+- **`loading="lazy"` + `decoding="async"`** en todas las imágenes.
 
 ## Servicios externos
-- **MongoDB Atlas** — Network Access en `0.0.0.0/0`.
-- **Google Sheets** (cuenta de servicio): una hoja por empresa (`googleSheetId`), una pestaña por formato. Si no hay credenciales, la app funciona y solo omite esta sincronización.
+- **MongoDB Atlas** — Network Access en `0.0.0.0/0` (en producción restringir a IPs de Render).
+- **Google Sheets** (cuenta de servicio): una hoja por empresa (`googleSheetId`), una pestaña por instancia (formato, carpeta) — o una sola sin sufijo si es compartido. Si no hay credenciales, la app funciona y solo omite esta sincronización. Diagnóstico con `node scripts/diagnostico-google-sheets.js`.
 - **PWA:** `sw.js` usa red-primero para estáticos, **nunca cachea `/api/`** (datos siempre frescos), respaldo offline.
+
+## Skill impeccable (no versionada, solo local)
+- Instalada en `.claude/skills/impeccable/` (en `.gitignore`). Re-instalar con `npx impeccable skills install`.
+- **23 sub-comandos** disponibles. Los más útiles para FoodData (product UI):
+  - `/impeccable critique` — opinión de design director, score Nielsen /40
+  - `/impeccable audit` — chequeos técnicos deterministic (a11y, perf, theming, responsive, anti-patterns), score /20
+  - `/impeccable quieter` — bajar volumen visual (quitar gradients, side-tabs, animaciones decorativas)
+  - `/impeccable distill` / `/impeccable layout` — simplificar y mejorar jerarquía espacial
+  - `/impeccable harden` — accesibilidad (role/aria, focus trap, touch targets, prefers-reduced-motion, color-no-solo)
+  - `/impeccable colorize` — paleta y contraste WCAG
+  - `/impeccable clarify` — copy y cadencia (em-dashes, jerga)
+  - `/impeccable polish` — pulido final
+- **Snapshots de critique/audit** se guardan en `.impeccable/critique/` (en `.gitignore`) para trend de scores entre runs.
+- Antes de aplicar cambios de impeccable que tocan muchos archivos, hacer respaldo en `backups/` (también en `.gitignore`).
 
 ## Seguridad
 - helmet con CSP (no hay scripts inline en el front), HSTS en prod, `frameAncestors: 'none'` anti-clickjacking, `referrerPolicy: same-origin`.
@@ -157,11 +220,21 @@ Cuando el usuario diga "vamos a desplegar" o "subir a producción" o "Render", *
 - [ ] Verificar HSTS con: `curl -I https://tudominio.com` (debe haber header `strict-transport-security`)
 
 ## Pendiente / roadmap
-- **Contenido de los formularios** de cada formato (empezar con uno de prueba; el usuario enviará los modelos).
-- **Capacitaciones:** contenido del módulo + estudiar hacerlo un **servicio público pago** (cualquiera entra, ve la capacitación, paga, recibe certificado BPM) → requiere acceso público, pasarela de pago (Wompi/MercadoPago/PayU en Colombia) y certificados en PDF.
-- **Programas:** definir contenido.
-- **Migración a React** (planeada).
-- **Despliegue** (host recomendado: Render). **NO desplegar sin completar la sección "⚠️ ANTES DE DESPLEGAR — CHECKLIST OBLIGATORIO"** más arriba en este archivo. Faltan: `connect-mongo` (sesiones persistentes), Cloudinary (storage), credenciales de Google por env var, restricción de IP en Atlas, logger real.
+- **Capacitaciones:** definir si será módulo interno por empresa o **servicio público pago** (cualquiera entra, ve la capacitación, paga, recibe certificado BPM) → requeriría acceso público, pasarela de pago (Wompi/MercadoPago/PayU en Colombia) y certificados PDF.
+- **Migración a React** (postergada — vale la pena terminar features en vanilla primero).
+- **Despliegue** (host recomendado: Render). **NO desplegar sin completar la sección "⚠️ ANTES DE DESPLEGAR — CHECKLIST OBLIGATORIO"** más arriba en este archivo. Faltan: `connect-mongo` (sesiones persistentes), Cloudinary (storage de fotos asistencia + logos + documentos de programa), credenciales de Google por env var, restricción de IP en Atlas, logger real (pino/winston).
+
+## Hecho (resumen de hitos)
+- 9 formatos con plantillas específicas implementadas (calidad_agua, control_temperatura, control_plagas, manejo_residuos, limpieza_salon, limpieza_bano, limpieza_campana_trampa, recepcion_materias_primas, presentacion_personal — este último sin form porque solo gestiona empleados).
+- Sistema de carpetas (Cocina/Salón/Administración) con asignación por superadmin.
+- Sistema de formatos compartidos (Excel consolidado con columna "Carpeta").
+- Festivos colombianos resaltados en tablas y Excel.
+- Excel reorganizado: un archivo por empresa, hojas por (formato, carpeta), meses apilados.
+- Programas con documentos por empresa (superadmin sube, empresa lee).
+- Módulos por empresa (`modulosActivos`) con middleware `requireModulo`.
+- Pase de seguridad completo (NoSQL sanitization, body limit, session.regenerate, hash falso anti-timing, SVG bloqueado, etc.).
+- Pase de accesibilidad completo (role/aria, focus trap, skip-link, color-no-solo, touch targets, prefers-reduced-motion).
+- Pase de estilo visual (`impeccable quieter` + `harden`): eliminados gradients/side-tabs/animaciones decorativas/marca de agua de números. Score audit /20 estimado: 20/20.
 
 ## Gotchas
 - Si "Could not connect to MongoDB Atlas": agregar la IP actual o usar `0.0.0.0/0` en Network Access.

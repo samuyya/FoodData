@@ -8,3 +8,7 @@ public/img/logos/*
 *.log
 .DS_Store
 Thumbs.db
+.claude/settings.local.json
+.claude/skills/
+.impeccable/
+backups/

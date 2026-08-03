@@ -10,7 +10,7 @@
   <header class="sub-topbar">
     <div class="sub-topbar-inner">
       <div class="sa-cabecera-fila">
-        <img src="/img/logo-solo.fooddata.png" class="menu-marca-logo" alt="FoodData" />
+        <img loading="lazy" decoding="async" src="/img/logo-solo.fooddata.png" class="menu-marca-logo" alt="FoodData" />
         <button id="btn-logout" class="btn-secundario">Cerrar sesión</button>
       </div>
       <div class="sub-titulo-grupo">
@@ -115,7 +115,7 @@
     </section>
   </main>
 
-  <div id="modal-editar-empresa" class="modal-backdrop" hidden>
+  <div id="modal-editar-empresa" class="modal-backdrop" hidden role="dialog" aria-modal="true">
     <div class="modal modal-grande">
       <h2>Editar empresa</h2>
       <form id="form-editar-empresa" class="form" enctype="multipart/form-data">
@@ -139,7 +139,7 @@
         <label class="campo">
           <span>Logo actual</span>
           <div class="logo-preview-wrap">
-            <img id="preview-logo-actual" class="mini-logo logo-preview" alt="" hidden />
+            <img loading="lazy" decoding="async" id="preview-logo-actual" class="mini-logo logo-preview" alt="" hidden />
             <span id="preview-logo-vacio" class="ayuda">Sin logo</span>
           </div>
         </label>

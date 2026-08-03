@@ -22,7 +22,7 @@
 
         <section class="establecimiento">
           <div class="establecimiento-logo">
-            <img id="logo-empresa" class="establecimiento-logo-img" alt="" hidden />
+            <img loading="lazy" decoding="async" id="logo-empresa" class="establecimiento-logo-img" alt="Logo de la empresa" hidden />
             <span id="logo-placeholder" class="establecimiento-logo-ph">Logo</span>
           </div>
           <div class="establecimiento-info">
@@ -55,7 +55,7 @@
     </section>
   </main>
 
-  <div id="modal-historial-admin" class="modal-backdrop" hidden>
+  <div id="modal-historial-admin" class="modal-backdrop" hidden role="dialog" aria-modal="true">
     <div class="modal">
       <h2>Acceso a meses anteriores</h2>
       <p class="subtitulo">Solo el administrador puede consultar meses anteriores al actual.</p>

@@ -14,12 +14,11 @@
       <div class="sub-encabezado">
         <div class="sub-titulo-grupo">
           <h1 class="titulo-pagina">Programas</h1>
-          <p class="subtitulo-pagina">Los 11 programas del Plan de Saneamiento Básico de tu establecimiento.</p>
         </div>
 
         <section class="establecimiento">
           <div class="establecimiento-logo">
-            <img id="logo-empresa" class="establecimiento-logo-img" alt="" hidden />
+            <img loading="lazy" decoding="async" id="logo-empresa" class="establecimiento-logo-img" alt="Logo de la empresa" hidden />
             <span id="logo-placeholder" class="establecimiento-logo-ph">Logo</span>
           </div>
           <div class="establecimiento-info">
@@ -36,7 +35,7 @@
   </main>
 
   <!-- Modal de detalle del programa -->
-  <div id="modal-programa" class="modal-backdrop" hidden>
+  <div id="modal-programa" class="modal-backdrop" hidden role="dialog" aria-modal="true">
     <div class="modal modal-programa" role="dialog" aria-modal="true" aria-labelledby="mp-titulo">
       <div class="modal-programa-cabecera">
         <div class="modal-programa-numero" id="mp-numero">1</div>

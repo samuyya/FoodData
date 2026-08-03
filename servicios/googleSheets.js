@@ -312,10 +312,20 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
 
   const config = await getConfigEmpresa(empresaId);
   const esCompartido = config.compartidos.includes(formatoId);
-  const carpetaReal = carpetaCanonica(formatoId, carpeta || 'cocina', config);
-  // si es compartido, sin sufijo de carpeta — todas apuntan a la misma pestaña
-  const pestana = esCompartido ? nombrePestana(formato, 'cocina') : nombrePestana(formato, carpetaReal);
-  const { columnas, fila, expandirFilas } = columnasYFila(formatoId);
+  // compartido => pestaña sin sufijo + columna Carpeta + registros de todas las carpetas
+  const pestana = esCompartido
+    ? nombrePestana(formato, 'cocina')
+    : nombrePestana(formato, carpeta || 'cocina');
+  let { columnas, fila, expandirFilas } = columnasYFila(formatoId);
+  if (esCompartido) {
+    const idxFecha = columnas.findIndex(c => c.key === 'fecha');
+    const insertarEn = idxFecha >= 0 ? idxFecha + 1 : 2;
+    columnas = [
+      ...columnas.slice(0, insertarEn),
+      { header: 'Carpeta', key: 'carpeta' },
+      ...columnas.slice(insertarEn)
+    ];
+  }
   const numCols = columnas.length;
   
   // ----- Obtener / crear pestaña -----
@@ -344,11 +354,12 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
   }
 
   // ----- Obtener registros agrupados por mes -----
-  const registros = await Registro.find({
-    empresa_id: empresaId,
-    formato: formatoId,
-    carpeta: carpetaReal
-  }).sort({ anio: 1, mes: 1, dia: 1 }).lean();
+  const filtroRegs = esCompartido
+    ? { empresa_id: empresaId, formato: formatoId }
+    : { empresa_id: empresaId, formato: formatoId, carpeta: carpeta || 'cocina' };
+  const registros = await Registro.find(filtroRegs)
+    .sort({ anio: 1, mes: 1, dia: 1, carpeta: 1 })
+    .lean();
   
   // Construir filas con secciones por mes
   const valores = [];                  // matriz de strings
@@ -377,7 +388,12 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
     });
 
     if (formato.plan) {
-      const subtitulo = `${formato.plan}  ·  ${formato.programa || ''}  ·  Código ${formato.codigo || ''}  ·  Versión ${formato.version || ''}`;
+      const partes = [
+        formato.plan,
+        formato.programa,
+        formato.codigo ? `Código ${formato.codigo}` : null
+      ].filter(Boolean);
+      const subtitulo = partes.join('  ·  ');
       const idxSub = pushFila([subtitulo, ...new Array(numCols - 1).fill('')]);
       formatRequests.push({
         mergeCells: { range: rango(sheetId, idxSub, idxSub + 1, 0, numCols), mergeType: 'MERGE_ALL' }
@@ -470,8 +486,10 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
       regs.forEach(r => {
         const filasData = expandirFilas ? expandirFilas(r) : [fila(r)];
         const esFest = esFestivo(r.anio, r.mes, r.dia);
+        const NOMBRES_C = { cocina: 'Cocina', salon: 'Salón', administracion: 'Administración' };
 
         filasData.forEach((data, idxItem) => {
+          if (esCompartido) data.carpeta = NOMBRES_C[r.carpeta] || r.carpeta || '';
           const arr = columnas.map(c => {
             const v = data[c.key];
             return v == null ? '' : String(v);

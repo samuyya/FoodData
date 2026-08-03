@@ -19,7 +19,7 @@
 
         <section class="establecimiento">
           <div class="establecimiento-logo">
-            <img id="logo-empresa" class="establecimiento-logo-img" alt="" hidden />
+            <img loading="lazy" decoding="async" id="logo-empresa" class="establecimiento-logo-img" alt="Logo de la empresa" hidden />
             <span id="logo-placeholder" class="establecimiento-logo-ph">Logo</span>
           </div>
           <div class="establecimiento-info">
@@ -44,7 +44,7 @@
   </main>
 
   <!-- Modal contraseña administración -->
-  <div id="modal-admin" class="modal-backdrop" hidden>
+  <div id="modal-admin" class="modal-backdrop" hidden role="dialog" aria-modal="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
       <h2 id="modal-titulo">Acceso a Administración</h2>
       <p class="subtitulo">Ingresa la contraseña de administrador para abrir esta carpeta.</p>

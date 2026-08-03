@@ -368,9 +368,23 @@ function columnasYFila(formatoId) {
   }
 }
 
-function pintarHojaMultiMes(sheet, registros, formatoId, formato) {
+const NOMBRES_CARPETA = { cocina: 'Cocina', salon: 'Salón', administracion: 'Administración' };
+
+function pintarHojaMultiMes(sheet, registros, formatoId, formato, opciones = {}) {
   const esCalidadAgua = formatoId === 'calidad_agua';
-  const { columnas, fila, expandirFilas } = columnasYFila(formatoId);
+  const conCarpeta = !!opciones.conCarpeta;
+  let { columnas, fila, expandirFilas } = columnasYFila(formatoId);
+
+  // inserto la columna "Carpeta" justo despues de "Fecha" cuando el formato es compartido
+  if (conCarpeta) {
+    const idxFecha = columnas.findIndex(c => c.key === 'fecha');
+    const insertarEn = idxFecha >= 0 ? idxFecha + 1 : 2;
+    columnas = [
+      ...columnas.slice(0, insertarEn),
+      { header: 'Carpeta', key: 'carpeta', width: 14 },
+      ...columnas.slice(insertarEn)
+    ];
+  }
   const numCols = columnas.length;
 
   // Anchos de columna
@@ -381,13 +395,18 @@ function pintarHojaMultiMes(sheet, registros, formatoId, formato) {
     const titRow = sheet.addRow([formato.titulo]);
     sheet.mergeCells(titRow.number, 1, titRow.number, numCols);
     titRow.font = { bold: true, size: 14, color: { argb: 'FF0F172A' } };
-    titRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    titRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
     titRow.height = 28;
     if (formato.plan) {
-      const sub = sheet.addRow([`${formato.plan}  ·  ${formato.programa || ''}  ·  Código ${formato.codigo || ''}  ·  Versión ${formato.version || ''}`]);
+      const partes = [
+        formato.plan,
+        formato.programa,
+        formato.codigo ? `Código ${formato.codigo}` : null
+      ].filter(Boolean);
+      const sub = sheet.addRow([partes.join('  ·  ')]);
       sheet.mergeCells(sub.number, 1, sub.number, numCols);
       sub.font = { italic: true, size: 10, color: { argb: 'FF6B7280' } };
-      sub.alignment = { vertical: 'middle', horizontal: 'center' };
+      sub.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
     }
     sheet.addRow([]);
   }
@@ -448,6 +467,8 @@ function pintarHojaMultiMes(sheet, registros, formatoId, formato) {
       const esFest = esFestivo(r.anio, r.mes, r.dia);
 
       filasData.forEach((data, idxItem) => {
+        // si la hoja muestra la columna Carpeta, le inyecto el nombre legible al objeto
+        if (conCarpeta) data.carpeta = NOMBRES_CARPETA[r.carpeta] || r.carpeta || '';
         const row = sheet.addRow(columnas.map(c => data[c.key]));
         row.alignment = { vertical: 'top', wrapText: true };
 
@@ -498,7 +519,6 @@ async function sincronizarFormatoCarpeta(empresaId, formatoId, carpeta) {
 
   const config = await getConfigEmpresa(empresaId);
   const esCompartido = config.compartidos.includes(formatoId);
-  const carpetaReal = carpetaCanonica(formatoId, carpeta || 'cocina', config);
 
   const empresa = await Empresa.findById(empresaId).select('nombre').lean();
   const { dir, filePath } = rutaArchivoEmpresa(empresaId, empresa && empresa.nombre);
@@ -506,21 +526,24 @@ async function sincronizarFormatoCarpeta(empresaId, formatoId, carpeta) {
 
   const wb = await abrirWorkbook(filePath, empresa && empresa.nombre);
 
-  // si es compartido, una sola hoja sin sufijo (no '(Sal)', no '(Adm)')
+  // compartido => una sola hoja sin sufijo, juntando registros de TODAS las carpetas
+  // no compartido => hoja con sufijo, solo los registros de esa carpeta
   const sheetName = esCompartido
     ? nombreHoja(formato, 'cocina')
-    : nombreHoja(formato, carpetaReal);
+    : nombreHoja(formato, carpeta || 'cocina');
   const existente = wb.getWorksheet(sheetName);
   if (existente) wb.removeWorksheet(existente.id);
   const sheet = wb.addWorksheet(sheetName, { properties: { tabColor: { argb: COLOR_PRIMARIO } } });
 
-  const registros = await Registro.find({
-    empresa_id: empresaId,
-    formato: formatoId,
-    carpeta: carpetaReal
-  }).sort({ anio: 1, mes: 1, dia: 1 }).lean();
+  const filtro = esCompartido
+    ? { empresa_id: empresaId, formato: formatoId }
+    : { empresa_id: empresaId, formato: formatoId, carpeta: carpeta || 'cocina' };
 
-  pintarHojaMultiMes(sheet, registros, formatoId, formato);
+  const registros = await Registro.find(filtro)
+    .sort({ anio: 1, mes: 1, dia: 1, carpeta: 1 })
+    .lean();
+
+  pintarHojaMultiMes(sheet, registros, formatoId, formato, { conCarpeta: esCompartido });
 
   await wb.xlsx.writeFile(filePath);
   return { filePath };

@@ -1,6 +1,6 @@
 const express = require('express');
 const EmpleadoLista = require('../models/EmpleadoLista');
-const { requireEmpresa } = require('../middleware/sesion');
+const { requireEmpresa, ah } = require('../middleware/sesion');
 const { getConfigEmpresa } = require('../empresaConfig');
 const { adminCarpetaAdministracionActivo } = require('./admin');
 
@@ -29,15 +29,15 @@ function validarNombre(nombre) {
   return { nombre: limpio };
 }
 
-router.get('/', requireEmpresa, requireAccesoFormato3, async (req, res) => {
+router.get('/', requireEmpresa, requireAccesoFormato3, ah(async (req, res) => {
   const empleados = await EmpleadoLista
     .find({ empresa_id: req.session.empresa.id })
     .sort({ nombre: 1 })
     .lean();
   res.json({ ok: true, empleados });
-});
+}));
 
-router.post('/', requireEmpresa, requireAccesoFormato3, async (req, res) => {
+router.post('/', requireEmpresa, requireAccesoFormato3, ah(async (req, res) => {
   const v = validarNombre(req.body.nombre);
   if (v.error) return res.status(400).json({ ok: false, error: v.error });
 
@@ -54,9 +54,9 @@ router.post('/', requireEmpresa, requireAccesoFormato3, async (req, res) => {
     empresa_id: req.session.empresa.id
   });
   res.status(201).json({ ok: true, empleado });
-});
+}));
 
-router.put('/:id', requireEmpresa, requireAccesoFormato3, async (req, res) => {
+router.put('/:id', requireEmpresa, requireAccesoFormato3, ah(async (req, res) => {
   const v = validarNombre(req.body.nombre);
   if (v.error) return res.status(400).json({ ok: false, error: v.error });
 
@@ -76,15 +76,15 @@ router.put('/:id', requireEmpresa, requireAccesoFormato3, async (req, res) => {
   );
   if (!empleado) return res.status(404).json({ ok: false, error: 'Empleado no encontrado' });
   res.json({ ok: true, empleado });
-});
+}));
 
-router.delete('/:id', requireEmpresa, requireAccesoFormato3, async (req, res) => {
+router.delete('/:id', requireEmpresa, requireAccesoFormato3, ah(async (req, res) => {
   const r = await EmpleadoLista.findOneAndDelete({
     _id: req.params.id,
     empresa_id: req.session.empresa.id
   });
   if (!r) return res.status(404).json({ ok: false, error: 'Empleado no encontrado' });
   res.json({ ok: true });
-});
+}));
 
 module.exports = router;

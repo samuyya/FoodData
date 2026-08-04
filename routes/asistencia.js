@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const Asistencia = require('../models/Asistencia');
 const EmpleadoLista = require('../models/EmpleadoLista');
 const Administrador = require('../models/Administrador');
-const { requireEmpresa } = require('../middleware/sesion');
+const { requireEmpresa, ah } = require('../middleware/sesion');
 const { limiteAdmin } = require('../middleware/limites');
 const { guardarFotoAsistencia, rutaAbsolutaFoto } = require('../servicios/almacenamiento');
 const { generarExcelAsistencia } = require('../servicios/excel');
@@ -27,16 +27,16 @@ function hoyPartes() {
   return { dia, mes, anio, fecha: new Date(anio, mes - 1, dia) };
 }
 
-router.get('/empleados', requireEmpresa, async (req, res) => {
+router.get('/empleados', requireEmpresa, ah(async (req, res) => {
   const empleados = await EmpleadoLista
     .find({ empresa_id: req.session.empresa.id })
     .sort({ nombre: 1 })
     .select('nombre')
     .lean();
   res.json({ ok: true, empleados });
-});
+}));
 
-router.get('/estado/:empleadoId', requireEmpresa, async (req, res) => {
+router.get('/estado/:empleadoId', requireEmpresa, ah(async (req, res) => {
   const { dia, mes, anio } = hoyPartes();
   const registro = await Asistencia.findOne({
     empresa_id: req.session.empresa.id,
@@ -49,7 +49,7 @@ router.get('/estado/:empleadoId', requireEmpresa, async (req, res) => {
   else if (registro && registro.horaIngreso) estado = 'solo_ingreso';
 
   res.json({ ok: true, estado, registro: registro || null });
-});
+}));
 
 router.post('/marcar', requireEmpresa, upload.single('foto'), async (req, res) => {
   try {
@@ -110,7 +110,7 @@ router.post('/marcar', requireEmpresa, upload.single('foto'), async (req, res) =
   }
 });
 
-router.get('/meses', requireEmpresa, async (req, res) => {
+router.get('/meses', requireEmpresa, ah(async (req, res) => {
   const empresaId = new mongoose.Types.ObjectId(req.session.empresa.id);
   const agregados = await Asistencia.aggregate([
     { $match: { empresa_id: empresaId } },
@@ -119,9 +119,9 @@ router.get('/meses', requireEmpresa, async (req, res) => {
   ]);
   const meses = agregados.map(m => ({ anio: m._id.anio, mes: m._id.mes, count: m.count }));
   res.json({ ok: true, meses });
-});
+}));
 
-router.get('/registro/:empleadoId', requireEmpresa, async (req, res) => {
+router.get('/registro/:empleadoId', requireEmpresa, ah(async (req, res) => {
   const hoy = hoyPartes();
   const anio = parseInt(req.query.anio || hoy.anio, 10);
   const mes = parseInt(req.query.mes || hoy.mes, 10);
@@ -164,7 +164,7 @@ router.get('/registro/:empleadoId', requireEmpresa, async (req, res) => {
     dias,
     totalHoras: Math.round(totalHoras * 100) / 100
   });
-});
+}));
 
 router.get('/foto', requireEmpresa, (req, res) => {
   const ref = req.query.ref;
@@ -181,7 +181,7 @@ router.get('/foto', requireEmpresa, (req, res) => {
   res.sendFile(ruta);
 });
 
-router.post('/corregir-salida', limiteAdmin, requireEmpresa, async (req, res) => {
+router.post('/corregir-salida', limiteAdmin, requireEmpresa, ah(async (req, res) => {
   const { registroId, hora, password } = req.body;
   if (!registroId || !hora || !password) {
     return res.status(400).json({ ok: false, error: 'Faltan datos (registro, hora o contraseña)' });
@@ -224,7 +224,7 @@ router.post('/corregir-salida', limiteAdmin, requireEmpresa, async (req, res) =>
   await registro.save();
 
   res.json({ ok: true, registro });
-});
+}));
 
 router.get('/excel/:anio/:mes', requireEmpresa, async (req, res) => {
   const anio = parseInt(req.params.anio, 10);

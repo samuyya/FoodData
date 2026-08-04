@@ -1,11 +1,11 @@
 const express = require('express');
 const { FORMATOS, getFormato } = require('../formatos');
 const { getConfigEmpresa, getCarpetasDeFormato } = require('../empresaConfig');
-const { requireEmpresa } = require('../middleware/sesion');
+const { requireEmpresa, ah } = require('../middleware/sesion');
 
 const router = express.Router();
 
-router.get('/', requireEmpresa, async (req, res) => {
+router.get('/', requireEmpresa, ah(async (req, res) => {
   const { carpetas } = await getConfigEmpresa(req.session.empresa.id);
 
   const resultado = {};
@@ -16,11 +16,11 @@ router.get('/', requireEmpresa, async (req, res) => {
   }
 
   res.json({ ok: true, carpetas: resultado });
-});
+}));
 
 // GET /api/formatos/:id?carpeta=cocina
 // La carpeta es obligatoria cuando el mismo formato aparece en varias carpetas
-router.get('/:id', requireEmpresa, async (req, res) => {
+router.get('/:id', requireEmpresa, ah(async (req, res) => {
   const formato = getFormato(req.params.id);
   if (!formato) {
     return res.status(404).json({ ok: false, error: 'Formato no encontrado' });
@@ -48,6 +48,6 @@ router.get('/:id', requireEmpresa, async (req, res) => {
   const compartido = compartidos.includes(formato.id);
 
   res.json({ ok: true, formato: { ...formato, numero, carpeta, carpetas: carpetasDelFormato, compartido } });
-});
+}));
 
 module.exports = router;

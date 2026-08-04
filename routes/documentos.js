@@ -3,7 +3,7 @@ const fs = require('fs');
 const multer = require('multer');
 const Documento = require('../models/Documento');
 const Empresa = require('../models/Empresa');
-const { requireEmpresa, requireSuperadmin } = require('../middleware/sesion');
+const { requireEmpresa, requireSuperadmin, ah } = require('../middleware/sesion');
 const { guardarDocumentoPrograma, rutaAbsolutaDocumento, borrarDocumento } = require('../servicios/almacenamiento');
 
 const router = express.Router();
@@ -28,7 +28,7 @@ function numeroValido(s) {
 // listar docs de un programa de una empresa.
 // - si soy empresa: solo veo los mios.
 // - si soy superadmin: paso ?empresa_id=... para ver los de cualquier empresa.
-router.get('/programa/:numero', async (req, res) => {
+router.get('/programa/:numero', ah(async (req, res) => {
   const num = numeroValido(req.params.numero);
   if (!num) return res.status(400).json({ ok: false, error: 'Programa inválido' });
 
@@ -53,7 +53,7 @@ router.get('/programa/:numero', async (req, res) => {
     .lean();
 
   res.json({ ok: true, documentos: docs });
-});
+}));
 
 // subir un doc (solo superadmin)
 router.post('/programa/:numero', requireSuperadmin, upload.single('archivo'), async (req, res) => {
@@ -97,7 +97,7 @@ router.post('/programa/:numero', requireSuperadmin, upload.single('archivo'), as
 });
 
 // descargar el archivo. empresas solo descargan los suyos, superadmin todo.
-router.get('/:id/descargar', async (req, res) => {
+router.get('/:id/descargar', ah(async (req, res) => {
   const doc = await Documento.findById(req.params.id);
   if (!doc) return res.status(404).json({ ok: false, error: 'Documento no encontrado' });
 
@@ -115,15 +115,15 @@ router.get('/:id/descargar', async (req, res) => {
   res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(doc.nombreOriginal)}`);
   res.setHeader('Content-Type', doc.mimeType || 'application/octet-stream');
   fs.createReadStream(ruta).pipe(res);
-});
+}));
 
 // borrar (solo superadmin)
-router.delete('/:id', requireSuperadmin, async (req, res) => {
+router.delete('/:id', requireSuperadmin, ah(async (req, res) => {
   const doc = await Documento.findById(req.params.id);
   if (!doc) return res.status(404).json({ ok: false, error: 'Documento no encontrado' });
   await borrarDocumento(doc.rutaArchivo);
   await doc.deleteOne();
   res.json({ ok: true });
-});
+}));
 
 module.exports = router;

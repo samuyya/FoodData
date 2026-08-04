@@ -10,7 +10,7 @@ const EmpleadoLista = require('../models/EmpleadoLista');
 const Registro = require('../models/Registro');
 const Asistencia = require('../models/Asistencia');
 const { FORMATOS } = require('../formatos');
-const { requireSuperadmin } = require('../middleware/sesion');
+const { requireSuperadmin, ah } = require('../middleware/sesion');
 const googleSheets = require('../servicios/googleSheets');
 
 const IDS_FORMATOS = FORMATOS.map(f => f.id);
@@ -61,10 +61,10 @@ router.get('/google-info', requireSuperadmin, (req, res) => {
   });
 });
 
-router.get('/empresas', requireSuperadmin, async (req, res) => {
+router.get('/empresas', requireSuperadmin, ah(async (req, res) => {
   const empresas = await Empresa.find().sort({ nombre: 1 }).lean();
   res.json({ ok: true, empresas });
-});
+}));
 
 function parsearListaFormatos(valor) {
   let lista = [];
@@ -162,11 +162,11 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
   }
 });
 
-router.get('/empresas/:id', requireSuperadmin, async (req, res) => {
+router.get('/empresas/:id', requireSuperadmin, ah(async (req, res) => {
   const empresa = await Empresa.findById(req.params.id).select('-passwordHash').lean();
   if (!empresa) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });
   res.json({ ok: true, empresa });
-});
+}));
 
 router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req, res) => {
   try {
@@ -226,21 +226,21 @@ router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req
   }
 });
 
-router.post('/empresas/:id/desactivar', requireSuperadmin, async (req, res) => {
+router.post('/empresas/:id/desactivar', requireSuperadmin, ah(async (req, res) => {
   const empresa = await Empresa.findById(req.params.id);
   if (!empresa) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });
   empresa.activa = false;
   await empresa.save();
   res.json({ ok: true });
-});
+}));
 
-router.post('/empresas/:id/reactivar', requireSuperadmin, async (req, res) => {
+router.post('/empresas/:id/reactivar', requireSuperadmin, ah(async (req, res) => {
   const empresa = await Empresa.findById(req.params.id);
   if (!empresa) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });
   empresa.activa = true;
   await empresa.save();
   res.json({ ok: true });
-});
+}));
 
 router.delete('/empresas/:id', requireSuperadmin, async (req, res) => {
   try {
@@ -292,13 +292,13 @@ router.post('/administradores', requireSuperadmin, async (req, res) => {
   }
 });
 
-router.get('/administradores', requireSuperadmin, async (req, res) => {
+router.get('/administradores', requireSuperadmin, ah(async (req, res) => {
   const admins = await Administrador.find()
     .select('-passwordHash')
     .populate('empresa_id', 'nombre')
     .sort({ nombre: 1 })
     .lean();
   res.json({ ok: true, administradores: admins });
-});
+}));
 
 module.exports = router;

@@ -31,4 +31,11 @@ function requireModulo(modulo) {
   };
 }
 
-module.exports = { requireEmpresa, requireSuperadmin, requireModulo };
+// envuelve un handler async para que si algo revienta (ej: un :id que no es
+// un ObjectId valido) el error caiga en el manejador global en vez de tumbar
+// el proceso completo con una unhandled rejection
+function ah(fn) {
+  return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+}
+
+module.exports = { requireEmpresa, requireSuperadmin, requireModulo, ah };

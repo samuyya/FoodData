@@ -7,7 +7,7 @@ const Administrador = require('../models/Administrador');
 const bcrypt = require('bcryptjs');
 const { FORMATOS, getFormato } = require('../formatos');
 const { getConfigEmpresa, carpetaCanonica } = require('../empresaConfig');
-const { requireEmpresa } = require('../middleware/sesion');
+const { requireEmpresa, ah } = require('../middleware/sesion');
 const { adminCarpetaAdministracionActivo, adminHistorialActivo, adminAtrasadoActivo } = require('./admin');
 const { sincronizarFormatoCarpeta, reconstruirArchivoCompleto, getRutaArchivoActual } = require('../servicios/excel');
 const googleSheets = require('../servicios/googleSheets');
@@ -79,7 +79,7 @@ async function infoPendientes(empresaId, formatoId, carpeta) {
 
 // suma de dias pendientes a lo largo de todos los formatos activos de la empresa
 // para el mes en curso. lo uso en el menu principal para mostrar el badge rojo.
-router.get('/resumen-pendientes', requireEmpresa, async (req, res) => {
+router.get('/resumen-pendientes', requireEmpresa, ah(async (req, res) => {
   const empresaId = req.session.empresa.id;
   const config = await getConfigEmpresa(empresaId);
   const { dia: hoy, mes, anio } = partesDeHoy();
@@ -123,9 +123,9 @@ router.get('/resumen-pendientes', requireEmpresa, async (req, res) => {
     totalFormatos: instancias.size,
     mes, anio
   });
-});
+}));
 
-router.get('/pendientes/:formatoId', requireEmpresa, async (req, res) => {
+router.get('/pendientes/:formatoId', requireEmpresa, ah(async (req, res) => {
   const { formatoId } = req.params;
   const carpeta = req.query.carpeta || 'cocina';
   if (!getFormato(formatoId)) {
@@ -148,9 +148,9 @@ router.get('/pendientes/:formatoId', requireEmpresa, async (req, res) => {
   const requiereAdminAtrasado = hayAtrasados && !esCarpetaAdmin && !adminAtrasadoActivo(req, carpeta);
 
   res.json({ ok: true, ...info, requiereAdminAtrasado, esCarpetaAdmin });
-});
+}));
 
-router.get('/hoy/:formatoId', requireEmpresa, async (req, res) => {
+router.get('/hoy/:formatoId', requireEmpresa, ah(async (req, res) => {
   const { formatoId } = req.params;
   const carpeta = req.query.carpeta || 'cocina';
   if (!getFormato(formatoId)) {
@@ -164,7 +164,7 @@ router.get('/hoy/:formatoId', requireEmpresa, async (req, res) => {
     dia, mes, anio
   }).lean();
   res.json({ ok: true, registro });
-});
+}));
 
 router.post('/', requireEmpresa, async (req, res) => {
   try {
@@ -290,7 +290,7 @@ router.post('/', requireEmpresa, async (req, res) => {
   }
 });
 
-router.get('/meses/:formatoId', requireEmpresa, async (req, res) => {
+router.get('/meses/:formatoId', requireEmpresa, ah(async (req, res) => {
   const { formatoId } = req.params;
   const carpeta = req.query.carpeta || 'cocina';
   if (!getFormato(formatoId)) {
@@ -304,9 +304,9 @@ router.get('/meses/:formatoId', requireEmpresa, async (req, res) => {
   ]);
   const meses = agregados.map(m => ({ anio: m._id.anio, mes: m._id.mes, count: m.count }));
   res.json({ ok: true, meses });
-});
+}));
 
-router.get('/historial/:formatoId', requireEmpresa, async (req, res) => {
+router.get('/historial/:formatoId', requireEmpresa, ah(async (req, res) => {
   const { formatoId } = req.params;
   const carpeta = req.query.carpeta || 'cocina';
   if (!getFormato(formatoId)) {
@@ -337,7 +337,7 @@ router.get('/historial/:formatoId', requireEmpresa, async (req, res) => {
   }).sort({ dia: 1 }).lean();
 
   res.json({ ok: true, anio, mes, esMesActual, registros });
-});
+}));
 
 // Descarga el archivo Excel completo de la empresa (todas las hojas, todos los meses)
 // Si el archivo no existe o está desactualizado, lo reconstruye desde la BD.

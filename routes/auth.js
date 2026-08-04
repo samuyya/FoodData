@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const Empresa = require('../models/Empresa');
 const Superadmin = require('../models/Superadmin');
 const { limiteLogin } = require('../middleware/limites');
+const { ah } = require('../middleware/sesion');
 
 const router = express.Router();
 
@@ -18,7 +19,7 @@ function emailLimpio(e) {
   return e.toLowerCase().trim().slice(0, 200);
 }
 
-router.post('/login', limiteLogin, async (req, res) => {
+router.post('/login', limiteLogin, ah(async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password || typeof password !== 'string') {
     return res.status(400).json({ ok: false, error: 'Email y contraseña son obligatorios' });
@@ -69,7 +70,7 @@ router.post('/login', limiteLogin, async (req, res) => {
     };
     res.json({ ok: true, rol: 'empresa', redirect: '/menu.html', empresa: req.session.empresa });
   });
-});
+}));
 
 router.post('/logout', (req, res) => {
   req.session.destroy(() => {

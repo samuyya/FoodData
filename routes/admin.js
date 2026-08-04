@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const Administrador = require('../models/Administrador');
-const { requireEmpresa } = require('../middleware/sesion');
+const { requireEmpresa, ah } = require('../middleware/sesion');
 const { limiteAdmin } = require('../middleware/limites');
 
 const router = express.Router();
@@ -36,7 +36,7 @@ function adminAtrasadoActivo(req, carpeta) {
 }
 
 // Verifica contraseña para entrar a la carpeta Administración
-router.post('/verificar-carpeta', limiteAdmin, requireEmpresa, async (req, res) => {
+router.post('/verificar-carpeta', limiteAdmin, requireEmpresa, ah(async (req, res) => {
   const { password } = req.body;
   if (!password) {
     return res.status(400).json({ ok: false, error: 'Falta la contraseña' });
@@ -52,7 +52,7 @@ router.post('/verificar-carpeta', limiteAdmin, requireEmpresa, async (req, res) 
     }
   }
   res.status(401).json({ ok: false, error: 'Contraseña de administrador incorrecta' });
-});
+}));
 
 // Devuelve si hay sesión activa para la carpeta Administración
 router.get('/estado-carpeta', requireEmpresa, (req, res) => {
@@ -62,7 +62,7 @@ router.get('/estado-carpeta', requireEmpresa, (req, res) => {
 
 // Verifica contraseña para llenar días atrasados (se pide al entrar al formato).
 // Requiere ahora la carpeta para guardar el marcador especifico de esa seccion.
-router.post('/verificar-atrasado', limiteAdmin, requireEmpresa, async (req, res) => {
+router.post('/verificar-atrasado', limiteAdmin, requireEmpresa, ah(async (req, res) => {
   const { password, carpeta } = req.body;
   if (!password) return res.status(400).json({ ok: false, error: 'Falta la contraseña' });
   if (!['cocina', 'salon', 'administracion'].includes(carpeta)) {
@@ -83,9 +83,9 @@ router.post('/verificar-atrasado', limiteAdmin, requireEmpresa, async (req, res)
     }
   }
   res.status(401).json({ ok: false, error: 'Contraseña de administrador incorrecta' });
-});
+}));
 
-router.post('/verificar-historial', limiteAdmin, requireEmpresa, async (req, res) => {
+router.post('/verificar-historial', limiteAdmin, requireEmpresa, ah(async (req, res) => {
   const { password } = req.body;
   if (!password) {
     return res.status(400).json({ ok: false, error: 'Falta la contraseña' });
@@ -101,7 +101,7 @@ router.post('/verificar-historial', limiteAdmin, requireEmpresa, async (req, res
     }
   }
   res.status(401).json({ ok: false, error: 'Contraseña de administrador incorrecta' });
-});
+}));
 
 // Limpia las verificaciones que SÍ dependen del contexto de navegación
 // (acceso a Administración y a historial). El marcador `adminAtrasado` NO

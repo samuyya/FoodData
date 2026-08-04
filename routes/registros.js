@@ -8,6 +8,7 @@ const bcrypt = require('bcryptjs');
 const { FORMATOS, getFormato } = require('../formatos');
 const { getConfigEmpresa, carpetaCanonica } = require('../empresaConfig');
 const { requireEmpresa, ah } = require('../middleware/sesion');
+const { limiteAdmin } = require('../middleware/limites');
 const { adminCarpetaAdministracionActivo, adminHistorialActivo, adminAtrasadoActivo } = require('./admin');
 const { sincronizarFormatoCarpeta, reconstruirArchivoCompleto, getRutaArchivoActual } = require('../servicios/excel');
 const googleSheets = require('../servicios/googleSheets');
@@ -82,7 +83,7 @@ async function infoPendientes(empresaId, formatoId, carpeta) {
 router.get('/resumen-pendientes', requireEmpresa, ah(async (req, res) => {
   const empresaId = req.session.empresa.id;
   const config = await getConfigEmpresa(empresaId);
-  const { dia: hoy, mes, anio } = partesDeHoy();
+  const { mes, anio } = partesDeHoy();
 
   // cada (formato, carpeta) cuenta como una instancia independiente, incluso si son compartidos
   const instancias = new Set();
@@ -96,23 +97,14 @@ router.get('/resumen-pendientes', requireEmpresa, ah(async (req, res) => {
   let totalDiasPendientes = 0;
   let formatosConPendientes = 0;
 
+  // reuso infoPendientes (la misma logica de dias faltantes que usa cada formato)
+  // en vez de recalcular el conteo aparte, asi no se pueden desincronizar
   for (const key of instancias) {
     const [formatoId, carpeta] = key.split('|');
-    const guardados = await Registro.find({
-      empresa_id: empresaId,
-      formato: formatoId,
-      carpeta,
-      anio, mes,
-      dia: { $lte: hoy }
-    }).select('dia').lean();
-    const setDias = new Set(guardados.map(g => g.dia));
-    let pendientes = 0;
-    for (let d = 1; d <= hoy; d++) {
-      if (!setDias.has(d)) pendientes++;
-    }
-    if (pendientes > 0) {
+    const info = await infoPendientes(empresaId, formatoId, carpeta);
+    if (info.pendientes.length > 0) {
       formatosConPendientes++;
-      totalDiasPendientes += pendientes;
+      totalDiasPendientes += info.pendientes.length;
     }
   }
 
@@ -166,7 +158,7 @@ router.get('/hoy/:formatoId', requireEmpresa, ah(async (req, res) => {
   res.json({ ok: true, registro });
 }));
 
-router.post('/', requireEmpresa, async (req, res) => {
+router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
   try {
     const { formatoId, carpeta, responsable, observaciones, datos } = req.body;
     const formato = getFormato(formatoId);

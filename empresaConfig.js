@@ -8,9 +8,13 @@ async function getConfigEmpresa(empresaId) {
     .select('formatosActivos formatosCarpeta formatosCompartidos')
     .lean();
 
-  const activos = (e && Array.isArray(e.formatosActivos) && e.formatosActivos.length > 0)
-    ? e.formatosActivos
-    : TODOS_IDS.slice();
+  // si la empresa ya no existe (ej: la borraron con una sesion vieja todavia activa),
+  // no le doy acceso a nada en vez de asumir "todos los formatos habilitados"
+  const activos = !e
+    ? []
+    : (Array.isArray(e.formatosActivos) && e.formatosActivos.length > 0)
+      ? e.formatosActivos
+      : TODOS_IDS.slice();
 
   const cDoc = (e && e.formatosCarpeta) || {};
   const cocina        = Array.isArray(cDoc.cocina)        ? cDoc.cocina.filter(id => activos.includes(id))        : [];

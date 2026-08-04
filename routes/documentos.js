@@ -1,8 +1,10 @@
 const express = require('express');
 const fs = require('fs');
+const path = require('path');
 const multer = require('multer');
 const Documento = require('../models/Documento');
 const Empresa = require('../models/Empresa');
+const { MODULOS_VALIDOS } = Empresa;
 const { requireEmpresa, requireSuperadmin, ah } = require('../middleware/sesion');
 const { guardarDocumentoPrograma, rutaAbsolutaDocumento, borrarDocumento } = require('../servicios/almacenamiento');
 
@@ -10,12 +12,15 @@ const router = express.Router();
 
 // hasta 10MB por archivo. acepto imagenes, pdf, office, txt — lo necesario para
 // las fichas tecnicas, cronogramas y certificados de cada programa.
-const TIPOS_OK = /^(image\/(png|jpe?g|webp|gif)|application\/(pdf|msword|vnd\.openxmlformats|vnd\.ms-excel|vnd\.ms-powerpoint)|text\/)/;
+const TIPOS_OK = /^(image\/(png|jpe?g|webp|gif)|application\/(pdf|msword|vnd\.openxmlformats|vnd\.ms-excel|vnd\.ms-powerpoint)|text\/plain)$/;
+const EXT_OK = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt'];
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const ok = TIPOS_OK.test((file.mimetype || '').toLowerCase());
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const mimeOk = TIPOS_OK.test((file.mimetype || '').toLowerCase());
+    const ok = mimeOk && EXT_OK.includes(ext);
     cb(ok ? null : new Error('Tipo de archivo no permitido (usa PDF, imagen, Word, Excel o texto)'), ok);
   }
 });
@@ -35,7 +40,7 @@ router.get('/programa/:numero', ah(async (req, res) => {
   let empresaId;
   if (req.session && req.session.empresa) {
     // las empresas solo ven sus docs si tienen activo el modulo "programas"
-    const mods = req.session.empresa.modulosActivos || ['formatos', 'asistencia', 'capacitaciones', 'programas'];
+    const mods = req.session.empresa.modulosActivos || MODULOS_VALIDOS;
     if (!mods.includes('programas')) {
       return res.status(403).json({ ok: false, error: 'Tu empresa no tiene el módulo de Programas habilitado' });
     }
@@ -105,6 +110,12 @@ router.get('/:id/descargar', ah(async (req, res) => {
   const esDuena = req.session && req.session.empresa && req.session.empresa.id === doc.empresa_id.toString();
   if (!esSuper && !esDuena) {
     return res.status(403).json({ ok: false, error: 'Sin acceso a este documento' });
+  }
+  if (esDuena) {
+    const mods = req.session.empresa.modulosActivos || MODULOS_VALIDOS;
+    if (!mods.includes('programas')) {
+      return res.status(403).json({ ok: false, error: 'Tu empresa no tiene el módulo de Programas habilitado' });
+    }
   }
 
   const ruta = rutaAbsolutaDocumento(doc.rutaArchivo);

@@ -49,11 +49,20 @@ router.post('/', requireEmpresa, requireAccesoFormato3, ah(async (req, res) => {
     return res.status(409).json({ ok: false, error: 'Ya existe un empleado con ese nombre' });
   }
 
-  const empleado = await EmpleadoLista.create({
-    nombre: v.nombre,
-    empresa_id: req.session.empresa.id
-  });
-  res.status(201).json({ ok: true, empleado });
+  try {
+    const empleado = await EmpleadoLista.create({
+      nombre: v.nombre,
+      empresa_id: req.session.empresa.id
+    });
+    res.status(201).json({ ok: true, empleado });
+  } catch (err) {
+    // por si dos requests casi simultaneos pasan el findOne de arriba a la vez —
+    // el indice unico de empresa_id+nombre es el que de verdad evita el duplicado
+    if (err.code === 11000) {
+      return res.status(409).json({ ok: false, error: 'Ya existe un empleado con ese nombre' });
+    }
+    throw err;
+  }
 }));
 
 router.put('/:id', requireEmpresa, requireAccesoFormato3, ah(async (req, res) => {
@@ -69,13 +78,20 @@ router.put('/:id', requireEmpresa, requireAccesoFormato3, ah(async (req, res) =>
     return res.status(409).json({ ok: false, error: 'Ya existe otro empleado con ese nombre' });
   }
 
-  const empleado = await EmpleadoLista.findOneAndUpdate(
-    { _id: req.params.id, empresa_id: req.session.empresa.id },
-    { nombre: v.nombre },
-    { new: true }
-  );
-  if (!empleado) return res.status(404).json({ ok: false, error: 'Empleado no encontrado' });
-  res.json({ ok: true, empleado });
+  try {
+    const empleado = await EmpleadoLista.findOneAndUpdate(
+      { _id: req.params.id, empresa_id: req.session.empresa.id },
+      { nombre: v.nombre },
+      { new: true }
+    );
+    if (!empleado) return res.status(404).json({ ok: false, error: 'Empleado no encontrado' });
+    res.json({ ok: true, empleado });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({ ok: false, error: 'Ya existe otro empleado con ese nombre' });
+    }
+    throw err;
+  }
 }));
 
 router.delete('/:id', requireEmpresa, requireAccesoFormato3, ah(async (req, res) => {

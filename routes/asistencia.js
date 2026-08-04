@@ -1,5 +1,6 @@
 const express = require('express');
 const multer = require('multer');
+const path = require('path');
 const fs = require('fs');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
@@ -8,7 +9,7 @@ const EmpleadoLista = require('../models/EmpleadoLista');
 const Administrador = require('../models/Administrador');
 const { requireEmpresa, ah } = require('../middleware/sesion');
 const { limiteAdmin } = require('../middleware/limites');
-const { guardarFotoAsistencia, rutaAbsolutaFoto } = require('../servicios/almacenamiento');
+const { guardarFotoAsistencia, rutaAbsolutaFoto, borrarFotoAsistencia } = require('../servicios/almacenamiento');
 const { generarExcelAsistencia } = require('../servicios/excel');
 
 const router = express.Router();
@@ -16,7 +17,12 @@ const router = express.Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => cb(null, file.mimetype.startsWith('image/'))
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const extOk = ['.jpg', '.jpeg', '.png', '.webp'].includes(ext);
+    const mimeOk = (file.mimetype || '').toLowerCase().startsWith('image/');
+    cb(null, extOk && mimeOk);
+  }
 });
 
 function hoyPartes() {
@@ -94,11 +100,20 @@ router.post('/marcar', requireEmpresa, upload.single('foto'), async (req, res) =
     if (!registro.horaSalida) {
       const nombreArchivo = `${empleadoId}-${dia}-salida-${Date.now()}.jpg`;
       const refFoto = await guardarFotoAsistencia(req.session.empresa.id, anio, mes, nombreArchivo, req.file.buffer);
-      registro.horaSalida = ahora;
-      registro.fotoSalida = refFoto;
-      registro.horasTrabajadas = Math.round(((ahora - registro.horaIngreso) / 3600000) * 100) / 100;
-      await registro.save();
-      return res.json({ ok: true, tipo: 'salida', hora: ahora, registro });
+      const horasTrabajadas = Math.round(((ahora - registro.horaIngreso) / 3600000) * 100) / 100;
+
+      // update atomico con horaSalida:null en el filtro — si dos requests llegan casi
+      // juntas, solo la primera hace match y la segunda cae al 409 de abajo
+      const actualizado = await Asistencia.findOneAndUpdate(
+        { _id: registro._id, horaSalida: null },
+        { horaSalida: ahora, fotoSalida: refFoto, horasTrabajadas },
+        { new: true }
+      );
+      if (!actualizado) {
+        await borrarFotoAsistencia(refFoto);
+        return res.status(409).json({ ok: false, error: 'Este empleado ya registró entrada y salida hoy' });
+      }
+      return res.json({ ok: true, tipo: 'salida', hora: ahora, registro: actualizado });
     }
 
     return res.status(409).json({ ok: false, error: 'Este empleado ya registró entrada y salida hoy' });

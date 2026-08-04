@@ -16,6 +16,11 @@ function rutaAbsolutaFoto(referencia) {
   return path.join(CARPETA_BASE, referencia);
 }
 
+async function borrarFotoAsistencia(referencia) {
+  try { await fs.promises.unlink(path.join(CARPETA_BASE, referencia)); }
+  catch (e) { /* si ya no existe, no pasa nada */ }
+}
+
 // Guarda un archivo de programa: datos/documentos/{empresaId}/programa-{n}/{timestamp}-{nombreSanitizado}
 async function guardarDocumentoPrograma(empresaId, numeroPrograma, nombreOriginal, buffer) {
   const dir = path.join(CARPETA_DOCS, String(empresaId), `programa-${numeroPrograma}`);
@@ -38,6 +43,7 @@ async function borrarDocumento(referencia) {
 module.exports = {
   guardarFotoAsistencia,
   rutaAbsolutaFoto,
+  borrarFotoAsistencia,
   guardarDocumentoPrograma,
   rutaAbsolutaDocumento,
   borrarDocumento

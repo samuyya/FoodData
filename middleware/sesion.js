@@ -1,3 +1,5 @@
+const { MODULOS_VALIDOS } = require('../models/Empresa');
+
 function requireEmpresa(req, res, next) {
   if (!req.session || !req.session.empresa) {
     return res.status(401).json({ ok: false, error: 'No autenticado' });
@@ -23,7 +25,7 @@ function requireModulo(modulo) {
     }
     const modulos = (req.session.empresa.modulosActivos && req.session.empresa.modulosActivos.length)
       ? req.session.empresa.modulosActivos
-      : ['formatos', 'asistencia', 'capacitaciones', 'programas'];
+      : MODULOS_VALIDOS;
     if (!modulos.includes(modulo)) {
       return res.status(403).json({ ok: false, error: 'Tu empresa no tiene este módulo habilitado' });
     }

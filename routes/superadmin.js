@@ -5,6 +5,7 @@ const multer = require('multer');
 const bcrypt = require('bcryptjs');
 
 const Empresa = require('../models/Empresa');
+const { MODULOS_VALIDOS } = Empresa;
 const Administrador = require('../models/Administrador');
 const EmpleadoLista = require('../models/EmpleadoLista');
 const Registro = require('../models/Registro');
@@ -66,6 +67,10 @@ router.get('/empresas', requireSuperadmin, ah(async (req, res) => {
   res.json({ ok: true, empresas });
 }));
 
+function passwordDebil(password) {
+  return !password || String(password).length < 8;
+}
+
 function parsearListaFormatos(valor) {
   let lista = [];
   if (Array.isArray(valor)) lista = valor;
@@ -90,7 +95,6 @@ function parsearCarpetas(body, activos) {
   return { cocina, salon, administracion };
 }
 
-const MODULOS_VALIDOS = ['formatos', 'asistencia', 'capacitaciones', 'programas'];
 function parsearModulos(valor) {
   let lista = Array.isArray(valor) ? valor : (typeof valor === 'string' && valor.length > 0 ? [valor] : []);
   lista = lista.map(s => String(s).trim()).filter(s => MODULOS_VALIDOS.includes(s));
@@ -116,6 +120,9 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
     const { nombre, email, password } = req.body;
     if (!nombre || !email || !password) {
       return res.status(400).json({ ok: false, error: 'Nombre, email y contraseña son obligatorios' });
+    }
+    if (passwordDebil(password)) {
+      return res.status(400).json({ ok: false, error: 'La contraseña debe tener al menos 8 caracteres' });
     }
 
     const formatosActivos = parsearListaFormatos(req.body.formatosActivos);
@@ -182,6 +189,9 @@ router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req
     }
 
     if (req.body.password !== undefined && String(req.body.password).trim() !== '') {
+      if (passwordDebil(req.body.password)) {
+        return res.status(400).json({ ok: false, error: 'La contraseña debe tener al menos 8 caracteres' });
+      }
       empresa.passwordHash = await bcrypt.hash(req.body.password, 12);
     }
 
@@ -280,6 +290,9 @@ router.post('/administradores', requireSuperadmin, async (req, res) => {
     const { nombre, password, empresa_id } = req.body;
     if (!nombre || !password || !empresa_id) {
       return res.status(400).json({ ok: false, error: 'Nombre, contraseña y empresa son obligatorios' });
+    }
+    if (passwordDebil(password)) {
+      return res.status(400).json({ ok: false, error: 'La contraseña debe tener al menos 8 caracteres' });
     }
     const empresa = await Empresa.findById(empresa_id);
     if (!empresa) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });

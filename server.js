@@ -17,7 +17,7 @@ const empleadosRoutes = require('./routes/empleados');
 const asistenciaRoutes = require('./routes/asistencia');
 const documentosRoutes = require('./routes/documentos');
 const { requireModulo } = require('./middleware/sesion');
-const googleSheets = require('./servicios/googleSheets');npm
+const googleSheets = require('./servicios/googleSheets');
 const Registro = require('./models/Registro');
 
 const app = express();

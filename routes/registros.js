@@ -198,16 +198,16 @@ router.post('/', requireEmpresa, async (req, res) => {
     }
 
     let nombreResponsable;
-    const esCarpetaAdmin  = carpetas.administracion.includes(formatoId);
-    const tieneOtraCarpeta= carpetas.cocina.includes(formatoId) || carpetas.salon.includes(formatoId);
+    // ojo: esto tiene que fijarse en la carpeta que se esta guardando AHORA, no en si
+    // el formato tambien existe en administracion en otra parte de la config
+    const esCarpetaAdmin  = carpeta === 'administracion';
     const adminNombre     = adminCarpetaAdministracionActivo(req);
 
-    if (esCarpetaAdmin && adminNombre) {
-      // El admin tiene sesión activa: registra con su nombre
+    if (esCarpetaAdmin) {
+      if (!adminNombre) {
+        return res.status(401).json({ ok: false, error: 'Se requiere acceso a la carpeta Administración para guardar este formato' });
+      }
       nombreResponsable = adminNombre;
-    } else if (esCarpetaAdmin && !tieneOtraCarpeta) {
-      // Solo existe en Administración y no hay sesión de admin: denegar
-      return res.status(401).json({ ok: false, error: 'Se requiere acceso a la carpeta Administración para guardar este formato' });
     } else {
       const limpio = (responsable || '').trim();
       if (!limpio) return res.status(400).json({ ok: false, error: 'El responsable es obligatorio' });

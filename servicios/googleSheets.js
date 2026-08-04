@@ -596,7 +596,7 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
       }
     });
   } catch (errLimpieza) {
-    console.log('gs: No se pudo limpiar formato previo (no es crítico):', err.message);
+    console.log('gs: No se pudo limpiar formato previo (no es crítico):', errLimpieza.message);
   }
 
   // ----- Escribir valores -----

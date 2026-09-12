@@ -194,8 +194,8 @@ Cuando el usuario diga "vamos a desplegar" o "subir a producción" o "Render", *
 - [ ] Crear usuario de DB específico de producción (no reusar el de desarrollo)
 
 ### 5. Dependencias vulnerables
-- [ ] `npm audit` — actualmente 5 moderate transitorias en `googleapis → uuid` (DoS bajo)
-- [ ] Cuando salga `googleapis@150+` corre `npm update googleapis` y verifica que `npm audit` quede limpio
+- [x] `npm audit` da 0 vulnerabilidades (2026-09-11). El moderate de `uuid` vía `exceljs`/`googleapis` (que exigía forzar un downgrade de `exceljs`) se resolvió con un override en `package.json` (`"overrides": { "uuid": "^11.1.1" }`) en vez de tocar la versión de `exceljs` — probado generando un excel real y llamando a `googleapis` sin errores.
+- [ ] Revisar `npm audit` de vez en cuando de todas formas (dependencias nuevas pueden traer vulnerabilidades futuras)
 
 ### 6. Logs y monitoreo
 - [ ] Reemplazar `console.log` por un logger real (`pino` o `winston`) que pueda enviar a un servicio (Better Stack, Logtail)

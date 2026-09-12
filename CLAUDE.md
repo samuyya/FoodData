@@ -47,7 +47,7 @@ alimentaria exigidos por sanidad en **Colombia**. Multiempresa: cada empresa
 - `servicios/` — `excel.js`, `googleSheets.js`, `almacenamiento.js` (guarda fotos en disco + documentos de programa; intercambiable a Cloudinary).
 - `public/` — páginas .html, `css/styles.css`, `js/*`, `img/`, `manifest.json`, `sw.js`. **`js/util.js`** inyecta skip-link + focus trap global + PWA.
 - `datos/` — `excel/{empresaId}/Registros - {slug}.xlsx`, `asistencia/{empresaId}/{anio-mes}/`, **`documentos/{empresaId}/programa-{n}/`** (no versionado).
-- `scripts/` — utilitarios de mantenimiento: `diagnostico-registros.js`, `limpiar-registros-mes.js`, `diagnostico-google-sheets.js`, `ensuciar.js` (mantiene el estilo "humano" del código).
+- `scripts/` — utilitarios de mantenimiento: `diagnostico-registros.js`, `limpiar-registros-mes.js` (exige `empresaId`, ver abajo), `diagnostico-google-sheets.js`, `ensuciar.js` (mantiene el estilo "humano" del código), `backup.js` / `restore.js` (ver sección Backups).
 - `.claude/skills/impeccable/` — skill instalada (no versionada). Ver sección "Skill impeccable" más abajo.
 
 ## Roles y autenticación
@@ -141,6 +141,12 @@ Cada botón aparece u oculta según `empresa.modulosActivos`:
 - **MongoDB Atlas** — Network Access en `0.0.0.0/0` (en producción restringir a IPs de Render).
 - **Google Sheets** (cuenta de servicio): una hoja por empresa (`googleSheetId`), una pestaña por instancia (formato, carpeta) — o una sola sin sufijo si es compartido. Si no hay credenciales, la app funciona y solo omite esta sincronización. Diagnóstico con `node scripts/diagnostico-google-sheets.js`.
 - **PWA:** `sw.js` usa red-primero para estáticos, **nunca cachea `/api/`** (datos siempre frescos), respaldo offline.
+
+## Backups
+Atlas está en el tier gratis (M0), que **no tiene backups automáticos nativos** (eso empieza en M10+, de pago). Tampoco hay redundancia real de `datos/` (fotos de asistencia, excels, documentos de programas) ni de `public/img/logos/` — viven solo en este disco.
+- `node scripts/backup.js` — vuelca cada colección de Mongo a JSON (gzip) + copia `datos/` y `public/img/logos/` completos a `backups/<fecha>/`. Conserva los últimos 5 backups y borra los más viejos solo.
+- `node scripts/restore.js <carpeta-backup>` — dry run por defecto (no toca nada); agrega `--confirmar` para restaurar de verdad (reemplaza TODO lo actual).
+- **Pendiente:** programarlo con el Programador de tareas de Windows (ej. diario) y copiar `backups/` de vez en cuando a otro disco o a la nube — un backup que solo vive en esta máquina no protege si la máquina se daña. `backups/` ya está en `.gitignore` (contiene datos reales de clientes).
 
 ## Skill impeccable (no versionada, solo local)
 - Instalada en `.claude/skills/impeccable/` (en `.gitignore`). Re-instalar con `npx impeccable skills install`.

@@ -132,15 +132,6 @@ function pintarTablaCarpetas(contenedor, activosIds, carpetaDoc, compartidosIds)
   contenedor.appendChild(tabla);
 }
 
-function nombresDeFormatos(ids) {
-  if (!ids || ids.length === 0) return '(ninguno)';
-  return ids
-    .map(id => catalogoFormatos.find(f => f.id === id))
-    .filter(Boolean)
-    .map(f => f.nombre)
-    .join(', ');
-}
-
 function activosDeEmpresa(emp) {
   return (Array.isArray(emp.formatosActivos) && emp.formatosActivos.length > 0)
     ? emp.formatosActivos

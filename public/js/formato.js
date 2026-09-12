@@ -450,8 +450,8 @@ function iniciarFormGenerico(infoInicial) {
 
     const diaGuardado = res.registro.dia;
     const avisos = [
-      res.excelError        ? `<br><span class="aviso-excel">⚠️ Excel local: ${res.excelError}</span>` : '',
-      res.googleSheetsError ? `<br><span class="aviso-excel">⚠️ Google Sheets: ${res.googleSheetsError}</span>` : ''
+      res.excelError        ? `<br><span class="aviso-excel">⚠️ Excel local: ${escapeHTML(res.excelError)}</span>` : '',
+      res.googleSheetsError ? `<br><span class="aviso-excel">⚠️ Google Sheets: ${escapeHTML(res.googleSheetsError)}</span>` : ''
     ].join('');
     if (res.info.completoHoy) {
       mostrarBannerExito(`✅ <strong>¡Listo!</strong> Día ${diaGuardado} guardado y el mes está al día.${avisos}`);
@@ -619,8 +619,8 @@ function iniciarFormCalidadAgua(infoInicial) {
 
     const diaGuardado = res.registro.dia;
     const avisos = [
-      res.excelError        ? `<br><span class="aviso-excel">⚠️ Excel local: ${res.excelError}</span>` : '',
-      res.googleSheetsError ? `<br><span class="aviso-excel">⚠️ Google Sheets: ${res.googleSheetsError}</span>` : ''
+      res.excelError        ? `<br><span class="aviso-excel">⚠️ Excel local: ${escapeHTML(res.excelError)}</span>` : '',
+      res.googleSheetsError ? `<br><span class="aviso-excel">⚠️ Google Sheets: ${escapeHTML(res.googleSheetsError)}</span>` : ''
     ].join('');
 
     if (res.info.completoHoy) {
@@ -682,8 +682,8 @@ async function postRegistro(cuerpo, btn, msgEl, diaObjEl, formEl, opciones = {})
   }
   const diaGuardado = res.registro.dia;
   const avisos = [
-    res.excelError        ? `<br><span class="aviso-excel">⚠️ Excel local: ${res.excelError}</span>` : '',
-    res.googleSheetsError ? `<br><span class="aviso-excel">⚠️ Google Sheets: ${res.googleSheetsError}</span>` : ''
+    res.excelError        ? `<br><span class="aviso-excel">⚠️ Excel local: ${escapeHTML(res.excelError)}</span>` : '',
+    res.googleSheetsError ? `<br><span class="aviso-excel">⚠️ Google Sheets: ${escapeHTML(res.googleSheetsError)}</span>` : ''
   ].join('');
 
   if (res.info.completoHoy) {
@@ -1260,7 +1260,7 @@ function iniciarFormRecepcion(infoInicial) {
     div.innerHTML = `
       <h3 class="item-recepcion-titulo">
         <span>📦 Recepción #<span class="item-numero">${idx}</span></span>
-        <button type="button" class="item-recepcion-borrar" title="Eliminar recepción">✕</button>
+        <button type="button" class="item-recepcion-borrar" aria-label="Eliminar recepción" title="Eliminar recepción">✕</button>
       </h3>
       <div class="form-grid-2">
         <label class="campo">

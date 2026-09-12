@@ -26,6 +26,7 @@ const btnOtro = document.getElementById('btn-otro');
 
 let empleadoActual = null;
 let stream = null;
+let peticionCamara = 0;
 
 function escapeHTML(s) {
   return String(s)
@@ -124,6 +125,8 @@ async function seleccionarEmpleado(emp) {
 }
 
 async function iniciarCamara() {
+  const miPeticion = ++peticionCamara;
+  detenerCamara(); // por si el usuario alcanzo a tocar dos empleados seguidos, no dejo la anterior prendida
   video.hidden = false;
   canvas.hidden = true;
   btnTomar.hidden = false;
@@ -131,9 +134,16 @@ async function iniciarCamara() {
   btnConfirmar.hidden = true;
   msgAsistencia.hidden = true;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    const streamNuevo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    if (miPeticion !== peticionCamara) {
+      // el usuario ya selecciono otro empleado mientras el navegador pedia permiso de camara
+      streamNuevo.getTracks().forEach(t => t.stop());
+      return;
+    }
+    stream = streamNuevo;
     video.srcObject = stream;
   } catch (err) {
+    if (miPeticion !== peticionCamara) return;
     btnTomar.hidden = true;
     mostrarMsg('No se pudo abrir la cámara. Revisa que el navegador tenga permiso de cámara.');
   }

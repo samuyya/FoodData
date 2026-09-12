@@ -193,7 +193,10 @@ async function cargarDocsDelPrograma(numero) {
   }
 }
 
+let peticionModalPrograma = 0;
+
 async function abrirModal(programa) {
+  const miPeticion = ++peticionModalPrograma;
   mpNumero.textContent = programa.numero;
   mpIcono.textContent = programa.icono;
   mpTitulo.textContent = programa.titulo;
@@ -206,6 +209,7 @@ async function abrirModal(programa) {
   document.body.style.overflow = 'hidden';
 
   const docsReales = await cargarDocsDelPrograma(programa.numero);
+  if (miPeticion !== peticionModalPrograma) return; // el usuario ya abrio otro programa
 
   mpDocs.innerHTML = '';
   if (docsReales.length === 0) {

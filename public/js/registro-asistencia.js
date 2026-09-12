@@ -172,7 +172,10 @@ function renderTabla(data) {
   });
 }
 
+let peticionRegistro = 0;
+
 async function cargarRegistro() {
+  const miPeticion = ++peticionRegistro;
   const empleadoId = selectEmpleado.value;
   if (!empleadoId) {
     contenedorTabla.innerHTML = '';
@@ -189,12 +192,14 @@ async function cargarRegistro() {
   try {
     const r = await fetch(`/api/asistencia/registro/${encodeURIComponent(empleadoId)}?anio=${anioStr}&mes=${mesStr}`);
     const data = await r.json();
+    if (miPeticion !== peticionRegistro) return; // cambiaron de empleado/mes mientras esperaba
     if (!r.ok) {
       estadoRegistro.textContent = data.error || 'Error cargando el registro';
       return;
     }
     renderTabla(data);
   } catch (err) {
+    if (miPeticion !== peticionRegistro) return;
     estadoRegistro.textContent = 'no hay conexion';
   }
 }

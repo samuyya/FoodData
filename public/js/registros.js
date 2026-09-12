@@ -427,13 +427,17 @@ function pintarTabla(registros, anio, mes, esMesActual) {
   historialInfoTexto.textContent = `${registros.length} registro(s) en ${MESES_LARGOS[mes - 1]} ${anio}${sufijo}.`;
 }
 
+let peticionHistorial = 0;
+
 async function cargarHistorial(anio, mes) {
+  const miPeticion = ++peticionHistorial;
   estadoHistorial.textContent = 'Cargando...';
   contenedorTabla.innerHTML = '';
   contenedorTabla.appendChild(estadoHistorial);
 
   try {
     const r = await fetch(`/api/registros/historial/${encodeURIComponent(formatoId)}?carpeta=${encodeURIComponent(carpetaId)}&anio=${anio}&mes=${mes}`);
+    if (miPeticion !== peticionHistorial) return; // el usuario ya cambio de mes, esta respuesta llego tarde
     if (r.status === 401) {
       intentoPendiente = { anio, mes, accion: 'ver' };
       modalError.hidden = true;
@@ -444,12 +448,15 @@ async function cargarHistorial(anio, mes) {
     }
     if (!r.ok) {
       const d = await r.json();
+      if (miPeticion !== peticionHistorial) return;
       estadoHistorial.textContent = d.error || 'Error cargando registros';
       return;
     }
     const data = await r.json();
+    if (miPeticion !== peticionHistorial) return;
     pintarTabla(data.registros, data.anio, data.mes, data.esMesActual);
   } catch (err) {
+    if (miPeticion !== peticionHistorial) return;
     estadoHistorial.textContent = 'no hay conexion';
   }
 }

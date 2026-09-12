@@ -159,6 +159,8 @@ function renderTabla(data) {
   total.textContent = `Total del mes: ${data.totalHoras} horas`;
   contenedorTabla.appendChild(total);
 
+  pintarHorasExtra(data.horasExtra);
+
   contenedorTabla.querySelectorAll('.foto-mini').forEach(img => {
     img.addEventListener('click', () => {
       modalFotoImg.src = img.dataset.url;
@@ -169,6 +171,59 @@ function renderTabla(data) {
 
   contenedorTabla.querySelectorAll('.btn-corregir').forEach(btn => {
     btn.addEventListener('click', () => abrirCorregir(btn.dataset.id, btn.dataset.dia));
+  });
+}
+
+function semanaHTML(s) {
+  return `
+    <article class="semana-extra">
+      <div class="semana-extra-cabecera">
+        <strong>${escapeHTML(s.etiqueta)}</strong>
+        <span class="semana-extra-total">${s.totalSemana} h extra</span>
+      </div>
+      <ul class="semana-extra-lista">
+        <li><span>Horas extra diurnas</span><strong>${s.diurnas} h</strong></li>
+        <li><span>Horas extra con recargo dominical</span><strong>${s.dominicales} h</strong></li>
+        <li><span>Horas extra nocturnas</span><strong>${s.nocturnas} h</strong></li>
+        <li><span>Horas extra dominicales nocturnas</span><strong>${s.dominicalesNocturnas} h</strong></li>
+      </ul>
+      ${s.corte ? `<p class="semana-extra-corte">${escapeHTML(s.corte)}</p>` : ''}
+    </article>
+  `;
+}
+
+function pintarHorasExtra(horasExtra) {
+  if (!horasExtra) return;
+
+  if (horasExtra.total <= 0) {
+    const sinExtra = document.createElement('p');
+    sinExtra.className = 'total-mes';
+    sinExtra.textContent = 'Total horas extra este mes: 0 h';
+    contenedorTabla.appendChild(sinExtra);
+    return;
+  }
+
+  const resumen = document.createElement('div');
+  resumen.className = 'resumen-extra';
+  resumen.innerHTML = `
+    <div class="resumen-extra-cabecera">
+      <div class="resumen-extra-texto">
+        <span class="resumen-extra-label">Total horas extra este mes</span>
+        <strong class="resumen-extra-valor">${horasExtra.total} h</strong>
+      </div>
+      <button type="button" class="btn-secundario btn-pequeno" id="btn-toggle-detalle">Ver detalle por semana ▾</button>
+    </div>
+    <div class="detalle-extra" id="detalle-extra" hidden>
+      ${horasExtra.semanas.map(semanaHTML).join('')}
+    </div>
+  `;
+  contenedorTabla.appendChild(resumen);
+
+  const btnToggle = resumen.querySelector('#btn-toggle-detalle');
+  const detalle = resumen.querySelector('#detalle-extra');
+  btnToggle.addEventListener('click', () => {
+    detalle.hidden = !detalle.hidden;
+    btnToggle.textContent = detalle.hidden ? 'Ver detalle por semana ▾' : 'Ocultar detalle ▴';
   });
 }
 

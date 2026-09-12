@@ -11,8 +11,35 @@ const { requireEmpresa, ah } = require('../middleware/sesion');
 const { limiteAdmin } = require('../middleware/limites');
 const { guardarFotoAsistencia, rutaAbsolutaFoto, borrarFotoAsistencia } = require('../servicios/almacenamiento');
 const { generarExcelAsistencia } = require('../servicios/excel');
+const { calcularSemanas, clasificarDiurnoNocturno, esDomingoOFestivo, lunesDeSemana } = require('../servicios/horasExtra');
 
 const router = express.Router();
+
+const MESES_LARGOS = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+];
+const DIAS_CORTOS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+
+function etiquetaSemana(lunes, domingo) {
+  const opts = { day: '2-digit', month: 'short' };
+  return `${lunes.toLocaleDateString('es-CO', opts)} – ${domingo.toLocaleDateString('es-CO', opts)}`;
+}
+
+// nota que aparece cuando una semana cruza de mes, explicando como se repartieron
+// las horas extra entre los dos meses (cada dia ya sabe a cual mes pertenece)
+function notaCorte(diasDelMes, diasOtroMes) {
+  const conExtra = arr => arr.filter(d => d.horasExtra > 0);
+  const esteLado = conExtra(diasDelMes);
+  const otroLado = conExtra(diasOtroMes);
+  if (otroLado.length === 0) return null;
+
+  const listar = arr => arr.map(d => `${DIAS_CORTOS[new Date(d.r.fecha).getDay()]} ${d.r.dia}`).join(' y ');
+  const sumar = arr => Math.round(arr.reduce((s, d) => s + d.horasExtra, 0) * 100) / 100;
+
+  return `${listar(esteLado)} (${sumar(esteLado)} h extra) quedan en ${MESES_LARGOS[diasDelMes[0].r.mes - 1]}. ` +
+    `${listar(otroLado)} (${sumar(otroLado)} h extra) pasan a ${MESES_LARGOS[diasOtroMes[0].r.mes - 1]}.`;
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -150,11 +177,21 @@ router.get('/registro/:empleadoId', requireEmpresa, ah(async (req, res) => {
   }).lean();
   if (!empleado) return res.status(404).json({ ok: false, error: 'Empleado no encontrado' });
 
-  const registros = await Asistencia.find({
+  // traigo tambien las semanas vecinas (pueden caer en el mes anterior/siguiente)
+  // para poder calcular bien el umbral de 42h/semana de las semanas que cruzan de mes
+  const primerDia = new Date(anio, mes - 1, 1);
+  const ultimoDia = new Date(anio, mes, 0);
+  const desde = lunesDeSemana(primerDia);
+  const hasta = lunesDeSemana(ultimoDia);
+  hasta.setDate(hasta.getDate() + 6);
+
+  const registrosRango = await Asistencia.find({
     empresa_id: req.session.empresa.id,
     empleado_id: req.params.empleadoId,
-    anio, mes
-  }).sort({ dia: 1 }).lean();
+    fecha: { $gte: desde, $lte: hasta }
+  }).sort({ fecha: 1 }).lean();
+
+  const registros = registrosRango.filter(r => r.anio === anio && r.mes === mes);
 
   let totalHoras = 0;
   const dias = registros.map(r => {
@@ -172,12 +209,56 @@ router.get('/registro/:empleadoId', requireEmpresa, ah(async (req, res) => {
     };
   });
 
+  // horas extra: solo semanas ya cerradas (el domingo ya paso) — la semana en curso
+  // se calcula y se muestra a partir del lunes siguiente, no antes
+  const hoyMedianoche = new Date();
+  hoyMedianoche.setHours(0, 0, 0, 0);
+  const semanasCerradas = calcularSemanas(registrosRango).filter(s => s.domingo < hoyMedianoche);
+
+  let totalExtraMes = 0;
+  const semanas = [];
+
+  semanasCerradas.forEach(sem => {
+    let diurnas = 0, dominicales = 0, nocturnas = 0, dominicalesNocturnas = 0;
+    const diasDelMes = [], diasOtroMes = [];
+
+    sem.dias.forEach(({ registro: r, horasExtra }) => {
+      const esEsteMes = r.anio === anio && r.mes === mes;
+      (esEsteMes ? diasDelMes : diasOtroMes).push({ r, horasExtra });
+      if (horasExtra <= 0 || !esEsteMes) return;
+
+      const finExtra = r.horaSalida;
+      const inicioExtra = new Date(finExtra.getTime() - horasExtra * 3600000);
+      const { diurno, nocturno } = clasificarDiurnoNocturno(inicioExtra, finExtra);
+      if (esDomingoOFestivo(r.anio, r.mes, r.dia)) {
+        dominicales += diurno; dominicalesNocturnas += nocturno;
+      } else {
+        diurnas += diurno; nocturnas += nocturno;
+      }
+    });
+
+    const totalSemana = Math.round((diurnas + dominicales + nocturnas + dominicalesNocturnas) * 100) / 100;
+    if (totalSemana <= 0) return;
+
+    totalExtraMes += totalSemana;
+    semanas.push({
+      etiqueta: etiquetaSemana(sem.lunes, sem.domingo),
+      totalSemana,
+      diurnas: Math.round(diurnas * 100) / 100,
+      dominicales: Math.round(dominicales * 100) / 100,
+      nocturnas: Math.round(nocturnas * 100) / 100,
+      dominicalesNocturnas: Math.round(dominicalesNocturnas * 100) / 100,
+      corte: diasOtroMes.length ? notaCorte(diasDelMes, diasOtroMes) : null
+    });
+  });
+
   res.json({
     ok: true,
     empleado: { id: empleado._id, nombre: empleado.nombre },
     anio, mes,
     dias,
-    totalHoras: Math.round(totalHoras * 100) / 100
+    totalHoras: Math.round(totalHoras * 100) / 100,
+    horasExtra: { total: Math.round(totalExtraMes * 100) / 100, semanas }
   });
 }));
 

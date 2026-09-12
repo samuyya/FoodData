@@ -38,19 +38,6 @@ async function getConfigEmpresa(empresaId) {
   };
 }
 
-// Si el formato es "compartido" en varias carpetas, todos los registros viven bajo
-// UNA carpeta canonica (la primera en el orden cocina > salon > administracion).
-// Si no es compartido, devuelve la carpeta tal cual.
-function carpetaCanonica(formatoId, carpetaSolicitada, config) {
-  if (!config || !Array.isArray(config.compartidos)) return carpetaSolicitada;
-  if (!config.compartidos.includes(formatoId)) return carpetaSolicitada;
-  const orden = ['cocina', 'salon', 'administracion'];
-  for (const c of orden) {
-    if (config.carpetas[c].includes(formatoId)) return c;
-  }
-  return carpetaSolicitada;
-}
-
 // Devuelve TODAS las carpetas a las que pertenece un formato (puede ser más de una)
 function getCarpetasDeFormato(carpetas, formatoId) {
   const resultado = [];
@@ -60,4 +47,4 @@ function getCarpetasDeFormato(carpetas, formatoId) {
   return resultado.length > 0 ? resultado : ['cocina'];
 }
 
-module.exports = { getConfigEmpresa, getCarpetasDeFormato, carpetaCanonica };
+module.exports = { getConfigEmpresa, getCarpetasDeFormato };

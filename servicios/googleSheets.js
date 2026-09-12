@@ -4,7 +4,7 @@ const fs = require('fs');
 const Registro = require('../models/Registro');
 const { getFormato } = require('../formatos');
 const { esFestivo } = require('../festivos');
-const { getConfigEmpresa, carpetaCanonica } = require('../empresaConfig');
+const { getConfigEmpresa } = require('../empresaConfig');
 
 const RUTA_CREDENCIALES = process.env.GOOGLE_CREDENTIALS_PATH
   || path.join(__dirname, '..', 'google-credentials.json');

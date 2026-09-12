@@ -7,7 +7,7 @@ const Empresa = require('../models/Empresa');
 const Asistencia = require('../models/Asistencia');
 const { getFormato } = require('../formatos');
 const { esFestivo, nombreFestivo } = require('../festivos');
-const { getConfigEmpresa, carpetaCanonica } = require('../empresaConfig');
+const { getConfigEmpresa } = require('../empresaConfig');
 
 const CARPETA_EXCEL = path.join(__dirname, '..', 'datos', 'excel');
 const COLOR_PRIMARIO = 'FF16C2A3';   // turquoise FoodData
@@ -23,6 +23,14 @@ const MESES_LARGOS = [
 const SUFIJO_CARPETA = { cocina: '', salon: ' (Sal)', administracion: ' (Adm)' };
 
 // Utilidades
+
+// evita que un texto libre (observaciones, novedad, etc.) que empiece con =+-@
+// se interprete como formula si alguien abre el excel con otra config regional
+function sanitizarCelda(valor) {
+  if (typeof valor !== 'string') return valor;
+  return /^[=+\-@]/.test(valor) ? `'${valor}` : valor;
+}
+
 function slug(s) {
   return String(s || 'empresa')
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -469,7 +477,7 @@ function pintarHojaMultiMes(sheet, registros, formatoId, formato, opciones = {})
       filasData.forEach((data, idxItem) => {
         // si la hoja muestra la columna Carpeta, le inyecto el nombre legible al objeto
         if (conCarpeta) data.carpeta = NOMBRES_CARPETA[r.carpeta] || r.carpeta || '';
-        const row = sheet.addRow(columnas.map(c => data[c.key]));
+        const row = sheet.addRow(columnas.map(c => sanitizarCelda(data[c.key])));
         row.alignment = { vertical: 'top', wrapText: true };
 
         // feriado solo en la primera fila del dia
@@ -549,13 +557,6 @@ async function sincronizarFormatoCarpeta(empresaId, formatoId, carpeta) {
   return { filePath };
 }
 
-// Alias para compatibilidad (`routes/registros.js` llamaba sincronizarFormatoMes)
-// Ahora reconstruye TODA la instancia (no solo el mes), porque el archivo de Excel
-// es uno por empresa con meses apilados dentro de cada hoja.
-async function sincronizarFormatoMes(empresaId, formatoId, carpeta /*, anio, mes */) {
-  return sincronizarFormatoCarpeta(empresaId, formatoId, carpeta);
-}
-
 // Reconstruye TODAS las hojas (formato, carpeta) del archivo de la empresa
 async function reconstruirArchivoCompleto(empresaId) {
   const empresa = await Empresa.findById(empresaId).select('nombre').lean();
@@ -596,19 +597,6 @@ async function reconstruirArchivoCompleto(empresaId) {
     await sincronizarFormatoCarpeta(empresaId, _id.formato, _id.carpeta || 'cocina');
   }
   return { filePath };
-}
-
-// Compat: API vieja `reconstruirMesCompleto(empresaId, anio, mes)`
-async function reconstruirMesCompleto(empresaId /*, anio, mes */) {
-  return reconstruirArchivoCompleto(empresaId);
-}
-
-// Compat: ruta del archivo (sin importar año/mes — ahora es uno solo por empresa)
-function getRutaArchivo(empresaId /*, anio, mes */) {
-  // Llamada síncrona — devolvemos solo el path estándar usando el ID como nombre temporal.
-  // El nombre real se calcula con `nombreEmpresa` durante la sincronización.
-  const dir = path.join(CARPETA_EXCEL, String(empresaId));
-  return { dir, filePath: null };
 }
 
 async function getRutaArchivoActual(empresaId) {
@@ -720,10 +708,7 @@ async function generarExcelAsistencia(empresaId, anio, mes) {
 
 module.exports = {
   sincronizarFormatoCarpeta,
-  sincronizarFormatoMes,         // alias retro-compatible
   reconstruirArchivoCompleto,
-  reconstruirMesCompleto,        // alias retro-compatible
-  getRutaArchivo,                // legacy
   getRutaArchivoActual,
   generarExcelAsistencia
 };

@@ -10,6 +10,7 @@ const Administrador = require('../models/Administrador');
 const EmpleadoLista = require('../models/EmpleadoLista');
 const Registro = require('../models/Registro');
 const Asistencia = require('../models/Asistencia');
+const Documento = require('../models/Documento');
 const { FORMATOS } = require('../formatos');
 const { requireSuperadmin, ah } = require('../middleware/sesion');
 const googleSheets = require('../servicios/googleSheets');
@@ -269,11 +270,14 @@ router.delete('/empresas/:id', requireSuperadmin, async (req, res) => {
     await EmpleadoLista.deleteMany({ empresa_id: empresaId });
     await Registro.deleteMany({ empresa_id: empresaId });
     await Asistencia.deleteMany({ empresa_id: empresaId });
+    await Documento.deleteMany({ empresa_id: empresaId });
 
     const dirAsistencia = path.join(__dirname, '..', 'datos', 'asistencia', String(empresaId));
     const dirExcel = path.join(__dirname, '..', 'datos', 'excel', String(empresaId));
+    const dirDocumentos = path.join(__dirname, '..', 'datos', 'documentos', String(empresaId));
     await fs.promises.rm(dirAsistencia, { recursive: true, force: true });
     await fs.promises.rm(dirExcel, { recursive: true, force: true });
+    await fs.promises.rm(dirDocumentos, { recursive: true, force: true });
     if (empresa.logo) {
       await fs.promises.rm(path.join(carpetaLogos, path.basename(empresa.logo)), { force: true });
     }

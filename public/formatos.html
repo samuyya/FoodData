@@ -32,6 +32,40 @@
   </header>
 
   <main class="sub-main">
+    <div class="fila-acciones-formatos">
+      <button type="button" id="btn-abrir-reporte" class="btn-secundario">📄 Generar reporte de formatos</button>
+    </div>
+
+    <div class="controles-reporte card" id="panel-reporte" hidden>
+      <h2 style="margin-top:0">Reporte de formatos</h2>
+      <p class="ayuda" style="margin-top:-.5rem">Se ve en pantalla; usa "Imprimir" si quieres guardarlo como PDF.</p>
+
+      <div class="controles-reporte-fila">
+        <button type="button" class="btn-primario" id="btn-generar-mes" style="height:36px">📄 Generar reporte de este mes</button>
+        <button type="button" class="controles-reporte-toggle" id="btn-toggle-personalizado">Elegir un rango de fechas personalizado</button>
+      </div>
+
+      <div class="controles-reporte-personalizado" id="rango-personalizado" hidden>
+        <div class="controles-reporte-fila">
+          <label class="campo">
+            <span>Desde</span>
+            <input type="date" id="input-desde" />
+          </label>
+          <label class="campo">
+            <span>Hasta</span>
+            <input type="date" id="input-hasta" />
+          </label>
+          <button type="button" class="btn-secundario" id="btn-generar-rango" style="height:36px">Generar este rango</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="hoja" id="hoja-reporte" hidden></div>
+
+    <div class="barra-imprimir" id="barra-imprimir" hidden>
+      <button type="button" class="btn-secundario" id="btn-imprimir">🖨️ Imprimir / Guardar como PDF</button>
+    </div>
+
     <!-- Vista: selector de carpetas -->
     <div id="vista-carpetas">
       <ul id="lista-carpetas" class="grid-formatos"></ul>

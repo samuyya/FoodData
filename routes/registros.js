@@ -354,6 +354,83 @@ async function descargarExcel(req, res) {
   }
 }
 
+// reporte de seguimiento: cumplimiento por formato + novedades, agrupado por carpeta,
+// para el rango de fechas que pida el administrador (por defecto, lo que va del mes)
+router.get('/reporte', requireEmpresa, ah(async (req, res) => {
+  const parse = s => {
+    const [a, m, d] = String(s || '').split('-').map(Number);
+    return (a && m && d) ? new Date(a, m - 1, d) : null;
+  };
+  const desdeStr = req.query.desde;
+  const desde = parse(desdeStr);
+  let hasta = parse(req.query.hasta);
+  if (!desde || !hasta) return res.status(400).json({ ok: false, error: 'Fechas inválidas' });
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  if (hasta > hoy) hasta = hoy; // no se puede reportar el futuro
+  if (desde > hasta) return res.status(400).json({ ok: false, error: 'El rango de fechas no es válido' });
+
+  const diasTotales = Math.round((hasta - desde) / 86400000) + 1;
+  const empresaId = req.session.empresa.id;
+  const config = await getConfigEmpresa(empresaId);
+
+  const bloques = [];
+  let sumaRegistrados = 0, sumaTotales = 0, totalNovedades = 0;
+
+  for (const clave of ['cocina', 'salon', 'administracion']) {
+    // presentacion_personal no tiene formulario diario, solo gestiona la lista de empleados
+    const formatoIds = (config.carpetas[clave] || []).filter(id => id !== 'presentacion_personal');
+    if (formatoIds.length === 0) continue;
+
+    const formatos = [];
+    for (const formatoId of formatoIds) {
+      const diasRegistrados = await Registro.countDocuments({
+        empresa_id: empresaId, formato: formatoId, carpeta: clave,
+        fecha: { $gte: desde, $lte: hasta }
+      });
+      sumaRegistrados += diasRegistrados;
+      sumaTotales += diasTotales;
+      formatos.push({
+        formatoId,
+        nombre: (getFormato(formatoId) || {}).nombre || formatoId,
+        diasRegistrados,
+        diasTotales,
+        cumplimiento: diasTotales > 0 ? Math.round((diasRegistrados / diasTotales) * 100) : 0
+      });
+    }
+
+    const registrosConNovedad = await Registro.find({
+      empresa_id: empresaId, carpeta: clave, fecha: { $gte: desde, $lte: hasta },
+      observaciones: { $ne: '' }
+    }).sort({ fecha: 1 }).lean();
+
+    const novedades = registrosConNovedad
+      .filter(r => formatoIds.includes(r.formato))
+      .map(r => ({
+        dia: r.dia, mes: r.mes, anio: r.anio,
+        formatoId: r.formato,
+        nombre: (getFormato(r.formato) || {}).nombre || r.formato,
+        observaciones: r.observaciones,
+        responsable: r.responsable
+      }));
+    totalNovedades += novedades.length;
+
+    bloques.push({ clave, formatos, novedades });
+  }
+
+  res.json({
+    ok: true,
+    desde: desdeStr,
+    hasta: hasta.toISOString().slice(0, 10),
+    diasTotales,
+    cumplimientoGeneral: sumaTotales > 0 ? Math.round((sumaRegistrados / sumaTotales) * 100) : 0,
+    formatosActivos: config.activos.length,
+    totalNovedades,
+    carpetas: bloques
+  });
+}));
+
 router.get('/excel', requireEmpresa, descargarExcel);
 // Endpoint legacy: mismo archivo, ignora año/mes (un solo archivo por empresa)
 router.get('/excel/:anio/:mes', requireEmpresa, descargarExcel);

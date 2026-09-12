@@ -15,6 +15,23 @@ const modalError     = document.getElementById('modal-error');
 const formAdminPass  = document.getElementById('form-admin-pass');
 const btnModalCancelar = document.getElementById('modal-cancelar');
 
+const btnAbrirReporte       = document.getElementById('btn-abrir-reporte');
+const panelReporte          = document.getElementById('panel-reporte');
+const btnGenerarMes         = document.getElementById('btn-generar-mes');
+const btnTogglePersonalizado= document.getElementById('btn-toggle-personalizado');
+const rangoPersonalizado    = document.getElementById('rango-personalizado');
+const inputDesde            = document.getElementById('input-desde');
+const inputHasta            = document.getElementById('input-hasta');
+const btnGenerarRango       = document.getElementById('btn-generar-rango');
+const hojaReporte           = document.getElementById('hoja-reporte');
+const barraImprimir         = document.getElementById('barra-imprimir');
+const btnImprimir           = document.getElementById('btn-imprimir');
+
+let empresaActual = null;
+
+const MESES_LARGOS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const MESES_CORTOS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
 const NOMBRES_CARPETA = {
   cocina:         'Cocina',
   salon:          'Salón',
@@ -35,7 +52,136 @@ function escapeHTML(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+function hoyISO() {
+  const h = new Date();
+  return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}-${String(h.getDate()).padStart(2, '0')}`;
+}
+
+function primerDiaMesISO() {
+  const h = new Date();
+  return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
+function formatearFechaISO(iso) {
+  const [a, m, d] = iso.split('-').map(Number);
+  return `${d} de ${MESES_LARGOS[m - 1]} de ${a}`;
+}
+
+function pillCumplimiento(pct) {
+  const clase = pct >= 90 ? 'ok' : 'aviso';
+  return `<span class="pill-cumplimiento ${clase}">${pct}%</span>`;
+}
+
+function bloqueCarpetaHTML(bloque) {
+  const filas = bloque.formatos.map(f => `
+    <tr>
+      <td>${escapeHTML(f.nombre)}</td>
+      <td class="num">${f.diasRegistrados} / ${f.diasTotales}</td>
+      <td class="num">${f.diasTotales - f.diasRegistrados}</td>
+      <td class="num">${pillCumplimiento(f.cumplimiento)}</td>
+    </tr>
+  `).join('');
+
+  const novedadesHTML = bloque.novedades.length === 0
+    ? '<p class="sin-novedades">Sin novedades en este periodo.</p>'
+    : bloque.novedades.map(n => `
+        <div class="novedad">
+          <strong>${n.dia} ${MESES_CORTOS[n.mes - 1]} — ${escapeHTML(n.nombre)}:</strong> ${escapeHTML(n.observaciones)}
+          <span class="novedad-meta">Responsable: ${escapeHTML(n.responsable)}</span>
+        </div>
+      `).join('');
+
+  return `
+    <div class="bloque-carpeta">
+      <h2>${ICONOS_CARPETA[bloque.clave]} ${escapeHTML(NOMBRES_CARPETA[bloque.clave])}</h2>
+      <table class="reporte-tabla">
+        <thead><tr><th>Formato</th><th class="num">Días al día</th><th class="num">Pendientes</th><th class="num">Cumplimiento</th></tr></thead>
+        <tbody>${filas}</tbody>
+      </table>
+      <div class="novedades-carpeta">
+        <h3>Novedades de ${escapeHTML(NOMBRES_CARPETA[bloque.clave])}</h3>
+        ${novedadesHTML}
+      </div>
+    </div>
+  `;
+}
+
+function pintarReporte(data) {
+  const bloquesHTML = data.carpetas.map(bloqueCarpetaHTML).join('');
+  const logoHTML = empresaActual && empresaActual.logo
+    ? `<img class="hoja-logo" src="${empresaActual.logo}" alt="Logo de ${escapeHTML(empresaActual.nombre)}" />`
+    : `<div class="hoja-logo establecimiento-logo-ph" style="display:flex;align-items:center;justify-content:center;font-size:.65rem;">Logo</div>`;
+
+  hojaReporte.innerHTML = `
+    <div class="hoja-topline">
+      <span>Generado por FoodData</span>
+      <span>${escapeHTML(new Date().toLocaleString('es-CO', { dateStyle: 'long', timeStyle: 'short' }))}</span>
+    </div>
+    <div class="hoja-encabezado">
+      ${logoHTML}
+      <div>
+        <p class="hoja-empresa-nombre">${escapeHTML(empresaActual ? empresaActual.nombre : '')}</p>
+        <p class="hoja-empresa-meta">Restaurante · Reporte de seguimiento de formatos</p>
+      </div>
+    </div>
+    <div class="hoja-titulo-inst">
+      <h1>REPORTE DE SEGUIMIENTO DE FORMATOS</h1>
+      <p>Del ${formatearFechaISO(data.desde)} al ${formatearFechaISO(data.hasta)}</p>
+    </div>
+    <div class="kpi-fila">
+      <div class="kpi"><div class="kpi-valor">${data.cumplimientoGeneral}%</div><div class="kpi-label">Cumplimiento del periodo</div></div>
+      <div class="kpi"><div class="kpi-valor">${data.formatosActivos}</div><div class="kpi-label">Formatos activos</div></div>
+      <div class="kpi"><div class="kpi-valor${data.totalNovedades > 0 ? ' aviso-color' : ''}">${data.totalNovedades}</div><div class="kpi-label">Novedades con observación</div></div>
+    </div>
+    ${bloquesHTML}
+    <p class="hoja-pie">Reporte de referencia generado por FoodData a partir de los registros diarios de la empresa.</p>
+  `;
+}
+
+async function generarReporte(desde, hasta) {
+  hojaReporte.innerHTML = '<p class="ayuda">Cargando...</p>';
+  hojaReporte.hidden = false;
+  barraImprimir.hidden = true;
+  try {
+    const r = await fetch(`/api/registros/reporte?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`);
+    const data = await r.json();
+    if (!r.ok) {
+      hojaReporte.innerHTML = `<p class="mensaje mensaje-error">${escapeHTML(data.error || 'No se pudo generar el reporte')}</p>`;
+      return;
+    }
+    pintarReporte(data);
+    barraImprimir.hidden = false;
+    hojaReporte.scrollIntoView({ behavior: 'smooth' });
+  } catch (err) {
+    hojaReporte.innerHTML = '<p class="mensaje mensaje-error">no hay conexion</p>';
+  }
+}
+
+btnAbrirReporte.addEventListener('click', () => {
+  panelReporte.hidden = !panelReporte.hidden;
+  if (!panelReporte.hidden) panelReporte.scrollIntoView({ behavior: 'smooth' });
+});
+
+btnTogglePersonalizado.addEventListener('click', () => {
+  rangoPersonalizado.hidden = !rangoPersonalizado.hidden;
+});
+
+btnGenerarMes.addEventListener('click', () => generarReporte(primerDiaMesISO(), hoyISO()));
+
+btnGenerarRango.addEventListener('click', () => {
+  if (!inputDesde.value || !inputHasta.value) return;
+  generarReporte(inputDesde.value, inputHasta.value);
+});
+
+btnImprimir.addEventListener('click', () => window.print());
+
+inputDesde.max = hoyISO();
+inputHasta.max = hoyISO();
+inputDesde.value = primerDiaMesISO();
+inputHasta.value = hoyISO();
+
 function pintarHeader(empresa) {
+  empresaActual = empresa;
   nombreEmpresaEl.textContent = empresa.nombre;
   if (empresa.logo) {
     logoEl.src = empresa.logo;

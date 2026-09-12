@@ -96,7 +96,8 @@ Cada botón aparece u oculta según `empresa.modulosActivos`:
 ## Asistencia
 - El empleado selecciona su nombre (de `EmpleadoLista`), toma una foto (cámara, comprimida ~100KB). 1ª foto del día = ingreso, 2ª = salida, 3ª bloqueada.
 - Fotos en `datos/asistencia/` (privadas, servidas por `/api/asistencia/foto`). Almacenamiento vía `servicios/almacenamiento.js` (intercambiable a Cloudinary).
-- **Registro mensual por empleado:** tabla Día / Entrada / Salida / Horas / Evidencia + total. Día incompleto (sin salida) → solo el admin lo corrige (contraseña). **Sin cálculo de horas extra** (aplazado).
+- **Registro mensual por empleado:** tabla Día / Entrada / Salida / Horas / Evidencia + total. Día incompleto (sin salida) → solo el admin lo corrige (contraseña).
+- **Horas extra semanales (dato de referencia, NO es cálculo de nómina oficial):** `servicios/horasExtra.js` calcula, semana a semana (lunes-domingo), las horas por encima de la jornada legal de 42h. Se identifican día por día en orden cronológico: en cuanto el acumulado semanal cruza 42, el excedente de ese día es "extra" (contado desde el final del turno hacia atrás). Se clasifica en 4 categorías — diurnas (6am-7pm), con recargo dominical, nocturnas (7pm-6am), dominicales nocturnas — tratando festivo (`festivos.js`) igual que domingo. Una semana solo se muestra una vez que termina completamente (se "activa" el lunes siguiente). Si una semana cruza de mes, cada día se atribuye a su propio mes (el umbral de 42h se calcula sobre la semana completa). Se ve en `registro-asistencia.html` debajo del total del mes, con detalle expandible por semana.
 - Descarga mensual en Excel: una hoja por empleado + hoja "Resumen".
 - Empleados (lista del Formato 3 `presentacion_personal`) se gestionan dentro de ese formato; requiere admin si ese formato está restringido para la empresa.
 

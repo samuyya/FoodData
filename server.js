@@ -1,3 +1,8 @@
+// fijo la zona horaria del proceso ANTES que todo lo demas — si el host (ej. Render)
+// corre con TZ=UTC, "hoy" quedaria 5 horas adelantado y se desincroniza el dia que
+// se guarda en formatos/asistencia
+process.env.TZ = 'America/Bogota';
+
 require('dotenv').config();
 const express = require('express');
 const path = require('path');

@@ -11,6 +11,7 @@ const EmpleadoLista = require('../models/EmpleadoLista');
 const Registro = require('../models/Registro');
 const Asistencia = require('../models/Asistencia');
 const Documento = require('../models/Documento');
+const SaldoHorasExtra = require('../models/SaldoHorasExtra');
 const { FORMATOS } = require('../formatos');
 const { requireSuperadmin, ah } = require('../middleware/sesion');
 const googleSheets = require('../servicios/googleSheets');
@@ -70,6 +71,16 @@ router.get('/empresas', requireSuperadmin, ah(async (req, res) => {
 
 function passwordDebil(password) {
   return !password || String(password).length < 8;
+}
+
+const DIAS_JORNADA = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+function parsearJornadaEsperada(body) {
+  const jornada = {};
+  DIAS_JORNADA.forEach(dia => {
+    const v = parseFloat(body[`jornada_${dia}`]);
+    jornada[dia] = (!isNaN(v) && v >= 0 && v <= 24) ? v : 7;
+  });
+  return jornada;
 }
 
 function parsearListaFormatos(valor) {
@@ -134,6 +145,7 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
     const formatosCarpeta = parsearCarpetas(req.body, formatosActivos);
     const formatosCompartidos = parsearCompartidos(req.body, formatosActivos, formatosCarpeta);
     const modulosActivos = parsearModulos(req.body.modulosActivos);
+    const jornadaEsperada = parsearJornadaEsperada(req.body);
 
     const yaExiste = await Empresa.findOne({ email: email.toLowerCase().trim() });
     if (yaExiste) {
@@ -150,7 +162,8 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
       formatosActivos,
       formatosCarpeta,
       formatosCompartidos,
-      modulosActivos
+      modulosActivos,
+      jornadaEsperada
     });
     res.status(201).json({
       ok: true,
@@ -162,7 +175,8 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
         googleSheetId: empresa.googleSheetId,
         formatosActivos: empresa.formatosActivos,
         formatosCarpeta: empresa.formatosCarpeta,
-        formatosCompartidos: empresa.formatosCompartidos
+        formatosCompartidos: empresa.formatosCompartidos,
+        jornadaEsperada: empresa.jornadaEsperada
       }
     });
   } catch (err) {
@@ -171,7 +185,9 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
 });
 
 router.get('/empresas/:id', requireSuperadmin, ah(async (req, res) => {
-  const empresa = await Empresa.findById(req.params.id).select('-passwordHash').lean();
+  // sin .lean() a proposito: asi mongoose rellena jornadaEsperada con sus
+  // defaults si la empresa es de antes de que existiera ese campo
+  const empresa = await Empresa.findById(req.params.id).select('-passwordHash');
   if (!empresa) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });
   res.json({ ok: true, empresa });
 }));
@@ -217,6 +233,7 @@ router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req
     if (req.body.modulosActivos !== undefined) {
       empresa.modulosActivos = parsearModulos(req.body.modulosActivos);
     }
+    empresa.jornadaEsperada = parsearJornadaEsperada(req.body);
 
     await empresa.save();
     res.json({
@@ -229,7 +246,8 @@ router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req
         googleSheetId: empresa.googleSheetId,
         formatosActivos: empresa.formatosActivos,
         formatosCarpeta: empresa.formatosCarpeta,
-        formatosCompartidos: empresa.formatosCompartidos
+        formatosCompartidos: empresa.formatosCompartidos,
+        jornadaEsperada: empresa.jornadaEsperada
       }
     });
   } catch (err) {
@@ -271,6 +289,7 @@ router.delete('/empresas/:id', requireSuperadmin, async (req, res) => {
     await Registro.deleteMany({ empresa_id: empresaId });
     await Asistencia.deleteMany({ empresa_id: empresaId });
     await Documento.deleteMany({ empresa_id: empresaId });
+    await SaldoHorasExtra.deleteMany({ empresa_id: empresaId });
 
     const dirAsistencia = path.join(__dirname, '..', 'datos', 'asistencia', String(empresaId));
     const dirExcel = path.join(__dirname, '..', 'datos', 'excel', String(empresaId));

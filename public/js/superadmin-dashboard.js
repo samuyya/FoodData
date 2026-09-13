@@ -331,6 +331,11 @@ async function abrirModalEditar(empresaId) {
       c.checked = mods.includes(c.value);
     });
 
+    const jornada = emp.jornadaEsperada || {};
+    ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'].forEach(dia => {
+      formEditar[`jornada_${dia}`].value = jornada[dia] != null ? jornada[dia] : 7;
+    });
+
     // Actualizar tabla de carpetas cuando cambie la selección de formatos activos
     contenedorCheckboxesEditar.onchange = () => {
       const marcados = Array.from(

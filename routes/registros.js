@@ -9,7 +9,7 @@ const { FORMATOS, getFormato } = require('../formatos');
 const { getConfigEmpresa } = require('../empresaConfig');
 const { requireEmpresa, ah } = require('../middleware/sesion');
 const { limiteAdmin } = require('../middleware/limites');
-const { adminCarpetaAdministracionActivo, adminHistorialActivo, adminAtrasadoActivo } = require('./admin');
+const { adminCarpetaAdministracionActivo, adminHistorialActivo, adminAtrasadoActivo, adminReporteActivo } = require('./admin');
 const { sincronizarFormatoCarpeta, reconstruirArchivoCompleto, getRutaArchivoActual } = require('../servicios/excel');
 const googleSheets = require('../servicios/googleSheets');
 
@@ -357,6 +357,9 @@ async function descargarExcel(req, res) {
 // reporte de seguimiento: cumplimiento por formato + novedades, agrupado por carpeta,
 // para el rango de fechas que pida el administrador (por defecto, lo que va del mes)
 router.get('/reporte', requireEmpresa, ah(async (req, res) => {
+  if (!adminReporteActivo(req)) {
+    return res.status(401).json({ ok: false, error: 'Se requiere contraseña de administrador para generar el reporte', requiereClaveAdmin: true });
+  }
   const parse = s => {
     const [a, m, d] = String(s || '').split('-').map(Number);
     return (a && m && d) ? new Date(a, m - 1, d) : null;

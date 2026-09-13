@@ -68,6 +68,20 @@
         </fieldset>
 
         <fieldset class="campo campo-fieldset">
+          <legend>Jornada esperada (horas por día)</legend>
+          <div class="grid-jornada">
+            <label class="campo-mini"><span>Lunes</span><input type="number" name="jornada_lunes" min="0" max="24" step="0.5" value="7" /></label>
+            <label class="campo-mini"><span>Martes</span><input type="number" name="jornada_martes" min="0" max="24" step="0.5" value="7" /></label>
+            <label class="campo-mini"><span>Miércoles</span><input type="number" name="jornada_miercoles" min="0" max="24" step="0.5" value="7" /></label>
+            <label class="campo-mini"><span>Jueves</span><input type="number" name="jornada_jueves" min="0" max="24" step="0.5" value="7" /></label>
+            <label class="campo-mini"><span>Viernes</span><input type="number" name="jornada_viernes" min="0" max="24" step="0.5" value="7" /></label>
+            <label class="campo-mini"><span>Sábado</span><input type="number" name="jornada_sabado" min="0" max="24" step="0.5" value="7" /></label>
+            <label class="campo-mini"><span>Domingo</span><input type="number" name="jornada_domingo" min="0" max="24" step="0.5" value="7" /></label>
+          </div>
+          <p class="ayuda">Horas de jornada normal esperadas cada día. Se usa para calcular el banco de horas extra de asistencia.</p>
+        </fieldset>
+
+        <fieldset class="campo campo-fieldset">
           <legend>Formatos que usará esta empresa</legend>
           <div id="checkboxes-formatos" class="checkboxes-formatos"></div>
           <p class="ayuda">Marca al menos uno. La empresa solo verá los formatos seleccionados.</p>
@@ -164,6 +178,20 @@
             <label class="check-formato"><input type="checkbox" name="modulosActivos" value="programas" /> <span>🗂️ Programas</span></label>
           </div>
           <p class="ayuda">Si cambias esto, la empresa debe volver a iniciar sesión para que aplique en el menú.</p>
+        </fieldset>
+
+        <fieldset class="campo campo-fieldset">
+          <legend>Jornada esperada (horas por día)</legend>
+          <div class="grid-jornada">
+            <label class="campo-mini"><span>Lunes</span><input type="number" name="jornada_lunes" min="0" max="24" step="0.5" value="7" /></label>
+            <label class="campo-mini"><span>Martes</span><input type="number" name="jornada_martes" min="0" max="24" step="0.5" value="7" /></label>
+            <label class="campo-mini"><span>Miércoles</span><input type="number" name="jornada_miercoles" min="0" max="24" step="0.5" value="7" /></label>
+            <label class="campo-mini"><span>Jueves</span><input type="number" name="jornada_jueves" min="0" max="24" step="0.5" value="7" /></label>
+            <label class="campo-mini"><span>Viernes</span><input type="number" name="jornada_viernes" min="0" max="24" step="0.5" value="7" /></label>
+            <label class="campo-mini"><span>Sábado</span><input type="number" name="jornada_sabado" min="0" max="24" step="0.5" value="7" /></label>
+            <label class="campo-mini"><span>Domingo</span><input type="number" name="jornada_domingo" min="0" max="24" step="0.5" value="7" /></label>
+          </div>
+          <p class="ayuda">Horas de jornada normal esperadas cada día. Se usa para calcular el banco de horas extra de asistencia.</p>
         </fieldset>
 
         <fieldset class="campo campo-fieldset">

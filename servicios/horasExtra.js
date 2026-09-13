@@ -73,4 +73,42 @@ function calcularSemanas(registros) {
   return semanas.sort((a, b) => a.lunes - b.lunes);
 }
 
-module.exports = { calcularSemanas, clasificarDiurnoNocturno, esDomingoOFestivo, lunesDeSemana };
+const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+
+// dias: [{registro, horasExtra}] de calcularSemanas, ya filtrados al mes que se este pidiendo.
+// clasifica el excedente de la semana (>42h) en las 4 categorias.
+function clasificarExtraSemana(dias) {
+  let diurnas = 0, dominicales = 0, nocturnas = 0, dominicalesNocturnas = 0;
+  dias.forEach(({ registro: r, horasExtra }) => {
+    if (horasExtra <= 0) return;
+    const finExtra = r.horaSalida;
+    const inicioExtra = new Date(finExtra.getTime() - horasExtra * 3600000);
+    const { diurno, nocturno } = clasificarDiurnoNocturno(inicioExtra, finExtra);
+    if (esDomingoOFestivo(r.anio, r.mes, r.dia)) { dominicales += diurno; dominicalesNocturnas += nocturno; }
+    else { diurnas += diurno; nocturnas += nocturno; }
+  });
+  return { diurnas, dominicales, nocturnas, dominicalesNocturnas };
+}
+
+// registros: docs de Asistencia (con fecha/horaIngreso/horaSalida/horasTrabajadas), ya
+// filtrados al mes que se este pidiendo. jornada: objeto {lunes, martes, ...} en horas.
+// clasifica el faltante de cada dia (jornada esperada - horas trabajadas) contando desde
+// el final del turno real hasta cuando habria salido si completaba la jornada esperada.
+function clasificarDeficitSemana(registros, jornada) {
+  let diurnas = 0, dominicales = 0, nocturnas = 0, dominicalesNocturnas = 0;
+  registros.forEach(r => {
+    const esperadas = jornada[DIAS_SEMANA[new Date(r.fecha).getDay()]];
+    const deficit = Math.max(0, esperadas - (r.horasTrabajadas || 0));
+    if (deficit <= 0) return;
+    const finVentana = new Date(r.horaIngreso.getTime() + esperadas * 3600000);
+    const { diurno, nocturno } = clasificarDiurnoNocturno(r.horaSalida, finVentana);
+    if (esDomingoOFestivo(r.anio, r.mes, r.dia)) { dominicales += diurno; dominicalesNocturnas += nocturno; }
+    else { diurnas += diurno; nocturnas += nocturno; }
+  });
+  return { diurnas, dominicales, nocturnas, dominicalesNocturnas };
+}
+
+module.exports = {
+  calcularSemanas, clasificarDiurnoNocturno, esDomingoOFestivo, lunesDeSemana,
+  clasificarExtraSemana, clasificarDeficitSemana, JORNADA_SEMANAL
+};

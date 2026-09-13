@@ -22,6 +22,13 @@ function adminHistorialActivo(req) {
   return true;
 }
 
+function adminReporteActivo(req) {
+  const r = req.session && req.session.adminReporte;
+  if (!r) return false;
+  if (Date.now() - r.ts > MAX_EDAD_MS) return false;
+  return true;
+}
+
 // la verificacion para dias atrasados es INDEPENDIENTE por carpeta.
 // la sesion guarda { cocina: { ts }, salon: { ts }, administracion: { ts } }.
 // si la sesion vieja tiene formato distinto (un solo { ts }) lo trato como invalido.
@@ -103,13 +110,32 @@ router.post('/verificar-historial', limiteAdmin, requireEmpresa, ah(async (req, 
   res.status(401).json({ ok: false, error: 'Contraseña de administrador incorrecta' });
 }));
 
+router.post('/verificar-reporte', limiteAdmin, requireEmpresa, ah(async (req, res) => {
+  const { password } = req.body;
+  if (!password) {
+    return res.status(400).json({ ok: false, error: 'Falta la contraseña' });
+  }
+  const admins = await Administrador.find({ empresa_id: req.session.empresa.id });
+  if (admins.length === 0) {
+    return res.status(404).json({ ok: false, error: 'Esta empresa aún no tiene administrador asignado' });
+  }
+  for (const a of admins) {
+    if (await bcrypt.compare(password, a.passwordHash)) {
+      req.session.adminReporte = { nombre: a.nombre, ts: Date.now() };
+      return res.json({ ok: true, nombre: a.nombre });
+    }
+  }
+  res.status(401).json({ ok: false, error: 'Contraseña de administrador incorrecta' });
+}));
+
 // Limpia las verificaciones que SÍ dependen del contexto de navegación
-// (acceso a Administración y a historial). El marcador `adminAtrasado` NO
-// se limpia aquí porque debe persistir toda la sesión (8 h): es una sola
+// (acceso a Administración, historial y reporte). El marcador `adminAtrasado`
+// NO se limpia aquí porque debe persistir toda la sesión (8 h): es una sola
 // verificación válida para cualquier formato.
 router.post('/limpiar', requireEmpresa, (req, res) => {
   req.session.adminCarpetaAdministracion = null;
   req.session.adminHistorial = null;
+  req.session.adminReporte = null;
   res.json({ ok: true });
 });
 
@@ -117,3 +143,4 @@ module.exports = router;
 module.exports.adminCarpetaAdministracionActivo = adminCarpetaAdministracionActivo;
 module.exports.adminHistorialActivo = adminHistorialActivo;
 module.exports.adminAtrasadoActivo = adminAtrasadoActivo;
+module.exports.adminReporteActivo = adminReporteActivo;

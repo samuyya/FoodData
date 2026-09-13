@@ -23,7 +23,8 @@ const MODELOS = [
   require('../models/Registro'),
   require('../models/Asistencia'),
   require('../models/Documento'),
-  require('../models/Superadmin')
+  require('../models/Superadmin'),
+  require('../models/SaldoHorasExtra')
 ];
 
 const CARPETA_BACKUPS = path.join(__dirname, '..', 'backups');

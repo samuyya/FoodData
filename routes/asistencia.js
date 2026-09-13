@@ -11,7 +11,9 @@ const { requireEmpresa, ah } = require('../middleware/sesion');
 const { limiteAdmin } = require('../middleware/limites');
 const { guardarFotoAsistencia, rutaAbsolutaFoto, borrarFotoAsistencia } = require('../servicios/almacenamiento');
 const { generarExcelAsistencia } = require('../servicios/excel');
-const { calcularSemanas, clasificarDiurnoNocturno, esDomingoOFestivo, lunesDeSemana } = require('../servicios/horasExtra');
+const { calcularSemanas, lunesDeSemana, clasificarExtraSemana, clasificarDeficitSemana } = require('../servicios/horasExtra');
+const { actualizarSaldo } = require('../servicios/saldoHorasExtra');
+const Empresa = require('../models/Empresa');
 
 const router = express.Router();
 
@@ -163,6 +165,41 @@ router.get('/meses', requireEmpresa, ah(async (req, res) => {
   res.json({ ok: true, meses });
 }));
 
+// resumen de todos los empleados para el panel de arriba: horas del mes + saldo
+// de horas extra (el detalle dia a dia sigue viviendo en /registro/:empleadoId)
+router.get('/resumen-empleados', requireEmpresa, ah(async (req, res) => {
+  const hoy = hoyPartes();
+  const anio = parseInt(req.query.anio || hoy.anio, 10);
+  const mes = parseInt(req.query.mes || hoy.mes, 10);
+  if (isNaN(anio) || isNaN(mes) || mes < 1 || mes > 12) {
+    return res.status(400).json({ ok: false, error: 'Mes o año inválidos' });
+  }
+
+  const empresaId = req.session.empresa.id;
+  const empleados = await EmpleadoLista.find({ empresa_id: empresaId }).sort({ nombre: 1 }).lean();
+
+  const agregado = await Asistencia.aggregate([
+    { $match: { empresa_id: new mongoose.Types.ObjectId(empresaId), anio, mes } },
+    { $group: { _id: '$empleado_id', total: { $sum: '$horasTrabajadas' } } }
+  ]);
+  const totales = new Map(agregado.map(a => [String(a._id), a.total]));
+
+  const empresa = await Empresa.findById(empresaId);
+  const jornada = empresa.jornadaEsperada;
+
+  const resumen = await Promise.all(empleados.map(async emp => {
+    const saldo = await actualizarSaldo(empresaId, emp._id, jornada);
+    return {
+      empleadoId: emp._id,
+      nombre: emp.nombre,
+      totalHorasMes: Math.round((totales.get(String(emp._id)) || 0) * 100) / 100,
+      saldoTotal: Math.round((saldo.diurnas + saldo.dominicales + saldo.nocturnas + saldo.dominicalesNocturnas) * 100) / 100
+    };
+  }));
+
+  res.json({ ok: true, anio, mes, empleados: resumen });
+}));
+
 router.get('/registro/:empleadoId', requireEmpresa, ah(async (req, res) => {
   const hoy = hoyPartes();
   const anio = parseInt(req.query.anio || hoy.anio, 10);
@@ -176,6 +213,15 @@ router.get('/registro/:empleadoId', requireEmpresa, ah(async (req, res) => {
     empresa_id: req.session.empresa.id
   }).lean();
   if (!empleado) return res.status(404).json({ ok: false, error: 'Empleado no encontrado' });
+
+  const empresa = await Empresa.findById(req.session.empresa.id);
+  const jornada = empresa.jornadaEsperada;
+  const saldo = await actualizarSaldo(req.session.empresa.id, req.params.empleadoId, jornada);
+  const bancoHoras = {
+    diurnas: saldo.diurnas, dominicales: saldo.dominicales,
+    nocturnas: saldo.nocturnas, dominicalesNocturnas: saldo.dominicalesNocturnas,
+    total: Math.round((saldo.diurnas + saldo.dominicales + saldo.nocturnas + saldo.dominicalesNocturnas) * 100) / 100
+  };
 
   // traigo tambien las semanas vecinas (pueden caer en el mes anterior/siguiente)
   // para poder calcular bien el umbral de 42h/semana de las semanas que cruzan de mes
@@ -219,36 +265,46 @@ router.get('/registro/:empleadoId', requireEmpresa, ah(async (req, res) => {
   const semanas = [];
 
   semanasCerradas.forEach(sem => {
-    let diurnas = 0, dominicales = 0, nocturnas = 0, dominicalesNocturnas = 0;
     const diasDelMes = [], diasOtroMes = [];
-
     sem.dias.forEach(({ registro: r, horasExtra }) => {
       const esEsteMes = r.anio === anio && r.mes === mes;
       (esEsteMes ? diasDelMes : diasOtroMes).push({ r, horasExtra });
-      if (horasExtra <= 0 || !esEsteMes) return;
-
-      const finExtra = r.horaSalida;
-      const inicioExtra = new Date(finExtra.getTime() - horasExtra * 3600000);
-      const { diurno, nocturno } = clasificarDiurnoNocturno(inicioExtra, finExtra);
-      if (esDomingoOFestivo(r.anio, r.mes, r.dia)) {
-        dominicales += diurno; dominicalesNocturnas += nocturno;
-      } else {
-        diurnas += diurno; nocturnas += nocturno;
-      }
     });
+    if (diasDelMes.length === 0) return;
 
-    const totalSemana = Math.round((diurnas + dominicales + nocturnas + dominicalesNocturnas) * 100) / 100;
-    if (totalSemana <= 0) return;
+    // el tipo de semana (sumo o resto) se decide con el total REAL de la semana
+    // completa, no solo de los dias que caen en este mes
+    const totalSemanaReal = Math.round(
+      sem.dias.reduce((s, d) => s + (d.registro.horasTrabajadas || 0), 0) * 100
+    ) / 100;
 
-    totalExtraMes += totalSemana;
+    let tipo = 'neutro';
+    let mov = { diurnas: 0, dominicales: 0, nocturnas: 0, dominicalesNocturnas: 0 };
+    if (totalSemanaReal > 42) {
+      tipo = 'suma';
+      mov = clasificarExtraSemana(diasDelMes.map(d => ({ registro: d.r, horasExtra: d.horasExtra })));
+    } else if (totalSemanaReal < 42) {
+      tipo = 'resta';
+      mov = clasificarDeficitSemana(diasDelMes.map(d => d.r), jornada);
+    }
+
+    const totalMovimiento = Math.round((mov.diurnas + mov.dominicales + mov.nocturnas + mov.dominicalesNocturnas) * 100) / 100;
+    if (tipo === 'neutro' || totalMovimiento === 0) return;
+
+    if (tipo === 'suma') totalExtraMes += totalMovimiento;
+
     semanas.push({
       etiqueta: etiquetaSemana(sem.lunes, sem.domingo),
-      totalSemana,
-      diurnas: Math.round(diurnas * 100) / 100,
-      dominicales: Math.round(dominicales * 100) / 100,
-      nocturnas: Math.round(nocturnas * 100) / 100,
-      dominicalesNocturnas: Math.round(dominicalesNocturnas * 100) / 100,
-      corte: diasOtroMes.length ? notaCorte(diasDelMes, diasOtroMes) : null
+      tipo,
+      totalSemana: totalMovimiento,
+      diurnas: Math.round(mov.diurnas * 100) / 100,
+      dominicales: Math.round(mov.dominicales * 100) / 100,
+      nocturnas: Math.round(mov.nocturnas * 100) / 100,
+      dominicalesNocturnas: Math.round(mov.dominicalesNocturnas * 100) / 100,
+      corte: diasOtroMes.length ? notaCorte(diasDelMes, diasOtroMes) : null,
+      notaResta: tipo === 'resta'
+        ? `Esta semana se trabajaron menos horas de las esperadas; se descontaron ${totalMovimiento} h del banco de horas extra.`
+        : null
     });
   });
 
@@ -258,7 +314,8 @@ router.get('/registro/:empleadoId', requireEmpresa, ah(async (req, res) => {
     anio, mes,
     dias,
     totalHoras: Math.round(totalHoras * 100) / 100,
-    horasExtra: { total: Math.round(totalExtraMes * 100) / 100, semanas }
+    horasExtra: { total: Math.round(totalExtraMes * 100) / 100, semanas },
+    bancoHoras
   });
 }));
 

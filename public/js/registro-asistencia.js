@@ -159,6 +159,7 @@ function renderTabla(data) {
   total.textContent = `Total del mes: ${data.totalHoras} horas`;
   contenedorTabla.appendChild(total);
 
+  pintarBancoHoras(data.bancoHoras);
   pintarHorasExtra(data.horasExtra);
 
   contenedorTabla.querySelectorAll('.foto-mini').forEach(img => {
@@ -175,30 +176,56 @@ function renderTabla(data) {
 }
 
 function semanaHTML(s) {
+  const signo = s.tipo === 'resta' ? '-' : '+';
+  const claseTotal = s.tipo === 'resta' ? 'negativo' : 'positivo';
+  const filas = [
+    ['Horas extra diurnas', s.diurnas],
+    ['Horas extra con recargo dominical', s.dominicales],
+    ['Horas extra nocturnas', s.nocturnas],
+    ['Horas extra dominicales nocturnas', s.dominicalesNocturnas]
+  ].filter(([, v]) => v > 0);
+  const notas = [s.notaResta, s.corte].filter(Boolean);
+
   return `
     <article class="semana-extra">
       <div class="semana-extra-cabecera">
         <strong>${escapeHTML(s.etiqueta)}</strong>
-        <span class="semana-extra-total">${s.totalSemana} h extra</span>
+        <span class="semana-extra-total ${claseTotal}">${signo}${s.totalSemana} h</span>
       </div>
       <ul class="semana-extra-lista">
-        <li><span>Horas extra diurnas</span><strong>${s.diurnas} h</strong></li>
-        <li><span>Horas extra con recargo dominical</span><strong>${s.dominicales} h</strong></li>
-        <li><span>Horas extra nocturnas</span><strong>${s.nocturnas} h</strong></li>
-        <li><span>Horas extra dominicales nocturnas</span><strong>${s.dominicalesNocturnas} h</strong></li>
+        ${filas.map(([label, v]) => `<li${s.tipo === 'resta' ? ' class="linea-negativa"' : ''}><span>${label}</span><strong>${v} h</strong></li>`).join('')}
       </ul>
-      ${s.corte ? `<p class="semana-extra-corte">${escapeHTML(s.corte)}</p>` : ''}
+      ${notas.map(n => `<p class="semana-extra-nota">${escapeHTML(n)}</p>`).join('')}
     </article>
   `;
+}
+
+function pintarBancoHoras(banco) {
+  if (!banco) return;
+  const div = document.createElement('div');
+  div.className = 'banco-horas';
+  div.innerHTML = `
+    <div class="banco-horas-cabecera">
+      <span class="resumen-extra-label">Banco de horas extra</span>
+      <strong class="resumen-extra-valor">${banco.total} h</strong>
+    </div>
+    <div class="banco-horas-grid">
+      <div class="banco-item"><span class="banco-item-valor">${banco.diurnas}</span><span class="banco-item-label">Diurnas</span></div>
+      <div class="banco-item"><span class="banco-item-valor">${banco.dominicales}</span><span class="banco-item-label">Con recargo dominical</span></div>
+      <div class="banco-item"><span class="banco-item-valor">${banco.nocturnas}</span><span class="banco-item-label">Nocturnas</span></div>
+      <div class="banco-item"><span class="banco-item-valor">${banco.dominicalesNocturnas}</span><span class="banco-item-label">Dominicales nocturnas</span></div>
+    </div>
+  `;
+  contenedorTabla.appendChild(div);
 }
 
 function pintarHorasExtra(horasExtra) {
   if (!horasExtra) return;
 
-  if (horasExtra.total <= 0) {
+  if (horasExtra.semanas.length === 0) {
     const sinExtra = document.createElement('p');
     sinExtra.className = 'total-mes';
-    sinExtra.textContent = 'Total horas extra este mes: 0 h';
+    sinExtra.textContent = 'Sin movimientos de horas extra este mes.';
     contenedorTabla.appendChild(sinExtra);
     return;
   }
@@ -208,7 +235,7 @@ function pintarHorasExtra(horasExtra) {
   resumen.innerHTML = `
     <div class="resumen-extra-cabecera">
       <div class="resumen-extra-texto">
-        <span class="resumen-extra-label">Total horas extra este mes</span>
+        <span class="resumen-extra-label">Horas extra sumadas este mes</span>
         <strong class="resumen-extra-valor">${horasExtra.total} h</strong>
       </div>
       <button type="button" class="btn-secundario btn-pequeno" id="btn-toggle-detalle">Ver detalle por semana ▾</button>
@@ -224,6 +251,62 @@ function pintarHorasExtra(horasExtra) {
   btnToggle.addEventListener('click', () => {
     detalle.hidden = !detalle.hidden;
     btnToggle.textContent = detalle.hidden ? 'Ver detalle por semana ▾' : 'Ocultar detalle ▴';
+  });
+}
+
+async function cargarResumenEmpleados() {
+  if (!selectMes.value) return;
+  const [anioStr, mesStr] = selectMes.value.split('-');
+  const estado = document.getElementById('estado-resumen');
+  const contenedor = document.getElementById('contenedor-resumen-empleados');
+  contenedor.innerHTML = '';
+  estado.textContent = 'Cargando...';
+  contenedor.appendChild(estado);
+  try {
+    const r = await fetch(`/api/asistencia/resumen-empleados?anio=${anioStr}&mes=${mesStr}`);
+    const data = await r.json();
+    if (!r.ok) {
+      estado.textContent = data.error || 'Error cargando el resumen';
+      return;
+    }
+    renderResumenEmpleados(data.empleados);
+  } catch (err) {
+    estado.textContent = 'no hay conexion';
+  }
+}
+
+function renderResumenEmpleados(empleados) {
+  const contenedor = document.getElementById('contenedor-resumen-empleados');
+  contenedor.innerHTML = '';
+  if (empleados.length === 0) {
+    contenedor.innerHTML = '<p class="ayuda">Todavía no hay empleados registrados.</p>';
+    return;
+  }
+  const tabla = document.createElement('table');
+  tabla.className = 'tabla-registros resumen-empleados-tabla';
+  tabla.innerHTML = `
+    <thead><tr><th>Empleado</th><th>Horas del mes</th><th>Saldo horas extra</th><th></th></tr></thead>
+    <tbody></tbody>
+  `;
+  const tbody = tabla.querySelector('tbody');
+  empleados.forEach(e => {
+    const tr = document.createElement('tr');
+    const clasePill = e.saldoTotal > 0 ? 'saldo-pill con-saldo' : 'saldo-pill sin-saldo';
+    tr.innerHTML = `
+      <td>${escapeHTML(e.nombre)}</td>
+      <td>${e.totalHorasMes} h</td>
+      <td><span class="${clasePill}">${e.saldoTotal} h</span></td>
+      <td><button type="button" class="btn-secundario btn-pequeno btn-ver-detalle" data-id="${e.empleadoId}">Ver detalle</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  contenedor.appendChild(tabla);
+  contenedor.querySelectorAll('.btn-ver-detalle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectEmpleado.value = btn.dataset.id;
+      selectEmpleado.dispatchEvent(new Event('change'));
+      selectEmpleado.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   });
 }
 
@@ -316,7 +399,7 @@ formCorregir.addEventListener('submit', async (e) => {
 });
 
 selectEmpleado.addEventListener('change', cargarRegistro);
-selectMes.addEventListener('change', cargarRegistro);
+selectMes.addEventListener('change', () => { cargarRegistro(); cargarResumenEmpleados(); });
 
 btnDescargar.addEventListener('click', async () => {
   if (!selectMes.value) return;
@@ -361,6 +444,7 @@ async function iniciar() {
     pintarHeader(me.empresa);
     await cargarEmpleados();
     await cargarMeses();
+    await cargarResumenEmpleados();
   } catch (err) {
     document.body.innerHTML = '<p style="padding:2rem;color:#b91c1c">Error cargando la página. Recarga.</p>';
   }

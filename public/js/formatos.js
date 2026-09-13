@@ -27,7 +27,13 @@ const hojaReporte           = document.getElementById('hoja-reporte');
 const barraImprimir         = document.getElementById('barra-imprimir');
 const btnImprimir           = document.getElementById('btn-imprimir');
 
+const modalReporte          = document.getElementById('modal-admin-reporte');
+const modalReporteError     = document.getElementById('modal-reporte-error');
+const formAdminReporte      = document.getElementById('form-admin-reporte');
+const btnModalReporteCancelar = document.getElementById('modal-reporte-cancelar');
+
 let empresaActual = null;
+let rangoReportePendiente = null;
 
 const MESES_LARGOS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const MESES_CORTOS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
@@ -145,6 +151,15 @@ async function generarReporte(desde, hasta) {
   try {
     const r = await fetch(`/api/registros/reporte?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}`);
     const data = await r.json();
+    if (r.status === 401 && data.requiereClaveAdmin) {
+      hojaReporte.hidden = true;
+      rangoReportePendiente = { desde, hasta };
+      modalReporteError.hidden = true;
+      formAdminReporte.reset();
+      modalReporte.hidden = false;
+      setTimeout(() => formAdminReporte.password.focus(), 50);
+      return;
+    }
     if (!r.ok) {
       hojaReporte.innerHTML = `<p class="mensaje mensaje-error">${escapeHTML(data.error || 'No se pudo generar el reporte')}</p>`;
       return;
@@ -156,6 +171,45 @@ async function generarReporte(desde, hasta) {
     hojaReporte.innerHTML = '<p class="mensaje mensaje-error">no hay conexion</p>';
   }
 }
+
+function cerrarModalReporte() {
+  modalReporte.hidden = true;
+  rangoReportePendiente = null;
+}
+
+btnModalReporteCancelar.addEventListener('click', cerrarModalReporte);
+modalReporte.addEventListener('click', e => { if (e.target === modalReporte) cerrarModalReporte(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modalReporte.hidden) cerrarModalReporte(); });
+
+formAdminReporte.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  modalReporteError.hidden = true;
+  const btnVerificarReporte = formAdminReporte.querySelector('button[type="submit"]');
+  await conBotonCargando(btnVerificarReporte, 'Verificando...', async () => {
+    try {
+      const r = await fetch('/api/admin/verificar-reporte', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: formAdminReporte.password.value })
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        modalReporteError.textContent = data.error || 'Error';
+        modalReporteError.hidden = false;
+        return;
+      }
+      modalReporte.hidden = true;
+      if (rangoReportePendiente) {
+        const { desde, hasta } = rangoReportePendiente;
+        rangoReportePendiente = null;
+        generarReporte(desde, hasta);
+      }
+    } catch (err) {
+      modalReporteError.textContent = 'no hay conexion';
+      modalReporteError.hidden = false;
+    }
+  });
+});
 
 btnAbrirReporte.addEventListener('click', () => {
   panelReporte.hidden = !panelReporte.hidden;

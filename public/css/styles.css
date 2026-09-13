@@ -442,6 +442,27 @@ body {
 
 .check-formato input { margin: 0; }
 
+.grid-jornada {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: .6rem;
+  margin-top: .35rem;
+}
+
+.campo-mini {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  font-size: .8rem;
+}
+
+.campo-mini input {
+  width: 100%;
+  padding: .35rem .5rem;
+  border: 1px solid var(--color-borde);
+  border-radius: 6px;
+}
+
 .ayuda {
   margin: .5rem 0 0;
   font-size: .8rem;
@@ -1270,10 +1291,78 @@ textarea:focus {
   color: var(--color-texto-medio);
 }
 
-.semana-extra-corte {
+.semana-extra-nota {
   margin: .5rem 0 0;
   font-size: .78rem;
   color: var(--color-texto-suave);
+}
+
+.semana-extra-total.positivo { color: var(--color-primario-oscuro); }
+.semana-extra-total.negativo { color: var(--color-error); }
+
+.semana-extra-lista li.linea-negativa strong { color: var(--color-error); }
+
+.saldo-pill {
+  display: inline-block;
+  padding: .2rem .6rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: .85rem;
+}
+
+.saldo-pill.con-saldo {
+  background: var(--color-ok-bg);
+  color: var(--color-primario-oscuro);
+  border: 1px solid var(--color-ok-borde);
+}
+
+.saldo-pill.sin-saldo {
+  background: var(--color-superficie-alt);
+  color: var(--color-texto-suave);
+  border: 1px solid var(--color-borde-suave);
+}
+
+.banco-horas {
+  margin-top: 1rem;
+  padding: .9rem 1rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie-suave);
+}
+
+.banco-horas-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.banco-horas-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .6rem;
+  margin-top: .8rem;
+}
+
+.banco-item {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+}
+
+.banco-item-valor {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--color-texto);
+}
+
+.banco-item-label {
+  font-size: .72rem;
+  color: var(--color-texto-suave);
+}
+
+@media (max-width: 640px) {
+  .banco-horas-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 .btn-descarga-mes {

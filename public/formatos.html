@@ -97,6 +97,26 @@
     </div>
   </div>
 
+  <!-- Modal contraseña para generar el reporte de formatos -->
+  <div id="modal-admin-reporte" class="modal-backdrop" hidden role="dialog" aria-modal="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-reporte-titulo">
+      <h2 id="modal-reporte-titulo">Acceso al reporte de formatos</h2>
+      <p class="subtitulo">Ingresa la contraseña de administrador para generar el reporte.</p>
+
+      <form id="form-admin-reporte" class="form">
+        <label class="campo">
+          <span>Contraseña de administrador</span>
+          <input type="password" name="password" required autocomplete="current-password" />
+        </label>
+        <p id="modal-reporte-error" class="mensaje mensaje-error" hidden></p>
+        <div class="modal-acciones">
+          <button type="button" id="modal-reporte-cancelar" class="btn-secundario">Cancelar</button>
+          <button type="submit" class="btn-primario">Verificar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="/js/util.js"></script>
   <script src="/js/formatos.js"></script>
 </body>

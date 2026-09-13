@@ -35,6 +35,17 @@ const empresaSchema = new mongoose.Schema({
       validator: arr => arr.every(m => MODULOS_VALIDOS.includes(m)),
       message: 'Módulo inválido'
     }
+  },
+  // horas de jornada normal esperadas cada dia — se usa para saber cuanto es
+  // "menos de lo normal" cuando se resta del saldo de horas extra
+  jornadaEsperada: {
+    lunes:     { type: Number, default: 7 },
+    martes:    { type: Number, default: 7 },
+    miercoles: { type: Number, default: 7 },
+    jueves:    { type: Number, default: 7 },
+    viernes:   { type: Number, default: 7 },
+    sabado:    { type: Number, default: 7 },
+    domingo:   { type: Number, default: 7 }
   }
 }, { timestamps: true });
 

@@ -218,4 +218,10 @@ async function iniciar() {
   }
 }
 
-iniciar();
+// si un test hace require('./server') solo quiero el "app" para pasarselo a
+// supertest, no que se conecte a la BD real ni que abra el puerto
+if (require.main === module) {
+  iniciar();
+}
+
+module.exports = app;

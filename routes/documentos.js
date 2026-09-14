@@ -1,12 +1,11 @@
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const Documento = require('../models/Documento');
 const Empresa = require('../models/Empresa');
 const { MODULOS_VALIDOS } = Empresa;
 const { requireEmpresa, requireSuperadmin, ah } = require('../middleware/sesion');
-const { guardarDocumentoPrograma, rutaAbsolutaDocumento, borrarDocumento } = require('../servicios/almacenamiento');
+const { guardarDocumentoPrograma, obtenerDocumentoPrograma, borrarDocumento } = require('../servicios/almacenamiento');
 
 const router = express.Router();
 
@@ -118,14 +117,14 @@ router.get('/:id/descargar', ah(async (req, res) => {
     }
   }
 
-  const ruta = rutaAbsolutaDocumento(doc.rutaArchivo);
-  if (!fs.existsSync(ruta)) {
+  const buffer = await obtenerDocumentoPrograma(doc.rutaArchivo);
+  if (!buffer) {
     return res.status(404).json({ ok: false, error: 'El archivo ya no está en el servidor' });
   }
 
   res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(doc.nombreOriginal)}`);
   res.setHeader('Content-Type', doc.mimeType || 'application/octet-stream');
-  fs.createReadStream(ruta).pipe(res);
+  res.send(buffer);
 }));
 
 // borrar (solo superadmin)

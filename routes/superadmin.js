@@ -15,6 +15,7 @@ const SaldoHorasExtra = require('../models/SaldoHorasExtra');
 const { FORMATOS } = require('../formatos');
 const { requireSuperadmin, ah } = require('../middleware/sesion');
 const googleSheets = require('../servicios/googleSheets');
+const { guardarLogo, borrarLogo } = require('../servicios/almacenamiento');
 
 const IDS_FORMATOS = FORMATOS.map(f => f.id);
 
@@ -27,20 +28,9 @@ function extraerSheetId(valor) {
 
 const router = express.Router();
 
-const carpetaLogos = path.join(__dirname, '..', 'public', 'img', 'logos');
-if (!fs.existsSync(carpetaLogos)) fs.mkdirSync(carpetaLogos, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, carpetaLogos),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const safe = `logo-${Date.now()}${ext}`;
-    cb(null, safe);
-  }
-});
 // ojo: SVG fuera de la lista porque puede traer <script> y nos hace XSS
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 2 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
@@ -152,7 +142,7 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
       return res.status(409).json({ ok: false, error: 'Ya existe una empresa con ese email' });
     }
     const passwordHash = await bcrypt.hash(password, 12);
-    const logoRuta = req.file ? `/img/logos/${req.file.filename}` : '';
+    const logoRuta = req.file ? await guardarLogo(req.file.buffer, path.extname(req.file.originalname).toLowerCase()) : '';
     const empresa = await Empresa.create({
       nombre: nombre.trim(),
       email: email.toLowerCase().trim(),
@@ -213,7 +203,9 @@ router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req
     }
 
     if (req.file) {
-      empresa.logo = `/img/logos/${req.file.filename}`;
+      const logoViejo = empresa.logo;
+      empresa.logo = await guardarLogo(req.file.buffer, path.extname(req.file.originalname).toLowerCase());
+      if (logoViejo) await borrarLogo(logoViejo);
     }
 
     if (req.body.googleSheetId !== undefined) {
@@ -291,15 +283,15 @@ router.delete('/empresas/:id', requireSuperadmin, async (req, res) => {
     await Documento.deleteMany({ empresa_id: empresaId });
     await SaldoHorasExtra.deleteMany({ empresa_id: empresaId });
 
+    // ojo: esto solo limpia disco local. con Cloudinary activo, las fotos/documentos
+    // de esta empresa quedan huerfanos alla (el logo si se borra, via borrarLogo)
     const dirAsistencia = path.join(__dirname, '..', 'datos', 'asistencia', String(empresaId));
     const dirExcel = path.join(__dirname, '..', 'datos', 'excel', String(empresaId));
     const dirDocumentos = path.join(__dirname, '..', 'datos', 'documentos', String(empresaId));
     await fs.promises.rm(dirAsistencia, { recursive: true, force: true });
     await fs.promises.rm(dirExcel, { recursive: true, force: true });
     await fs.promises.rm(dirDocumentos, { recursive: true, force: true });
-    if (empresa.logo) {
-      await fs.promises.rm(path.join(carpetaLogos, path.basename(empresa.logo)), { force: true });
-    }
+    await borrarLogo(empresa.logo);
 
     await empresa.deleteOne();
     res.json({ ok: true });

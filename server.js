@@ -49,7 +49,8 @@ app.use(helmet({
       scriptSrc: ["'self'"],
       scriptSrcAttr: ["'none'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:', 'blob:'],
+      // res.cloudinary.com: ahi quedan los logos de empresa cuando esta activo Cloudinary
+      imgSrc: ["'self'", 'data:', 'blob:', 'https://res.cloudinary.com'],
       fontSrc: ["'self'"],
       connectSrc: ["'self'"],
       objectSrc: ["'none'"],

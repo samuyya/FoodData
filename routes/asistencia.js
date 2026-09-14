@@ -1,7 +1,6 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const Asistencia = require('../models/Asistencia');
@@ -9,7 +8,7 @@ const EmpleadoLista = require('../models/EmpleadoLista');
 const Administrador = require('../models/Administrador');
 const { requireEmpresa, ah } = require('../middleware/sesion');
 const { limiteAdmin } = require('../middleware/limites');
-const { guardarFotoAsistencia, rutaAbsolutaFoto, borrarFotoAsistencia } = require('../servicios/almacenamiento');
+const { guardarFotoAsistencia, obtenerFotoAsistencia, borrarFotoAsistencia } = require('../servicios/almacenamiento');
 const { generarExcelAsistencia } = require('../servicios/excel');
 const { calcularSemanas, lunesDeSemana, clasificarExtraSemana, clasificarDeficitSemana } = require('../servicios/horasExtra');
 const { actualizarSaldo } = require('../servicios/saldoHorasExtra');
@@ -319,7 +318,7 @@ router.get('/registro/:empleadoId', requireEmpresa, ah(async (req, res) => {
   });
 }));
 
-router.get('/foto', requireEmpresa, (req, res) => {
+router.get('/foto', requireEmpresa, ah(async (req, res) => {
   const ref = req.query.ref;
   if (!ref || typeof ref !== 'string' || ref.includes('..')) {
     return res.status(400).json({ ok: false, error: 'Referencia inválida' });
@@ -327,12 +326,13 @@ router.get('/foto', requireEmpresa, (req, res) => {
   if (!ref.startsWith(req.session.empresa.id + '/')) {
     return res.status(403).json({ ok: false, error: 'Sin acceso a esta foto' });
   }
-  const ruta = rutaAbsolutaFoto(ref);
-  if (!fs.existsSync(ruta)) {
+  const buffer = await obtenerFotoAsistencia(ref);
+  if (!buffer) {
     return res.status(404).json({ ok: false, error: 'Foto no encontrada' });
   }
-  res.sendFile(ruta);
-});
+  res.set('Content-Type', 'image/jpeg');
+  res.send(buffer);
+}));
 
 router.post('/corregir-salida', limiteAdmin, requireEmpresa, ah(async (req, res) => {
   const { registroId, hora, password } = req.body;

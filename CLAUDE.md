@@ -25,7 +25,7 @@ alimentaria exigidos por sanidad en **Colombia**. Multiempresa: cada empresa
 ## Ubicación y ejecución
 - Carpeta: `C:\Users\samue\OneDrive\Escritorio\FoodData` (antes se llamó "Seal Zenith" / "app-inocuidad-alimentaria").
 - Correr: `npm install` y luego `npm run dev` (nodemon) o `npm start`. Servidor en `http://localhost:3000`.
-- Requiere `.env` (no versionado): `PORT`, `MONGODB_URI`, `SESSION_SECRET`, `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD`, `GOOGLE_CREDENTIALS_PATH` (opcional), `ALLOWED_ORIGINS` (opcional).
+- Requiere `.env` (no versionado): `PORT`, `MONGODB_URI`, `SESSION_SECRET`, `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD`, `GOOGLE_CREDENTIALS_PATH` (opcional), `ALLOWED_ORIGINS` (opcional), `CLOUDINARY_URL` (opcional — sin esto, fotos/documentos/logos se guardan en disco local; ver sección "Storage de archivos").
 - `google-credentials.json` en la raíz (opcional, para Google Sheets; no versionado).
 
 ## Stack
@@ -45,7 +45,7 @@ alimentaria exigidos por sanidad en **Colombia**. Multiempresa: cada empresa
 - `models/` — Empresa, Administrador, EmpleadoLista, Registro, Superadmin, Asistencia, **Documento** (programa N de la empresa X).
 - `routes/` — auth, superadmin, formatos, admin, registros, empleados, asistencia, **documentos**.
 - `middleware/` — `sesion.js` (`requireEmpresa`, `requireSuperadmin`, **`requireModulo(nombre)`**), `limites.js` (rate limiters).
-- `servicios/` — `excel.js`, `googleSheets.js`, `almacenamiento.js` (guarda fotos en disco + documentos de programa; intercambiable a Cloudinary).
+- `servicios/` — `excel.js`, `googleSheets.js`, `almacenamiento.js` (fotos de asistencia + documentos de programa + logos; disco local o Cloudinary según `CLOUDINARY_URL`, ver sección "Storage de archivos").
 - `public/` — páginas .html, `css/styles.css`, `js/*`, `img/`, `manifest.json`, `sw.js`. **`js/util.js`** inyecta skip-link + focus trap global + PWA.
 - `datos/` — `excel/{empresaId}/Registros - {slug}.xlsx`, `asistencia/{empresaId}/{anio-mes}/`, **`documentos/{empresaId}/programa-{n}/`** (no versionado).
 - `scripts/` — utilitarios de mantenimiento: `diagnostico-registros.js`, `limpiar-registros-mes.js` (exige `empresaId`, ver abajo), `diagnostico-google-sheets.js`, `ensuciar.js` (mantiene el estilo "humano" del código), `backup.js` / `restore.js` (ver sección Backups).
@@ -156,6 +156,16 @@ Atlas está en el tier gratis (M0), que **no tiene backups automáticos nativos*
 - `node scripts/restore.js <carpeta-backup>` — dry run por defecto (no toca nada); agrega `--confirmar` para restaurar de verdad (reemplaza TODO lo actual).
 - **Pendiente:** programarlo con el Programador de tareas de Windows (ej. diario) y copiar `backups/` de vez en cuando a otro disco o a la nube — un backup que solo vive en esta máquina no protege si la máquina se daña. `backups/` ya está en `.gitignore` (contiene datos reales de clientes).
 
+## Storage de archivos
+`servicios/almacenamiento.js` decide solo, con `!!process.env.CLOUDINARY_URL`, si guarda en disco local o en Cloudinary — no hay que tocar código para activarlo, solo poner la variable (local o en Render).
+- **Sin `CLOUDINARY_URL`** (dev de hoy, tests, CI): igual que siempre — fotos en `datos/asistencia/`, documentos en `datos/documentos/`, logos en `public/img/logos/`.
+- **Con `CLOUDINARY_URL`** (el connect-string que da Cloudinary al crear la cuenta, formato `cloudinary://api_key:api_secret@cloud_name` — el SDK se autoconfigura solo con leerla):
+  - **Logos**: públicos (`type: 'upload'`), `empresa.logo` pasa a guardar la `secure_url` completa de Cloudinary en vez de una ruta relativa. Sin cambios de frontend — ya en todos lados se usa `empresa.logo` directo como `<img src>`.
+  - **Fotos de asistencia y documentos de programas**: privados (`type: 'authenticated'`, fotos como `resource_type: 'image'`, documentos siempre como `'raw'`). Nunca se le manda una URL de Cloudinary al navegador: `GET /api/asistencia/foto` y `GET /api/documentos/:id/descargar` siguen verificando `empresa_id` igual que siempre, y el servidor arma la URL firmada y baja los bytes él mismo para servirlos — mismo control de acceso de siempre, solo cambia de dónde se leen los bytes.
+  - El CSP (`imgSrc` en `server.js`) ya incluye `https://res.cloudinary.com` para que el logo no se bloquee cuando sea una URL externa.
+- **No hay migración automática de lo que ya existe en disco** (incluyendo lo de Naiki) — Render arranca con disco vacío de todas formas, así que no hace falta para el primer deploy. Si más adelante se quiere migrar el dev local a Cloudinary, sería un script aparte, todavía no construido.
+- Funciones nuevas en `almacenamiento.js`: `obtenerFotoAsistencia(ref)` / `obtenerDocumentoPrograma(ref)` (devuelven `Buffer` o `null`), `guardarLogo(buffer, ext)` / `borrarLogo(logoValue)`. `guardarFotoAsistencia`/`guardarDocumentoPrograma`/`borrarFotoAsistencia`/`borrarDocumento` mantienen la misma firma de siempre.
+
 ## Tests
 `npm test` corre Jest + Supertest sobre los flujos críticos: login de empresa y de superadmin (`tests/auth.test.js`, `tests/superadmin.test.js`), guardar formato + reporte de formatos con clave de admin (`tests/registros.test.js`), marcar asistencia + corregir salida (`tests/asistencia.test.js`), y CRUD de empresas desde el superadmin (`tests/superadmin.test.js`).
 - Cada corrida levanta una MongoDB temporal en memoria (`mongodb-memory-server`) — **nunca toca Atlas**, ni Naiki ni "prueba 1". Se borra sola al terminar.
@@ -207,9 +217,8 @@ Cuando el usuario diga "vamos a desplegar" o "subir a producción" o "Render", *
 - [ ] Nada más pendiente aquí — ya no se pierden las sesiones en cada deploy de Render.
 
 ### 3. Storage de archivos (CRÍTICO en Render/host gratis — disco efímero)
-- [ ] Migrar `servicios/almacenamiento.js` (fotos de asistencia) a **Cloudinary** o S3
-- [ ] Migrar logos de empresa (`public/img/logos/`) también a Cloudinary/S3
-- [ ] El campo `logo` y `fotoIngreso/fotoSalida` deben guardar URL completa de Cloudinary, no path local
+- [x] Hecho (2026-09-14): **código listo**, activable por configuración — ver sección "Storage de archivos" más arriba. `servicios/almacenamiento.js`, `routes/asistencia.js`, `routes/documentos.js` y `routes/superadmin.js` ya saben usar Cloudinary si `CLOUDINARY_URL` existe, y disco local si no.
+- [ ] **Falta la cuenta de Cloudinary** (el usuario todavía no la crea) — cuando exista, solo hay que poner `CLOUDINARY_URL` en Render (y opcionalmente en `.env` local si se quiere probar antes de desplegar). No hace falta tocar código.
 
 ### 4. MongoDB Atlas
 - [ ] Network Access: cambiar `0.0.0.0/0` por las IPs específicas de Render (no dejar abierto al mundo)

@@ -31,7 +31,7 @@ alimentaria exigidos por sanidad en **Colombia**. Multiempresa: cada empresa
 ## Stack
 - **Backend:** Node.js + Express.
 - **BD:** MongoDB Atlas + Mongoose.
-- **Frontend:** HTML + CSS + JS plano (SIN React todavía — migración planeada).
+- **Frontend:** HTML + CSS + JS plano (decidido: sin React, no salía rentable para este proyecto — ver "Pendiente / roadmap").
 - **PWA:** `public/manifest.json` + `public/sw.js`.
 - **Deps:** bcryptjs, cors, dotenv, exceljs, express, express-rate-limit, express-session, googleapis, helmet, mongoose, multer. Dev: nodemon.
 
@@ -241,8 +241,8 @@ Cuando el usuario diga "vamos a desplegar" o "subir a producción" o "Render", *
 - [ ] Verificar HSTS con: `curl -I https://tudominio.com` (debe haber header `strict-transport-security`)
 
 ## Pendiente / roadmap
-- **Capacitaciones:** definir si será módulo interno por empresa o **servicio público pago** (cualquiera entra, ve la capacitación, paga, recibe certificado BPM) → requeriría acceso público, pasarela de pago (Wompi/MercadoPago/PayU en Colombia) y certificados PDF.
-- **Migración a React** (postergada — vale la pena terminar features en vanilla primero).
+- **Capacitaciones:** decidido — va a ser **módulo interno de la app** (no un servicio público de pago con pasarela y certificados). Postergado por el momento (sin contenido todavía), pero el botón en el menú principal y el checkbox del superadmin se quedan tal cual están.
+- **Migración a React: descartada.** Se evaluó y no salía rentable para el tamaño/alcance de este proyecto — se sigue y se termina en HTML + CSS + JS plano.
 - **Despliegue** (host recomendado: Render). **NO desplegar sin completar la sección "⚠️ ANTES DE DESPLEGAR — CHECKLIST OBLIGATORIO"** más arriba en este archivo. Faltan: `connect-mongo` (sesiones persistentes), Cloudinary (storage de fotos asistencia + logos + documentos de programa), credenciales de Google por env var, restricción de IP en Atlas, logger real (pino/winston).
 - **Automatizar `backup.js`:** a propósito NO se configura con el Programador de tareas de Windows ahora — es una automatización 100% local (solo esta PC, solo mientras esté prendida) que no sirve de nada en el servidor de producción; se descartaría entera al desplegar. Retomar este tema **en el momento del despliegue**, ahí decidiendo la forma correcta para ese entorno (cron en Render, GitHub Actions con horario, o directamente los backups nativos de un Atlas de pago M10+ si para entonces ya se migró de M0).
 

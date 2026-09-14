@@ -4,9 +4,11 @@ const request = require('supertest');
 const bcrypt = require('bcryptjs');
 const Empresa = require('../models/Empresa');
 const Administrador = require('../models/Administrador');
+const Superadmin = require('../models/Superadmin');
 
 const PASSWORD_EMPRESA = 'clave-segura-123';
 const PASSWORD_ADMIN = 'admin-clave-123';
+const PASSWORD_SUPERADMIN = 'super-clave-123';
 
 async function crearEmpresaLogueada(app, overrides = {}) {
   const passwordHash = await bcrypt.hash(PASSWORD_EMPRESA, 12);
@@ -27,4 +29,20 @@ async function crearAdministrador(empresaId) {
   return Administrador.create({ nombre: 'Admin de prueba', empresa_id: empresaId, passwordHash });
 }
 
-module.exports = { crearEmpresaLogueada, crearAdministrador, PASSWORD_EMPRESA, PASSWORD_ADMIN };
+async function crearSuperadminLogueado(app, overrides = {}) {
+  const passwordHash = await bcrypt.hash(PASSWORD_SUPERADMIN, 12);
+  const superadmin = await Superadmin.create({
+    email: 'super-tests@fooddata.com',
+    passwordHash,
+    ...overrides
+  });
+
+  const agent = request.agent(app);
+  await agent.post('/api/auth/login').send({ email: superadmin.email, password: PASSWORD_SUPERADMIN });
+  return { agent, superadmin };
+}
+
+module.exports = {
+  crearEmpresaLogueada, crearAdministrador, crearSuperadminLogueado,
+  PASSWORD_EMPRESA, PASSWORD_ADMIN, PASSWORD_SUPERADMIN
+};

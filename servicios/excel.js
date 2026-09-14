@@ -8,6 +8,7 @@ const Asistencia = require('../models/Asistencia');
 const { getFormato } = require('../formatos');
 const { esFestivo, nombreFestivo } = require('../festivos');
 const { getConfigEmpresa } = require('../empresaConfig');
+const logger = require('../logger');
 
 const CARPETA_EXCEL = path.join(__dirname, '..', 'datos', 'excel');
 const COLOR_PRIMARIO = 'FF16C2A3';   // turquoise FoodData
@@ -66,7 +67,7 @@ async function abrirWorkbook(filePath, nombreEmpresa) {
       await wb.xlsx.readFile(filePath);
       return wb;
     } catch (err) {
-      console.warn(`No se pudo leer ${filePath}, se reconstruye:`, err.message);
+      logger.warn(`No se pudo leer ${filePath}, se reconstruye: ${err.message}`);
     }
   }
   wb.creator = nombreEmpresa || 'FoodData';

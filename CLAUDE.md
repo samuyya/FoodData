@@ -38,6 +38,7 @@ alimentaria exigidos por sanidad en **Colombia**. Multiempresa: cada empresa
 ## Estructura
 - `server.js` — arranque: helmet (CSP, HSTS, frameguard), cors, body-parser con `limit: 256kb`, middleware anti-NoSQL, sesión persistente con `connect-mongo`, estáticos, rutas, `seedSuperadmin()`, `sincronizarIndicesRegistro()`, `googleSheets.inicializar()`. Error handler global. Maneja `EADDRINUSE` con mensaje claro.
 - `db.js` — conexión Mongoose.
+- `logger.js` — logger real (pino): pretty-print en desarrollo, JSON plano por stdout en producción.
 - `formatos.js` — catálogo de **9 formatos** (`FORMATOS`, `getFormato`).
 - `festivos.js` + `public/js/festivos.js` — módulo de festivos colombianos (algoritmo Meeus para Pascua + Ley Emiliani + religiosos). Cache por año.
 - `empresaConfig.js` — `getConfigEmpresa(empresaId)` → `{ activos, carpetas: { cocina, salon, administracion }, compartidos }`. Helper `carpetaCanonica(formatoId, carpeta, config)` (legacy, ya no se usa en registros pero sí en Excel/GS para detectar formatos compartidos).
@@ -219,8 +220,8 @@ Cuando el usuario diga "vamos a desplegar" o "subir a producción" o "Render", *
 - [ ] Revisar `npm audit` de vez en cuando de todas formas (dependencias nuevas pueden traer vulnerabilidades futuras)
 
 ### 6. Logs y monitoreo
-- [ ] Reemplazar `console.log` por un logger real (`pino` o `winston`) que pueda enviar a un servicio (Better Stack, Logtail)
-- [ ] Agregar alertas en Render para errores 500 y caídas
+- [x] Hecho (2026-09-14): `logger.js` (pino) en la raíz — en desarrollo imprime bonito y a color (`pino-pretty`), en producción (`NODE_ENV=production`) saca JSON plano por stdout, que es lo que Render/Better Stack/Logtail esperan. Reemplazados los `console.log/warn/error` del server que corre en producción (`server.js`, `db.js`, `servicios/googleSheets.js`, `servicios/excel.js`, `routes/registros.js`). Los `console.log` de `scripts/*.js` (CLI de mantenimiento que corre un humano a mano, ej. `backup.js`, `restore.js`) se dejaron tal cual a propósito — ahí el `console.log` es la salida directa a la terminal de quien lo corre, no un log de servidor.
+- [ ] Cuando haya cuenta de Render: conectar el servicio de logs (Better Stack o Logtail) y agregar alertas para errores 500 y caídas
 
 ### 7. Cosas que ya están parchadas en código (NO tocar)
 - ✅ `passwordHash` ya no se expone en `/api/superadmin/administradores`

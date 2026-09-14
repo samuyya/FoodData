@@ -13,6 +13,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const { conectarDB } = require('./db');
 const Superadmin = require('./models/Superadmin');
+const logger = require('./logger');
 
 const authRoutes = require('./routes/auth');
 const superadminRoutes = require('./routes/superadmin');
@@ -33,7 +34,7 @@ const EN_PRODUCCION = process.env.NODE_ENV === 'production';
 // si me olvido de poner SESSION_SECRET en produccion, mejor que reviente al arranque
 // y no que use un secreto adivinable
 if (EN_PRODUCCION && (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32)) {
-  console.error('FATAL: en produccion necesitas SESSION_SECRET con minimo 32 caracteres en .env');
+  logger.error('FATAL: en produccion necesitas SESSION_SECRET con minimo 32 caracteres en .env');
   process.exit(1);
 }
 
@@ -144,7 +145,7 @@ app.get('/api/health', (req, res) => {
 // si una ruta llama a next(err) o explota inesperadamente, no expongo el stack
 // al cliente — lo logueo aca y devuelvo algo generico
 app.use((err, req, res, next) => {
-  console.log('error sin atrapar:', req.method, req.path, '-', err.message);
+  logger.error(`error sin atrapar: ${req.method} ${req.path} - ${err.message}`);
   if (res.headersSent) return next(err);
   const codigo = err.status || err.statusCode || 500;
   res.status(codigo).json({
@@ -157,7 +158,7 @@ async function seedSuperadmin() {
   const email = process.env.SUPERADMIN_EMAIL;
   const password = process.env.SUPERADMIN_PASSWORD;
   if (!email || !password) {
-    console.warn('SUPERADMIN_EMAIL / SUPERADMIN_PASSWORD no definidos en .env, no se crea superadmin inicial');
+    logger.warn('SUPERADMIN_EMAIL / SUPERADMIN_PASSWORD no definidos en .env, no se crea superadmin inicial');
     return;
   }
   const emailNorm = email.toLowerCase().trim();
@@ -166,7 +167,7 @@ async function seedSuperadmin() {
   if (!existe) {
     const passwordHash = await bcrypt.hash(password, 12);
     await Superadmin.create({ email: emailNorm, passwordHash });
-    console.log(`Superadmin inicial creado: ${email}`);
+    logger.info(`Superadmin inicial creado: ${email}`);
     return;
   }
 
@@ -174,7 +175,7 @@ async function seedSuperadmin() {
   if (!coincide) {
     existe.passwordHash = await bcrypt.hash(password, 12);
     await existe.save();
-    console.log(`Superadmin: contraseña sincronizada desde .env (${email})`);
+    logger.info(`Superadmin: contraseña sincronizada desde .env (${email})`);
   }
 }
 
@@ -190,18 +191,18 @@ async function sincronizarIndicesRegistro() {
       { $set: { carpeta: 'cocina' } }
     );
     if (upd.modifiedCount > 0) {
-      console.log(`Migración registros: ${upd.modifiedCount} documento(s) actualizados con carpeta='cocina'.`);
+      logger.info(`Migración registros: ${upd.modifiedCount} documento(s) actualizados con carpeta='cocina'.`);
     }
 
     // syncIndexes() elimina los índices que no están en el schema y crea los nuevos
     const resultado = await Registro.syncIndexes();
     if (Array.isArray(resultado) && resultado.length > 0) {
-      console.log('Índices de Registro eliminados (obsoletos):', resultado);
+      logger.info({ resultado }, 'Índices de Registro eliminados (obsoletos)');
     } else {
-      console.log('Índices de Registro sincronizados.');
+      logger.info('Índices de Registro sincronizados.');
     }
   } catch (err) {
-    console.log('error sincronizando indices:', err.message);
+    logger.error(`error sincronizando indices: ${err.message}`);
   }
 }
 
@@ -212,19 +213,18 @@ async function iniciar() {
     await seedSuperadmin();
     googleSheets.inicializar();
     const server = app.listen(PORT, () => {
-      console.log(`Servidor escuchando en http://localhost:${PORT}`);
+      logger.info(`Servidor escuchando en http://localhost:${PORT}`);
     });
     server.on('error', (err) => {
       if (err.code === 'EADDRINUSE') {
-        console.error(`\nEl puerto ${PORT} ya está en uso. Hay otro servidor corriendo.`);
-        console.error('Detén el otro servidor con Ctrl+C en su terminal y vuelve a intentar.\n');
+        logger.error(`El puerto ${PORT} ya está en uso. Hay otro servidor corriendo. Detén el otro servidor con Ctrl+C en su terminal y vuelve a intentar.`);
       } else {
-        console.error('Error del servidor:', err.message);
+        logger.error(`Error del servidor: ${err.message}`);
       }
       process.exit(1);
     });
   } catch (err) {
-    console.error('Error al iniciar:', err.message);
+    logger.error(`Error al iniciar: ${err.message}`);
     process.exit(1);
   }
 }

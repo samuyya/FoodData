@@ -12,6 +12,7 @@ const { limiteAdmin } = require('../middleware/limites');
 const { adminCarpetaAdministracionActivo, adminHistorialActivo, adminAtrasadoActivo, adminReporteActivo } = require('./admin');
 const { sincronizarFormatoCarpeta, reconstruirArchivoCompleto, getRutaArchivoActual } = require('../servicios/excel');
 const googleSheets = require('../servicios/googleSheets');
+const logger = require('../logger');
 
 const router = express.Router();
 
@@ -241,7 +242,7 @@ router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
     try {
       await sincronizarFormatoCarpeta(req.session.empresa.id, formatoId, carpeta);
     } catch (errSync) {
-      console.log('no se pudo escribir excel:', errSync.message);
+      logger.warn(`no se pudo escribir excel: ${errSync.message}`);
       // EBUSY o EPERM => archivo abierto en Excel desktop (Windows lo bloquea)
       if (errSync.code === 'EBUSY' || errSync.code === 'EPERM' || /resource busy|permission denied|access is denied/i.test(errSync.message)) {
         excelError = 'El archivo Excel está abierto en tu computador y no se pudo actualizar. Ciérralo y vuelve a guardar (o descárgalo nuevamente desde la app).';
@@ -261,7 +262,7 @@ router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
         await googleSheets.sincronizarFormato(empresaDoc.googleSheetId, req.session.empresa.id, formatoId, carpeta);
       }
     } catch (errGS) {
-      console.log('no se sincronizo google sheets:', errGS.message);
+      logger.warn(`no se sincronizo google sheets: ${errGS.message}`);
       const msg = String(errGS.message || '');
       if (/permission|403/i.test(msg)) {
         googleSheetsError = `La cuenta de servicio no tiene permiso para editar esta hoja. Compártela como Editor con: ${googleSheets.getCuentaServicio()}`;

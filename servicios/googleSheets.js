@@ -5,6 +5,7 @@ const Registro = require('../models/Registro');
 const { getFormato } = require('../formatos');
 const { esFestivo } = require('../festivos');
 const { getConfigEmpresa } = require('../empresaConfig');
+const logger = require('../logger');
 
 const RUTA_CREDENCIALES = process.env.GOOGLE_CREDENTIALS_PATH
   || path.join(__dirname, '..', 'google-credentials.json');
@@ -31,7 +32,7 @@ const COLOR_TEXTO_OSC  = { red: 0.055, green: 0.227, blue: 0.192 };  // #0E3A31
 
 function inicializar() {
   if (!fs.existsSync(RUTA_CREDENCIALES)) {
-    console.log('sin credenciales de google sheets, no sincroniza');
+    logger.info('sin credenciales de google sheets, no sincroniza');
     return;
   }
   try {
@@ -43,9 +44,9 @@ function inicializar() {
     });
     sheets = google.sheets({ version: 'v4', auth });
     disponible = true;
-    console.log(`Google Sheets: sincronización activada (cuenta: ${cuentaServicioEmail})`);
+    logger.info(`Google Sheets: sincronización activada (cuenta: ${cuentaServicioEmail})`);
   } catch (err) {
-    console.log('google sheets no arranco:', err.message);
+    logger.error(`google sheets no arranco: ${err.message}`);
     disponible = false;
   }
 }
@@ -571,7 +572,7 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
   }
 
   // ----- Limpiar la hoja entera -----
-  console.log('[GS] Limpiando valores...');
+  logger.debug('[GS] Limpiando valores...');
   await sheets.spreadsheets.values.clear({
     spreadsheetId,
     range: `'${pestana}'`
@@ -579,7 +580,7 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
 
   // Limpiar formato previo (merges + colores) usando rangos bounded
   const rangoCompleto = { sheetId, startRowIndex: 0, endRowIndex: 1000, startColumnIndex: 0, endColumnIndex: Math.max(numCols, 20) };
-  console.log('[GS] Limpiando formatos previos...');
+  logger.debug('[GS] Limpiando formatos previos...');
   try {
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId,
@@ -596,7 +597,7 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
       }
     });
   } catch (errLimpieza) {
-    console.log('gs: No se pudo limpiar formato previo (no es crítico):', errLimpieza.message);
+    logger.warn(`gs: No se pudo limpiar formato previo (no es crítico): ${errLimpieza.message}`);
   }
 
   // ----- Escribir valores -----

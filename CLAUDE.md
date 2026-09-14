@@ -155,6 +155,14 @@ Atlas está en el tier gratis (M0), que **no tiene backups automáticos nativos*
 - `node scripts/restore.js <carpeta-backup>` — dry run por defecto (no toca nada); agrega `--confirmar` para restaurar de verdad (reemplaza TODO lo actual).
 - **Pendiente:** programarlo con el Programador de tareas de Windows (ej. diario) y copiar `backups/` de vez en cuando a otro disco o a la nube — un backup que solo vive en esta máquina no protege si la máquina se daña. `backups/` ya está en `.gitignore` (contiene datos reales de clientes).
 
+## Tests
+`npm test` corre Jest + Supertest sobre los 3 flujos críticos: login (`tests/auth.test.js`), guardar formato (`tests/registros.test.js`) y marcar asistencia (`tests/asistencia.test.js`).
+- Cada corrida levanta una MongoDB temporal en memoria (`mongodb-memory-server`) — **nunca toca Atlas**, ni Naiki ni "prueba 1". Se borra sola al terminar.
+- `server.js` exporta `app` (Express) y solo llama a `iniciar()` — conectar a Mongo real + abrir el puerto — si se corre directo (`node server.js`/`nodemon`). Los tests hacen `require('../server')` y usan ese `app` con Supertest, sin servidor real corriendo.
+- `tests/setup.js` conecta/limpia/cierra la BD de prueba. `tests/helpers.js` arma una empresa + sesión logueada (con el `agent` de Supertest, que guarda la cookie de sesión entre requests) para no repetir el login en cada test.
+- Guardar un registro o marcar asistencia también escriben archivos reales (Excel, fotos) en `datos/` — cada test los borra al terminar (`fs.rm` sobre la carpeta de esa empresa de prueba).
+- **Pendiente:** más flujos (superadmin, corregir asistencia, reporte de formatos) y correrlo en CI (GitHub Actions) para que cada push los corra solo.
+
 ## Skill impeccable (no versionada, solo local)
 - Instalada en `.claude/skills/impeccable/` (en `.gitignore`). Re-instalar con `npx impeccable skills install`.
 - **23 sub-comandos** disponibles. Los más útiles para FoodData (product UI):

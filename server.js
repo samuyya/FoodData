@@ -7,6 +7,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const session = require('express-session');
+const { MongoStore } = require('connect-mongo');
 const helmet = require('helmet');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -99,7 +100,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(session({
+const sessionConfig = {
   name: 'fd.sid',  // nombre custom, no delata que uso express-session
   secret: process.env.SESSION_SECRET || 'desarrollo-cambiar-en-produccion',
   resave: false,
@@ -111,7 +112,17 @@ app.use(session({
     sameSite: 'lax',
     secure: EN_PRODUCCION
   }
-}));
+};
+// guardo las sesiones en Mongo (no en memoria) para que sobrevivan un reinicio
+// del server (nodemon en dev, un redeploy en Render). en los tests uso mongo
+// en memoria para todo lo demas y no quiero que esto se conecte al Atlas real
+if (process.env.MONGODB_URI && process.env.NODE_ENV !== 'test') {
+  sessionConfig.store = MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI,
+    ttl: 8 * 60 * 60 // segundos, igual al maxAge de la cookie
+  });
+}
+app.use(session(sessionConfig));
 
 app.use(express.static(path.join(__dirname, 'public')));
 

@@ -36,7 +36,7 @@ alimentaria exigidos por sanidad en **Colombia**. Multiempresa: cada empresa
 - **Deps:** bcryptjs, cors, dotenv, exceljs, express, express-rate-limit, express-session, googleapis, helmet, mongoose, multer. Dev: nodemon.
 
 ## Estructura
-- `server.js` — arranque: helmet (CSP, HSTS, frameguard), cors, body-parser con `limit: 256kb`, middleware anti-NoSQL, sesión con `connect-mongo` (pendiente), estáticos, rutas, `seedSuperadmin()`, `sincronizarIndicesRegistro()`, `googleSheets.inicializar()`. Error handler global. Maneja `EADDRINUSE` con mensaje claro.
+- `server.js` — arranque: helmet (CSP, HSTS, frameguard), cors, body-parser con `limit: 256kb`, middleware anti-NoSQL, sesión persistente con `connect-mongo`, estáticos, rutas, `seedSuperadmin()`, `sincronizarIndicesRegistro()`, `googleSheets.inicializar()`. Error handler global. Maneja `EADDRINUSE` con mensaje claro.
 - `db.js` — conexión Mongoose.
 - `formatos.js` — catálogo de **9 formatos** (`FORMATOS`, `getFormato`).
 - `festivos.js` + `public/js/festivos.js` — módulo de festivos colombianos (algoritmo Meeus para Pascua + Ley Emiliani + religiosos). Cache por año.
@@ -202,9 +202,8 @@ Cuando el usuario diga "vamos a desplegar" o "subir a producción" o "Render", *
 - [ ] `GOOGLE_CREDENTIALS_PATH` o las credenciales como JSON en una variable de entorno (no como archivo en el filesystem efímero)
 
 ### 2. Sesiones persistentes (CRÍTICO)
-- [ ] `npm install connect-mongo`
-- [ ] En `server.js` agregar `store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI, ttl: 8 * 60 * 60 })` dentro de `session({...})`
-- [ ] Sin esto, **las sesiones se pierden cada deploy** de Render
+- [x] Hecho (2026-09-14): `connect-mongo` instalado, `server.js` usa `MongoStore.create({ mongoUrl: process.env.MONGODB_URI, ttl: 8*60*60 })` dentro de `session({...})` — **solo si `MONGODB_URI` existe y `NODE_ENV !== 'test'`** (así los tests de Jest, que usan Mongo en memoria, nunca tocan el Atlas real). Como efecto secundario bienvenido, esto también quedó activo en desarrollo: ya no hay que volver a loguearse cada vez que nodemon reinicia. Verificado en el navegador: sesión sobrevive un reinicio real del server.
+- [ ] Nada más pendiente aquí — ya no se pierden las sesiones en cada deploy de Render.
 
 ### 3. Storage de archivos (CRÍTICO en Render/host gratis — disco efímero)
 - [ ] Migrar `servicios/almacenamiento.js` (fotos de asistencia) a **Cloudinary** o S3

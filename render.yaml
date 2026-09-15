@@ -1,0 +1,27 @@
+# Blueprint de Render: en el dashboard, "New" -> "Blueprint" -> conectar este
+# repo. Render lee este archivo y crea el servicio con esta configuracion.
+# Las variables con "sync: false" hay que llenarlas a mano en el dashboard
+# (son secretos, por eso no van escritos aca).
+services:
+  - type: web
+    name: fooddata
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: SUPERADMIN_EMAIL
+        sync: false
+      - key: SUPERADMIN_PASSWORD
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: CLOUDINARY_URL
+        sync: false

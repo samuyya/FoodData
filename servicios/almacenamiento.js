@@ -7,7 +7,10 @@ const fs = require('fs');
 const cloudinary = require('cloudinary').v2;
 const logger = require('../logger');
 
-const usarCloudinary = !!process.env.CLOUDINARY_URL;
+// en los tests siempre disco local, aunque el .env del dev tenga CLOUDINARY_URL
+// de verdad — si no, los tests intentarian subir sus buffers falsos a Cloudinary
+// de verdad (y Cloudinary los rechaza por no ser una imagen real)
+const usarCloudinary = !!process.env.CLOUDINARY_URL && process.env.NODE_ENV !== 'test';
 
 const CARPETA_BASE = path.join(__dirname, '..', 'datos', 'asistencia');
 const CARPETA_DOCS = path.join(__dirname, '..', 'datos', 'documentos');

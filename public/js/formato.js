@@ -56,6 +56,17 @@ const formEditarEmpleado = $('form-editar-empleado');
 const modalEmpleadoError = $('modal-empleado-error');
 const btnCancelarEditar = $('btn-cancelar-editar-empleado');
 
+// presentacion personal — cierre del dia (verificacion de manipuladores)
+const formPP = $('form-presentacion-personal');
+const ppDia = $('pp-dia-actual');
+const ppResp = $('pp-responsable');
+const ppHint = $('pp-responsable-hint');
+const ppObs = $('pp-observaciones');
+const ppNota = $('pp-nota');
+const ppMsg = $('pp-msg');
+const ppBtn = $('pp-btn-guardar');
+const ppBtnReg = $('pp-btn-registros');
+
 // modal de admin atrasado (compartido)
 const modalAdminAtrasado = $('modal-admin-atrasado');
 const modalAdminAtrasadoInfo = $('modal-admin-atrasado-info');
@@ -195,6 +206,13 @@ function pintarBanners(info, diaObjetivoEl) {
 }
 
 // Empleados (formato presentacion_personal)
+// las 8 condiciones del formato de papel (FO-VM-03) — se guardan como texto
+// claro en vez de los codigos de una letra que traia el excel (G, Z, U...)
+const CRITERIOS_MANIPULADOR = [
+  'Gorro', 'Calzado cerrado', 'Uñas cortas', 'Sin maquillaje / barba',
+  'Dotación limpia', 'Estado de salud', 'Sin accesorios', 'Sin lociones / tabaco'
+];
+
 function pintarEmpleados(empleados) {
   listaEmpleados.innerHTML = '';
   if (empleados.length === 0) {
@@ -209,6 +227,9 @@ function pintarEmpleados(empleados) {
     li.className = 'empleado-item';
     li.dataset.id = emp._id;
     const inicial = emp.nombre.charAt(0).toUpperCase();
+    const criteriosHTML = CRITERIOS_MANIPULADOR
+      .map(c => `<label class="check-area"><input type="checkbox" value="${escapeHTML(c)}" /> ${escapeHTML(c)}</label>`)
+      .join('');
     li.innerHTML = `
       <div class="empleado-cabecera">
         <button type="button" class="empleado-row">
@@ -222,7 +243,14 @@ function pintarEmpleados(empleados) {
         </div>
       </div>
       <div class="empleado-formulario" hidden>
-        <p class="ayuda">Formulario individual de <strong>${escapeHTML(emp.nombre)}</strong>: pendiente.</p>
+        <div class="empleado-check-cabecera">
+          <span class="campo-label" style="margin:0">Verificación de hoy</span>
+          <div class="radios-cnc empleado-check-radios">
+            <label class="radio-pill radio-pill--ok"><input type="radio" name="cumple-${emp._id}" value="si" checked />Cumple</label>
+            <label class="radio-pill radio-pill--bad"><input type="radio" name="cumple-${emp._id}" value="no" />No cumple</label>
+          </div>
+        </div>
+        <div class="detalle-desviacion checks-grid" hidden>${criteriosHTML}</div>
       </div>
     `;
     li.querySelector('.empleado-row').addEventListener('click', () => {
@@ -232,6 +260,12 @@ function pintarEmpleados(empleados) {
     });
     li.querySelector('.btn-editar-empleado').addEventListener('click', () => abrirModalEditarEmp(emp));
     li.querySelector('.btn-eliminar-empleado').addEventListener('click', () => confirmarEliminar(emp));
+
+    const detalle = li.querySelector('.detalle-desviacion');
+    li.querySelectorAll(`input[name="cumple-${emp._id}"]`).forEach(r => {
+      r.addEventListener('change', () => { detalle.hidden = (r.value !== 'no' || !r.checked); });
+    });
+
     listaEmpleados.appendChild(li);
   });
 }
@@ -241,6 +275,49 @@ async function cargarEmpleados() {
   if (!r.ok) return;
   const data = await r.json();
   pintarEmpleados(data.empleados);
+}
+
+// aplica lo ya guardado hoy (si existe) a las filas de empleados ya pintadas
+function aplicarEstadoManipuladores(registroHoy) {
+  const manipuladores = (registroHoy && registroHoy.datos && registroHoy.datos.manipuladores) || [];
+  manipuladores.forEach(m => {
+    const li = listaEmpleados.querySelector(`.empleado-item[data-id="${m.empleadoId}"]`);
+    if (!li) return; // el empleado pudo haber sido eliminado despues
+    const radio = li.querySelector(`input[name="cumple-${m.empleadoId}"][value="${m.cumple ? 'si' : 'no'}"]`);
+    if (radio) { radio.checked = true; radio.dispatchEvent(new Event('change')); }
+    if (!m.cumple && Array.isArray(m.criterios)) {
+      m.criterios.forEach(c => {
+        const check = li.querySelector(`.detalle-desviacion input[value="${CSS.escape(c)}"]`);
+        if (check) check.checked = true;
+      });
+    }
+  });
+}
+
+// recorre el DOM (no un estado aparte) para armar lo que se va a guardar
+function recogerManipuladores() {
+  return Array.from(listaEmpleados.querySelectorAll('.empleado-item')).map(li => {
+    const empleadoId = li.dataset.id;
+    const nombre = li.querySelector('.empleado-nombre').textContent;
+    const marcado = li.querySelector(`input[name="cumple-${empleadoId}"]:checked`);
+    const cumple = !marcado || marcado.value === 'si';
+    const criterios = cumple ? [] : Array.from(li.querySelectorAll('.detalle-desviacion input:checked')).map(c => c.value);
+    return { empleadoId, nombre, cumple, criterios };
+  });
+}
+
+function resetearManipuladores() {
+  listaEmpleados.querySelectorAll('.empleado-item').forEach(li => {
+    const radioSi = li.querySelector('input[value="si"]');
+    if (radioSi) radioSi.checked = true;
+    li.querySelectorAll('.detalle-desviacion input').forEach(c => { c.checked = false; });
+    const detalle = li.querySelector('.detalle-desviacion');
+    if (detalle) detalle.hidden = true;
+  });
+}
+
+function bloquearEmpleadosCheck() {
+  listaEmpleados.querySelectorAll('.empleado-formulario input').forEach(el => { el.disabled = true; });
 }
 
 function abrirModalEditarEmp(emp) {
@@ -1436,6 +1513,58 @@ function iniciarFormRecepcion(infoInicial) {
   });
 }
 
+// FORM PRESENTACIÓN PERSONAL (verificación de manipuladores, dentro de la
+// misma lista de empleados — ver pintarEmpleados)
+function iniciarFormPresentacionPersonal(infoInicial) {
+  formPP.hidden = false;
+  ppNota.textContent = formatoActual.nota || '';
+  configurarResponsableEsCarpetaAdmin(ppResp, ppHint);
+
+  function bloquear() {
+    Array.from(formPP.querySelectorAll('input, textarea')).forEach(el => el.disabled = true);
+    ppBtn.disabled = true;
+    bloquearEmpleadosCheck();
+  }
+
+  if (infoInicial) {
+    pintarBanners(infoInicial, ppDia);
+    if (infoInicial.completoHoy && infoInicial.registroHoy) {
+      const reg = infoInicial.registroHoy;
+      aplicarEstadoManipuladores(reg);
+      if (reg.observaciones) ppObs.value = reg.observaciones;
+      if (reg.responsable && !esCarpetaAdmin) ppResp.value = reg.responsable;
+      bloquear();
+    }
+  }
+
+  formPP.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    ppMsg.hidden = true;
+    if (listaEmpleados.querySelectorAll('.empleado-item').length === 0) {
+      mostrarMensaje(ppMsg, 'Agrega al menos un empleado antes de guardar.', true); return;
+    }
+    const manipuladores = recogerManipuladores();
+    const sinCriterios = manipuladores.find(m => !m.cumple && m.criterios.length === 0);
+    if (sinCriterios) {
+      mostrarMensaje(ppMsg, `Marca al menos un criterio para "${sinCriterios.nombre}" (o cámbialo a Cumple).`, true); return;
+    }
+    if (!ppResp.value.trim()) { mostrarMensaje(ppMsg, 'Ingresa el nombre de quien revisó.', true); return; }
+
+    await postRegistro({
+      formatoId, carpeta: carpetaId,
+      responsable: ppResp.value.trim(),
+      observaciones: ppObs.value.trim(),
+      datos: { manipuladores }
+    }, ppBtn, ppMsg, ppDia, formPP, {
+      onCompleto: (info) => { aplicarEstadoManipuladores(info.registroHoy); bloquear(); },
+      onAvance: () => resetearManipuladores()
+    });
+  });
+  ppBtnReg.addEventListener('click', () => {
+    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}`;
+  });
+}
+
 // Boot
 const PLANTILLAS = {
   'calidad_agua':              iniciarFormCalidadAgua,
@@ -1445,7 +1574,8 @@ const PLANTILLAS = {
   'limpieza_salon':            iniciarFormLimpiezaSalon,
   'limpieza_bano':             iniciarFormLimpiezaBano,
   'limpieza_campana_trampa':   iniciarFormLimpiezaCT,
-  'recepcion_materias_primas': iniciarFormRecepcion
+  'recepcion_materias_primas': iniciarFormRecepcion,
+  'presentacion_personal':     iniciarFormPresentacionPersonal
 };
 
 async function cargar() {
@@ -1486,7 +1616,7 @@ async function cargar() {
 
     if (formatoActual.id === 'presentacion_personal') {
       seccionEmpleados.hidden = false;
-      cargarEmpleados();
+      await cargarEmpleados(); // las filas tienen que existir antes de aplicarles el estado del dia
     }
 
     // Cargar pendientes ANTES de mostrar el formulario

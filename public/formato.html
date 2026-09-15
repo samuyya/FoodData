@@ -570,6 +570,31 @@
 
       <ul id="lista-empleados" class="lista-empleados"></ul>
     </section>
+
+    <form id="form-presentacion-personal" class="card" hidden>
+      <p id="pp-dia-actual" class="dia-objetivo" hidden></p>
+      <h2>Cierre del día</h2>
+
+      <label class="campo">
+        <span>Revisado por</span>
+        <input type="text" name="responsable" id="pp-responsable" autocomplete="off"
+               pattern="[A-Za-zÀ-ÿÑñ\s]+" title="Solo letras y espacios" />
+        <small class="ayuda" id="pp-responsable-hint">Escribe tu nombre (solo letras y espacios).</small>
+      </label>
+
+      <label class="campo">
+        <span>Observaciones</span>
+        <textarea name="observaciones" id="pp-observaciones" rows="2"></textarea>
+      </label>
+
+      <p class="nota-formato" id="pp-nota"></p>
+      <p id="pp-msg" class="mensaje" hidden></p>
+
+      <div class="acciones-formato">
+        <button type="submit" id="pp-btn-guardar" class="btn-primario">Guardar registro del día</button>
+        <button type="button" id="pp-btn-registros" class="btn-secundario">Ver registros</button>
+      </div>
+    </form>
   </main>
 
   <div id="modal-empleado" class="modal-backdrop" hidden role="dialog" aria-modal="true">

@@ -137,7 +137,14 @@ const FORMATOS = [
     id: 'presentacion_personal',
     numero: 9,
     nombre: 'Presentación personal',
-    nombreCorto: 'Presentación personal'
+    nombreCorto: 'Presentación personal',
+    codigo: 'CA-F-03',
+    version: '1',
+    fechaVersion: '28/03/2026',
+    plan: 'PROGRAMAS COMPLEMENTARIOS',
+    programa: 'PROGRAMA DE CAPACITACIÓN EN EDUCACIÓN SANITARIA',
+    titulo: 'FORMATO DE VERIFICACIÓN BPM MANIPULADORES',
+    nota: 'Verifica en cada manipulador: gorro, calzado cerrado, uñas cortas, sin maquillaje/barba, dotación limpia, estado de salud, sin accesorios, sin lociones o tabaco. Si no cumple, marca cuál(es) de estos falló.'
   }
 ];
 

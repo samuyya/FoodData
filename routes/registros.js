@@ -90,7 +90,6 @@ router.get('/resumen-pendientes', requireEmpresa, ah(async (req, res) => {
   const instancias = new Set();
   for (const carpeta of ['cocina', 'salon', 'administracion']) {
     for (const formatoId of (config.carpetas[carpeta] || [])) {
-      if (formatoId === 'presentacion_personal') continue;
       instancias.add(`${formatoId}|${carpeta}`);
     }
   }
@@ -383,8 +382,7 @@ router.get('/reporte', requireEmpresa, ah(async (req, res) => {
   let sumaRegistrados = 0, sumaTotales = 0, totalNovedades = 0;
 
   for (const clave of ['cocina', 'salon', 'administracion']) {
-    // presentacion_personal no tiene formulario diario, solo gestiona la lista de empleados
-    const formatoIds = (config.carpetas[clave] || []).filter(id => id !== 'presentacion_personal');
+    const formatoIds = config.carpetas[clave] || [];
     if (formatoIds.length === 0) continue;
 
     const formatos = [];
@@ -418,8 +416,31 @@ router.get('/reporte', requireEmpresa, ah(async (req, res) => {
         observaciones: r.observaciones,
         responsable: r.responsable
       }));
-    totalNovedades += novedades.length;
 
+    // un "no cumple" de presentacion_personal tambien es una novedad, aunque
+    // el registro del dia no tenga observaciones generales — una por persona
+    if (formatoIds.includes('presentacion_personal')) {
+      const registrosManipuladores = await Registro.find({
+        empresa_id: empresaId, formato: 'presentacion_personal', carpeta: clave,
+        fecha: { $gte: desde, $lte: hasta }
+      }).sort({ fecha: 1 }).lean();
+
+      registrosManipuladores.forEach(r => {
+        const manipuladores = (r.datos && r.datos.manipuladores) || [];
+        manipuladores.filter(m => !m.cumple).forEach(m => {
+          novedades.push({
+            dia: r.dia, mes: r.mes, anio: r.anio,
+            formatoId: 'presentacion_personal',
+            nombre: 'Presentación personal',
+            observaciones: `${m.nombre} no cumplió: ${(m.criterios || []).join(', ')}`,
+            responsable: r.responsable
+          });
+        });
+      });
+      novedades.sort((a, b) => new Date(a.anio, a.mes - 1, a.dia) - new Date(b.anio, b.mes - 1, b.dia));
+    }
+
+    totalNovedades += novedades.length;
     bloques.push({ clave, formatos, novedades });
   }
 

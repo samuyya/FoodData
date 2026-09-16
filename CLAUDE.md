@@ -221,7 +221,7 @@ Cuando el usuario diga "vamos a desplegar" o "subir a producción" o "Render", *
 
 ### 3. Storage de archivos (CRÍTICO en Render/host gratis — disco efímero)
 - [x] Hecho (2026-09-14): cuenta de Cloudinary creada, `CLOUDINARY_URL` puesta en el `.env` local, y **verificado contra la cuenta real** (subir/leer/borrar foto de asistencia, documento y logo — los tres con contenido idéntico byte a byte de ida y vuelta). Detalle sin importancia práctica: el CDN de Cloudinary puede seguir sirviendo una URL ya borrada por un rato corto (cache de borde) — revisado y ningún flujo de la app vuelve a pedir una referencia después de borrarla, así que no afecta nada.
-- [ ] **Falta poner `CLOUDINARY_URL` también en las variables de entorno de Render** cuando se despliegue (el valor ya lo tiene el usuario, es copiar/pegar la misma variable).
+- [x] Hecho (2026-09-16): `CLOUDINARY_URL` puesta en Render.
 
 ### 4. MongoDB Atlas
 - [ ] Network Access: cambiar `0.0.0.0/0` por las IPs específicas de Render (no dejar abierto al mundo)

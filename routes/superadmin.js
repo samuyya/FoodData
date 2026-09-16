@@ -59,8 +59,8 @@ router.get('/empresas', requireSuperadmin, ah(async (req, res) => {
   res.json({ ok: true, empresas });
 }));
 
-function passwordDebil(password) {
-  return !password || String(password).length < 8;
+function passwordDebil(password, minimo = 8) {
+  return !password || String(password).length < minimo;
 }
 
 const DIAS_JORNADA = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
@@ -306,8 +306,8 @@ router.post('/administradores', requireSuperadmin, async (req, res) => {
     if (!nombre || !password || !empresa_id) {
       return res.status(400).json({ ok: false, error: 'Nombre, contraseña y empresa son obligatorios' });
     }
-    if (passwordDebil(password)) {
-      return res.status(400).json({ ok: false, error: 'La contraseña debe tener al menos 8 caracteres' });
+    if (passwordDebil(password, 4)) {
+      return res.status(400).json({ ok: false, error: 'La contraseña debe tener al menos 4 caracteres' });
     }
     const empresa = await Empresa.findById(empresa_id);
     if (!empresa) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });

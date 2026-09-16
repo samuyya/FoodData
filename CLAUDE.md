@@ -213,7 +213,7 @@ Cuando el usuario diga "vamos a desplegar" o "subir a producción" o "Render", *
 - [ ] `MONGODB_URI` apuntando a Atlas
 - [ ] `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` con valores fuertes (cambiar los de desarrollo)
 - [x] Hecho (2026-09-16): `servicios/googleSheets.js` ahora también acepta `GOOGLE_CREDENTIALS_JSON` (el contenido completo del archivo de credenciales, como texto, en una variable de entorno) — se prueba primero esa variable y si no existe cae al archivo local de siempre (`google-credentials.json` o `GOOGLE_CREDENTIALS_PATH`), así que el dev local no cambió en nada.
-- [ ] **Falta ponerla en Render**: copiar el contenido de `google-credentials.json` tal cual (es un JSON) en una variable `GOOGLE_CREDENTIALS_JSON` del servicio en Render.
+- [x] Hecho (2026-09-16): `GOOGLE_CREDENTIALS_JSON` puesta en Render, verificado en producción (superadmin ya no muestra el aviso de "Google Sheets no está configurado").
 
 ### 2. Sesiones persistentes (CRÍTICO)
 - [x] Hecho (2026-09-14): `connect-mongo` instalado, `server.js` usa `MongoStore.create({ mongoUrl: process.env.MONGODB_URI, ttl: 8*60*60 })` dentro de `session({...})` — **solo si `MONGODB_URI` existe y `NODE_ENV !== 'test'`** (así los tests de Jest, que usan Mongo en memoria, nunca tocan el Atlas real). Como efecto secundario bienvenido, esto también quedó activo en desarrollo: ya no hay que volver a loguearse cada vez que nodemon reinicia. Verificado en el navegador: sesión sobrevive un reinicio real del server.

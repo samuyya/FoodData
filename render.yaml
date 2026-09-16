@@ -25,3 +25,5 @@ services:
         sync: false
       - key: CLOUDINARY_URL
         sync: false
+      - key: GOOGLE_CREDENTIALS_JSON
+        sync: false

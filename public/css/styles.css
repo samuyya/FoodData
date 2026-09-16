@@ -1181,6 +1181,14 @@ textarea:focus {
   display: block;
 }
 
+/* la camara frontal se ve "al reves" del lado a lado si no se espeja la
+   vista previa (moverte a la derecha se ve a la izquierda) — se espeja
+   solo el video en vivo, la foto ya capturada en el canvas se queda tal
+   cual la ve la camara (para que el uniforme/gafete no se lea al reves) */
+.camara-wrap video {
+  transform: scaleX(-1);
+}
+
 .acciones-camara {
   display: flex;
   flex-wrap: wrap;

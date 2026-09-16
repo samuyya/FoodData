@@ -30,16 +30,34 @@ const COLOR_NC_BG      = { red: 0.996, green: 0.886, blue: 0.886 };  // #FEE2E2
 const COLOR_NC_FG      = { red: 0.600, green: 0.106, blue: 0.106 };  // #991B1B
 const COLOR_TEXTO_OSC  = { red: 0.055, green: 0.227, blue: 0.192 };  // #0E3A31
 
+// en Render el disco es efimero, asi que ahi las credenciales van en una
+// variable de entorno (el JSON completo, como texto) en vez de un archivo
+function leerCredenciales() {
+  if (process.env.GOOGLE_CREDENTIALS_JSON) {
+    return JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
+  }
+  if (fs.existsSync(RUTA_CREDENCIALES)) {
+    return JSON.parse(fs.readFileSync(RUTA_CREDENCIALES, 'utf8'));
+  }
+  return null;
+}
+
 function inicializar() {
-  if (!fs.existsSync(RUTA_CREDENCIALES)) {
+  let cred;
+  try {
+    cred = leerCredenciales();
+  } catch (err) {
+    logger.error(`credenciales de google sheets invalidas: ${err.message}`);
+    return;
+  }
+  if (!cred) {
     logger.info('sin credenciales de google sheets, no sincroniza');
     return;
   }
   try {
-    const cred = JSON.parse(fs.readFileSync(RUTA_CREDENCIALES, 'utf8'));
     cuentaServicioEmail = cred.client_email || '';
     const auth = new google.auth.GoogleAuth({
-      keyFile: RUTA_CREDENCIALES,
+      credentials: cred,
       scopes: ['https://www.googleapis.com/auth/spreadsheets']
     });
     sheets = google.sheets({ version: 'v4', auth });

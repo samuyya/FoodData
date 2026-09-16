@@ -25,7 +25,7 @@ alimentaria exigidos por sanidad en **Colombia**. Multiempresa: cada empresa
 ## Ubicación y ejecución
 - Carpeta: `C:\Users\samue\OneDrive\Escritorio\FoodData` (antes se llamó "Seal Zenith" / "app-inocuidad-alimentaria").
 - Correr: `npm install` y luego `npm run dev` (nodemon) o `npm start`. Servidor en `http://localhost:3000`.
-- Requiere `.env` (no versionado): `PORT`, `MONGODB_URI`, `SESSION_SECRET`, `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD`, `GOOGLE_CREDENTIALS_PATH` (opcional), `ALLOWED_ORIGINS` (opcional), `CLOUDINARY_URL` (opcional — sin esto, fotos/documentos/logos se guardan en disco local; ver sección "Storage de archivos").
+- Requiere `.env` (no versionado): `PORT`, `MONGODB_URI`, `SESSION_SECRET`, `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD`, `GOOGLE_CREDENTIALS_PATH` (opcional, ruta a un archivo local) o `GOOGLE_CREDENTIALS_JSON` (opcional, el JSON completo como texto — para entornos con disco efímero como Render), `ALLOWED_ORIGINS` (opcional), `CLOUDINARY_URL` (opcional — sin esto, fotos/documentos/logos se guardan en disco local; ver sección "Storage de archivos").
 - `google-credentials.json` en la raíz (opcional, para Google Sheets; no versionado).
 
 ## Stack
@@ -97,6 +97,7 @@ Cada botón aparece u oculta según `empresa.modulosActivos`:
 
 ## Asistencia
 - El empleado selecciona su nombre (de `EmpleadoLista`), toma una foto (cámara, comprimida ~100KB). 1ª foto del día = ingreso, 2ª = salida, 3ª bloqueada.
+- La vista previa de la cámara (`#video` en `asistencia.html`) se espeja con CSS (`transform: scaleX(-1)`, solo el `<video>` en vivo) para que se sienta como un espejo normal — la foto capturada (`canvas`/`.foto-preview`) **no** se espeja, porque `drawImage` lee el frame real de la cámara sin el transform CSS, así el uniforme/gafete no queda al revés en la evidencia guardada.
 - Fotos en `datos/asistencia/` (privadas, servidas por `/api/asistencia/foto`). Almacenamiento vía `servicios/almacenamiento.js` (intercambiable a Cloudinary).
 - **Registro mensual por empleado:** tabla Día / Entrada / Salida / Horas / Evidencia + total. Día incompleto (sin salida) → solo el admin lo corrige (contraseña).
 - **Horas extra semanales (dato de referencia, NO es cálculo de nómina oficial):** `servicios/horasExtra.js` calcula, semana a semana (lunes-domingo), las horas por encima de la jornada legal de 42h. Se identifican día por día en orden cronológico: en cuanto el acumulado semanal cruza 42, el excedente de ese día es "extra" (contado desde el final del turno hacia atrás). Se clasifica en 4 categorías — diurnas (6am-7pm), con recargo dominical, nocturnas (7pm-6am), dominicales nocturnas — tratando festivo (`festivos.js`) igual que domingo. Una semana solo se muestra una vez que termina completamente (se "activa" el lunes siguiente). Si una semana cruza de mes, cada día se atribuye a su propio mes (el umbral de 42h se calcula sobre la semana completa). Se ve en `registro-asistencia.html` debajo del total del mes, con detalle expandible por semana.
@@ -211,7 +212,8 @@ Cuando el usuario diga "vamos a desplegar" o "subir a producción" o "Render", *
 - [ ] `ALLOWED_ORIGINS=https://dominio-real.com` (no `localhost`)
 - [ ] `MONGODB_URI` apuntando a Atlas
 - [ ] `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` con valores fuertes (cambiar los de desarrollo)
-- [ ] `GOOGLE_CREDENTIALS_PATH` o las credenciales como JSON en una variable de entorno (no como archivo en el filesystem efímero)
+- [x] Hecho (2026-09-16): `servicios/googleSheets.js` ahora también acepta `GOOGLE_CREDENTIALS_JSON` (el contenido completo del archivo de credenciales, como texto, en una variable de entorno) — se prueba primero esa variable y si no existe cae al archivo local de siempre (`google-credentials.json` o `GOOGLE_CREDENTIALS_PATH`), así que el dev local no cambió en nada.
+- [ ] **Falta ponerla en Render**: copiar el contenido de `google-credentials.json` tal cual (es un JSON) en una variable `GOOGLE_CREDENTIALS_JSON` del servicio en Render.
 
 ### 2. Sesiones persistentes (CRÍTICO)
 - [x] Hecho (2026-09-14): `connect-mongo` instalado, `server.js` usa `MongoStore.create({ mongoUrl: process.env.MONGODB_URI, ttl: 8*60*60 })` dentro de `session({...})` — **solo si `MONGODB_URI` existe y `NODE_ENV !== 'test'`** (así los tests de Jest, que usan Mongo en memoria, nunca tocan el Atlas real). Como efecto secundario bienvenido, esto también quedó activo en desarrollo: ya no hay que volver a loguearse cada vez que nodemon reinicia. Verificado en el navegador: sesión sobrevive un reinicio real del server.

@@ -25,7 +25,7 @@ alimentaria exigidos por sanidad en **Colombia**. Multiempresa: cada empresa
 ## Ubicación y ejecución
 - Carpeta: `C:\Users\samue\OneDrive\Escritorio\FoodData` (antes se llamó "Seal Zenith" / "app-inocuidad-alimentaria").
 - Correr: `npm install` y luego `npm run dev` (nodemon) o `npm start`. Servidor en `http://localhost:3000`.
-- Requiere `.env` (no versionado): `PORT`, `MONGODB_URI`, `SESSION_SECRET`, `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD`, `GOOGLE_CREDENTIALS_PATH` (opcional, ruta a un archivo local) o `GOOGLE_CREDENTIALS_JSON` (opcional, el JSON completo como texto — para entornos con disco efímero como Render), `ALLOWED_ORIGINS` (opcional), `CLOUDINARY_URL` (opcional — sin esto, fotos/documentos/logos se guardan en disco local; ver sección "Storage de archivos").
+- Requiere `.env` (no versionado): `PORT`, `MONGODB_URI`, `SESSION_SECRET`, `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD`, `GOOGLE_CREDENTIALS_PATH` (opcional, ruta a un archivo local) o `GOOGLE_CREDENTIALS_JSON` (opcional, el JSON completo como texto — para entornos con disco efímero como Render), `ALLOWED_ORIGINS` (opcional), `CLOUDINARY_URL` (opcional — sin esto, fotos/documentos/logos se guardan en disco local; ver sección "Storage de archivos"), `LOGTAIL_SOURCE_TOKEN` + `LOGTAIL_ENDPOINT` (opcionales, solo aplican en producción — sin esto los logs solo salen por stdout, ver sección "Logs y monitoreo").
 - `google-credentials.json` en la raíz (opcional, para Google Sheets; no versionado).
 
 ## Stack
@@ -38,7 +38,7 @@ alimentaria exigidos por sanidad en **Colombia**. Multiempresa: cada empresa
 ## Estructura
 - `server.js` — arranque: helmet (CSP, HSTS, frameguard), cors, body-parser con `limit: 256kb`, middleware anti-NoSQL, sesión persistente con `connect-mongo`, estáticos, rutas, `seedSuperadmin()`, `sincronizarIndicesRegistro()`, `googleSheets.inicializar()`. Error handler global. Maneja `EADDRINUSE` con mensaje claro.
 - `db.js` — conexión Mongoose.
-- `logger.js` — logger real (pino): pretty-print en desarrollo, JSON plano por stdout en producción.
+- `logger.js` — logger real (pino): pretty-print en desarrollo, JSON plano por stdout en producción, y si hay `LOGTAIL_SOURCE_TOKEN`/`LOGTAIL_ENDPOINT` también manda en paralelo a Better Stack.
 - `formatos.js` — catálogo de **9 formatos** (`FORMATOS`, `getFormato`).
 - `festivos.js` + `public/js/festivos.js` — módulo de festivos colombianos (algoritmo Meeus para Pascua + Ley Emiliani + religiosos). Cache por año.
 - `empresaConfig.js` — `getConfigEmpresa(empresaId)` → `{ activos, carpetas: { cocina, salon, administracion }, compartidos }`. Helper `carpetaCanonica(formatoId, carpeta, config)` (legacy, ya no se usa en registros pero sí en Excel/GS para detectar formatos compartidos).
@@ -234,7 +234,7 @@ Cuando el usuario diga "vamos a desplegar" o "subir a producción" o "Render", *
 
 ### 6. Logs y monitoreo
 - [x] Hecho (2026-09-14): `logger.js` (pino) en la raíz — en desarrollo imprime bonito y a color (`pino-pretty`), en producción (`NODE_ENV=production`) saca JSON plano por stdout, que es lo que Render/Better Stack/Logtail esperan. Reemplazados los `console.log/warn/error` del server que corre en producción (`server.js`, `db.js`, `servicios/googleSheets.js`, `servicios/excel.js`, `routes/registros.js`). Los `console.log` de `scripts/*.js` (CLI de mantenimiento que corre un humano a mano, ej. `backup.js`, `restore.js`) se dejaron tal cual a propósito — ahí el `console.log` es la salida directa a la terminal de quien lo corre, no un log de servidor.
-- [ ] Cuando haya cuenta de Render: conectar el servicio de logs (Better Stack o Logtail) y agregar alertas para errores 500 y caídas
+- [x] Hecho (2026-09-17): `logger.js` manda los logs también a **Better Stack** en paralelo (además de stdout), usando `@logtail/pino` — solo si `LOGTAIL_SOURCE_TOKEN`/`LOGTAIL_ENDPOINT` existen (si faltan, sigue igual que antes, solo JSON por stdout). Falta: crear las alertas dentro del dashboard de Better Stack para errores 500/caídas (eso se configura ahí, no es código).
 
 ### 7. Cosas que ya están parchadas en código (NO tocar)
 - ✅ `passwordHash` ya no se expone en `/api/superadmin/administradores`
@@ -257,7 +257,7 @@ Cuando el usuario diga "vamos a desplegar" o "subir a producción" o "Render", *
 ## Pendiente / roadmap
 - **Capacitaciones:** decidido — va a ser **módulo interno de la app** (no un servicio público de pago con pasarela y certificados). Postergado por el momento (sin contenido todavía), pero el botón en el menú principal y el checkbox del superadmin se quedan tal cual están.
 - **Migración a React: descartada.** Se evaluó y no salía rentable para el tamaño/alcance de este proyecto — se sigue y se termina en HTML + CSS + JS plano.
-- **Despliegue: YA HECHO (2026-09-16/17).** La app está en producción en Render: `https://fooddata-vo3e.onrender.com`. Todo el checklist obligatorio de la sección "⚠️ ANTES DE DESPLEGAR" está completo y verificado (sesiones persistentes con `connect-mongo`, storage en Cloudinary, credenciales de Google por `GOOGLE_CREDENTIALS_JSON`, Atlas restringido a las IPs de Render, logger con `pino`, `npm audit` limpio). Repaso completo del proyecto hecho en vivo contra una empresa de prueba (superadmin, los 9 formatos, asistencia, Google Sheets, reporte) — todo funcionando. Queda pendiente, sin urgencia: usuario de DB específico de producción en Atlas (hoy comparte el mismo de desarrollo), y conectar un servicio de logs (Better Stack/Logtail) cuando haya más tráfico real.
+- **Despliegue: YA HECHO (2026-09-16/17).** La app está en producción en Render: `https://fooddata-vo3e.onrender.com`. Todo el checklist obligatorio de la sección "⚠️ ANTES DE DESPLEGAR" está completo y verificado (sesiones persistentes con `connect-mongo`, storage en Cloudinary, credenciales de Google por `GOOGLE_CREDENTIALS_JSON`, Atlas restringido a las IPs de Render, logger con `pino`, `npm audit` limpio). Repaso completo del proyecto hecho en vivo contra una empresa de prueba (superadmin, los 9 formatos, asistencia, Google Sheets, reporte) — todo funcionando. Logs conectados a Better Stack (2026-09-17, `LOGTAIL_SOURCE_TOKEN`/`LOGTAIL_ENDPOINT` en Render). Queda pendiente, sin urgencia: usuario de DB específico de producción en Atlas (hoy comparte el mismo de desarrollo), y crear las alertas de errores 500/caídas dentro del dashboard de Better Stack (eso no es código, se configura ahí directamente cuando el usuario tenga la cuenta).
 - **Automatizar `backup.js`:** sigue sin hacerse a propósito — es una automatización 100% local (solo esta PC) que no serviría en Render. Se resuelve cuando haga falta un backup automático de producción (cron en Render, GitHub Actions, o los backups nativos de un Atlas de pago M10+).
 - **Gotcha recurrente de esta sesión:** la conexión local a Atlas falló repetidas veces con `SSL alert number 80` / `tlsv1 alert internal error` — casi siempre porque la IP local había dejado de estar en la whitelist de Network Access (sobre todo si se usó una entrada "temporal" que expiró). Si el server local no conecta pero Render sí, revisar Network Access primero antes de sospechar del código.
 
@@ -275,7 +275,7 @@ Cuando el usuario diga "vamos a desplegar" o "subir a producción" o "Render", *
 - Horas extra semanales + saldo persistente (banco de horas) + jornada esperada configurable + panel resumen de todos los empleados en Asistencia.
 - Reporte de seguimiento de formatos (en pantalla, imprimible, protegido con clave de administrador).
 - Tests automatizados (Jest + Supertest + Mongo en memoria) de los flujos críticos, corriendo solos en GitHub Actions en cada push/PR.
-- **Desplegado en producción (Render)**, con el checklist obligatorio completo: `connect-mongo`, Cloudinary, Google Sheets por variable de entorno, Atlas restringido, logger con `pino`.
+- **Desplegado en producción (Render)**, con el checklist obligatorio completo: `connect-mongo`, Cloudinary, Google Sheets por variable de entorno, Atlas restringido, logger con `pino` + Better Stack.
 
 ## Gotchas
 - Si "Could not connect to MongoDB Atlas" (o `SSL alert number 80` / `tlsv1 alert internal error`): la whitelist de Network Access ya no tiene `0.0.0.0/0` (ver "Servicios externos") — agregar/renovar la IP actual del que esté desarrollando localmente.

@@ -27,3 +27,7 @@ services:
         sync: false
       - key: GOOGLE_CREDENTIALS_JSON
         sync: false
+      - key: LOGTAIL_SOURCE_TOKEN
+        sync: false
+      - key: LOGTAIL_ENDPOINT
+        sync: false

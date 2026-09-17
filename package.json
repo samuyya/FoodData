@@ -12,6 +12,7 @@
     "test": "jest --runInBand"
   },
   "dependencies": {
+    "@logtail/pino": "^0.5.8",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.11.0",
     "connect-mongo": "^6.0.0",

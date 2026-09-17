@@ -307,6 +307,34 @@ function filasRecepcion(r) {
   }));
 }
 
+function columnasPresentacionPersonal() {
+  return [
+    { header: 'Día', key: 'dia' }, { header: 'Fecha', key: 'fecha' },
+    { header: 'Manipulador', key: 'manipulador' }, { header: 'Cumple', key: 'cumple' },
+    { header: 'Qué no cumplió', key: 'criterios' },
+    { header: 'Revisado por', key: 'responsable' }, { header: 'Observaciones', key: 'observaciones' }
+  ];
+}
+function filasPresentacionPersonal(r) {
+  const manipuladores = (r.datos && Array.isArray(r.datos.manipuladores)) ? r.datos.manipuladores : [];
+  if (manipuladores.length === 0) {
+    return [{
+      dia: r.dia, fecha: fechaLargaEs(r.anio, r.mes, r.dia),
+      manipulador: '(sin empleados)', cumple: '', criterios: '',
+      responsable: r.responsable || '', observaciones: r.observaciones || ''
+    }];
+  }
+  return manipuladores.map((m, idx) => ({
+    dia: idx === 0 ? r.dia : '',
+    fecha: idx === 0 ? fechaLargaEs(r.anio, r.mes, r.dia) : '',
+    manipulador: m.nombre || '',
+    cumple: m.cumple ? 'Sí' : 'No',
+    criterios: m.cumple ? '' : (Array.isArray(m.criterios) ? m.criterios.join(', ') : ''),
+    responsable: idx === 0 ? (r.responsable || '') : '',
+    observaciones: idx === 0 ? (r.observaciones || '') : ''
+  }));
+}
+
 function columnasYFila(formatoId) {
   switch (formatoId) {
     case 'calidad_agua':              return { columnas: columnasCalidadAgua(),   fila: filaCalidadAgua  };
@@ -317,6 +345,7 @@ function columnasYFila(formatoId) {
     case 'limpieza_bano':             return { columnas: columnasLimpiezaBano(),  fila: filaLimpiezaBano  };
     case 'limpieza_campana_trampa':   return { columnas: columnasLimpiezaCT(),    fila: filaLimpiezaCT    };
     case 'recepcion_materias_primas': return { columnas: columnasRecepcion(),     fila: null, expandirFilas: filasRecepcion };
+    case 'presentacion_personal':     return { columnas: columnasPresentacionPersonal(), fila: null, expandirFilas: filasPresentacionPersonal };
     default:                          return { columnas: columnasGenericas(),     fila: filaGenerica     };
   }
 }
@@ -500,6 +529,7 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
       // recepcion tiene mas columnas C/NC
       const cncRecepcion = ['color', 'olor', 'apariencia', 'empaque'].map(k => columnas.findIndex(c => c.key === k)).filter(i => i >= 0);
       const idxDecision = columnas.findIndex(c => c.key === 'decision');
+      const idxCumple = columnas.findIndex(c => c.key === 'cumple');
 
       // Filas de datos — algunos formatos expanden múltiples filas por registro
       regs.forEach(r => {
@@ -572,6 +602,28 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
               formatRequests.push({
                 repeatCell: {
                   range: rango(sheetId, idxFila, idxFila + 1, idxDecision, idxDecision + 1),
+                  cell: {
+                    userEnteredFormat: {
+                      backgroundColor: bg,
+                      horizontalAlignment: 'CENTER',
+                      textFormat: { bold: true, foregroundColor: fg }
+                    }
+                  },
+                  fields: 'userEnteredFormat(backgroundColor,horizontalAlignment,textFormat)'
+                }
+              });
+            }
+          }
+
+          // Cumple Sí/No (solo presentacion personal)
+          if (idxCumple >= 0) {
+            const v = String(arr[idxCumple] || '').trim();
+            if (v === 'Sí' || v === 'No') {
+              const bg = v === 'Sí' ? COLOR_C_BG : COLOR_NC_BG;
+              const fg = v === 'Sí' ? COLOR_C_FG : COLOR_NC_FG;
+              formatRequests.push({
+                repeatCell: {
+                  range: rango(sheetId, idxFila, idxFila + 1, idxCumple, idxCumple + 1),
                   cell: {
                     userEnteredFormat: {
                       backgroundColor: bg,

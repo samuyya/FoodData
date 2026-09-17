@@ -363,6 +363,37 @@ function filasRecepcion(r) {
   }));
 }
 
+function columnasPresentacionPersonal() {
+  return [
+    { header: 'Día',            key: 'dia',           width: 6  },
+    { header: 'Fecha',          key: 'fecha',         width: 26 },
+    { header: 'Manipulador',    key: 'manipulador',   width: 24 },
+    { header: 'Cumple',         key: 'cumple',        width: 9  },
+    { header: 'Qué no cumplió', key: 'criterios',     width: 34 },
+    { header: 'Revisado por',   key: 'responsable',   width: 22 },
+    { header: 'Observaciones',  key: 'observaciones', width: 30 }
+  ];
+}
+function filasPresentacionPersonal(r) {
+  const manipuladores = (r.datos && Array.isArray(r.datos.manipuladores)) ? r.datos.manipuladores : [];
+  if (manipuladores.length === 0) {
+    return [{
+      dia: r.dia, fecha: fechaLargaEs(r.anio, r.mes, r.dia),
+      manipulador: '(sin empleados)', cumple: '', criterios: '',
+      responsable: r.responsable || '', observaciones: r.observaciones || ''
+    }];
+  }
+  return manipuladores.map((m, idx) => ({
+    dia: idx === 0 ? r.dia : '',  // solo el 1er manipulador muestra el dia
+    fecha: idx === 0 ? fechaLargaEs(r.anio, r.mes, r.dia) : '',
+    manipulador: m.nombre || '',
+    cumple: m.cumple ? 'Sí' : 'No',
+    criterios: m.cumple ? '' : (Array.isArray(m.criterios) ? m.criterios.join(', ') : ''),
+    responsable: idx === 0 ? (r.responsable || '') : '',
+    observaciones: idx === 0 ? (r.observaciones || '') : ''
+  }));
+}
+
 function columnasYFila(formatoId) {
   switch (formatoId) {
     case 'calidad_agua':              return { columnas: columnasCalidadAgua(),  fila: filaCalidadAgua };
@@ -373,6 +404,7 @@ function columnasYFila(formatoId) {
     case 'limpieza_bano':             return { columnas: columnasLimpiezaBano(), fila: filaLimpiezaBano  };
     case 'limpieza_campana_trampa':   return { columnas: columnasLimpiezaCT(),   fila: filaLimpiezaCT    };
     case 'recepcion_materias_primas': return { columnas: columnasRecepcion(),    fila: null, expandirFilas: filasRecepcion };
+    case 'presentacion_personal':     return { columnas: columnasPresentacionPersonal(), fila: null, expandirFilas: filasPresentacionPersonal };
     default:                          return { columnas: columnasGenericas(),    fila: filaGenerica    };
   }
 }
@@ -510,6 +542,23 @@ function pintarHojaMultiMes(sheet, registros, formatoId, formato, opciones = {})
               cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
               cell.font = { bold: true, color: { argb: 'FF065F46' } };
             } else if (v === 'Rechaza') {
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+              cell.font = { bold: true, color: { argb: 'FF991B1B' } };
+            }
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+          }
+        }
+
+        // presentacion personal: Sí verde, No rojo (mismo criterio que Acepta/Rechaza)
+        if (formatoId === 'presentacion_personal') {
+          const iCumple = columnas.findIndex(c => c.key === 'cumple') + 1;
+          if (iCumple > 0) {
+            const cell = row.getCell(iCumple);
+            const v = String(cell.value || '').trim();
+            if (v === 'Sí') {
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } };
+              cell.font = { bold: true, color: { argb: 'FF065F46' } };
+            } else if (v === 'No') {
               cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
               cell.font = { bold: true, color: { argb: 'FF991B1B' } };
             }

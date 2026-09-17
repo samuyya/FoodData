@@ -991,6 +991,7 @@ textarea:focus {
   text-align: left;
   padding: .85rem 1rem;
   background: #fff;
+  color: var(--color-texto);
   border: 1px solid var(--color-borde);
   border-radius: 10px;
   cursor: pointer;
@@ -1159,6 +1160,7 @@ textarea:focus {
   text-align: left;
   padding: .85rem 1rem;
   background: #fff;
+  color: var(--color-texto);
   border: 1px solid var(--color-borde);
   border-radius: 8px;
   cursor: pointer;

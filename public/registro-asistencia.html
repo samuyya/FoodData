@@ -46,17 +46,18 @@
     </section>
 
     <section class="card">
-      <div class="historial-toolbar">
-        <label class="campo">
-          <span>Empleado</span>
-          <select id="select-empleado"></select>
-        </label>
-      </div>
+      <!-- el select sigue existiendo (el boton "Ver detalle" de arriba lo usa
+           para cargar el registro), pero ya no se muestra: la lista de
+           Resumen de empleados de arriba es la unica forma de elegir uno -->
+      <label class="campo" hidden>
+        <span>Empleado</span>
+        <select id="select-empleado"></select>
+      </label>
 
       <button type="button" id="btn-descargar-excel" class="btn-primario btn-descarga-mes">📥 Descargar Excel del mes</button>
 
       <div id="contenedor-tabla">
-        <p class="ayuda" id="estado-registro">Selecciona un empleado para ver su registro.</p>
+        <p class="ayuda" id="estado-registro">Haz clic en "Ver detalle" en la lista de arriba para ver el registro de un empleado.</p>
       </div>
     </section>
   </main>

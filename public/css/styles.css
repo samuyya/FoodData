@@ -186,6 +186,7 @@ body {
   padding: .5rem .9rem;
   border: 1px solid var(--color-borde);
   background: #fff;
+  color: var(--color-texto);
   border-radius: 8px;
   cursor: pointer;
 }
@@ -856,6 +857,11 @@ textarea:focus {
   text-align: center;
 }
 
+.resumen-empleados-tabla thead th {
+  background: var(--color-primario);
+  color: #fff;
+}
+
 #contenedor-tabla {
   overflow-x: auto;
 }
@@ -1115,10 +1121,8 @@ textarea:focus {
   border: none;
 }
 .sub-encabezado .establecimiento-logo {
-  width: 96px;
-  height: 80px;
-  border-radius: 10px;
-  padding: 6px;
+  width: 112px;
+  height: 92px;
 }
 .sub-encabezado .establecimiento-label {
   font-size: .72rem;

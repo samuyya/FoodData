@@ -149,7 +149,7 @@ Cada botón aparece u oculta según `empresa.modulosActivos`:
 - **`loading="lazy"` + `decoding="async"`** en todas las imágenes.
 
 ## Servicios externos
-- **MongoDB Atlas** — Network Access en `0.0.0.0/0` (en producción restringir a IPs de Render).
+- **MongoDB Atlas** — Network Access restringido a las IPs de salida de Render (`74.220.48.0/24`, `74.220.56.0/24`). En desarrollo local hay que tener la IP propia agregada aparte (ver Gotchas — esta whitelist es la causa más común de que el server local no conecte).
 - **Google Sheets** (cuenta de servicio): una hoja por empresa (`googleSheetId`), una pestaña por instancia (formato, carpeta) — o una sola sin sufijo si es compartido. Si no hay credenciales, la app funciona y solo omite esta sincronización. Diagnóstico con `node scripts/diagnostico-google-sheets.js`.
 - **PWA:** `sw.js` usa red-primero para estáticos, **nunca cachea `/api/`** (datos siempre frescos), respaldo offline.
 
@@ -225,8 +225,8 @@ Cuando el usuario diga "vamos a desplegar" o "subir a producción" o "Render", *
 - [x] Hecho (2026-09-16): `CLOUDINARY_URL` puesta en Render.
 
 ### 4. MongoDB Atlas
-- [ ] Network Access: cambiar `0.0.0.0/0` por las IPs específicas de Render (no dejar abierto al mundo)
-- [ ] Crear usuario de DB específico de producción (no reusar el de desarrollo)
+- [x] Hecho (2026-09-16): Network Access restringido a las IPs de salida de Render (`74.220.48.0/24`, `74.220.56.0/24`), ya no está abierto a `0.0.0.0/0`.
+- [ ] Crear usuario de DB específico de producción (no reusar el de desarrollo) — pendiente, sin urgencia.
 
 ### 5. Dependencias vulnerables
 - [x] `npm audit` da 0 vulnerabilidades (2026-09-11). El moderate de `uuid` vía `exceljs`/`googleapis` (que exigía forzar un downgrade de `exceljs`) se resolvió con un override en `package.json` (`"overrides": { "uuid": "^11.1.1" }`) en vez de tocar la versión de `exceljs` — probado generando un excel real y llamando a `googleapis` sin errores.
@@ -257,8 +257,9 @@ Cuando el usuario diga "vamos a desplegar" o "subir a producción" o "Render", *
 ## Pendiente / roadmap
 - **Capacitaciones:** decidido — va a ser **módulo interno de la app** (no un servicio público de pago con pasarela y certificados). Postergado por el momento (sin contenido todavía), pero el botón en el menú principal y el checkbox del superadmin se quedan tal cual están.
 - **Migración a React: descartada.** Se evaluó y no salía rentable para el tamaño/alcance de este proyecto — se sigue y se termina en HTML + CSS + JS plano.
-- **Despliegue** (host recomendado: Render). **NO desplegar sin completar la sección "⚠️ ANTES DE DESPLEGAR — CHECKLIST OBLIGATORIO"** más arriba en este archivo. Faltan: `connect-mongo` (sesiones persistentes), Cloudinary (storage de fotos asistencia + logos + documentos de programa), credenciales de Google por env var, restricción de IP en Atlas, logger real (pino/winston).
-- **Automatizar `backup.js`:** a propósito NO se configura con el Programador de tareas de Windows ahora — es una automatización 100% local (solo esta PC, solo mientras esté prendida) que no sirve de nada en el servidor de producción; se descartaría entera al desplegar. Retomar este tema **en el momento del despliegue**, ahí decidiendo la forma correcta para ese entorno (cron en Render, GitHub Actions con horario, o directamente los backups nativos de un Atlas de pago M10+ si para entonces ya se migró de M0).
+- **Despliegue: YA HECHO (2026-09-16/17).** La app está en producción en Render: `https://fooddata-vo3e.onrender.com`. Todo el checklist obligatorio de la sección "⚠️ ANTES DE DESPLEGAR" está completo y verificado (sesiones persistentes con `connect-mongo`, storage en Cloudinary, credenciales de Google por `GOOGLE_CREDENTIALS_JSON`, Atlas restringido a las IPs de Render, logger con `pino`, `npm audit` limpio). Repaso completo del proyecto hecho en vivo contra una empresa de prueba (superadmin, los 9 formatos, asistencia, Google Sheets, reporte) — todo funcionando. Queda pendiente, sin urgencia: usuario de DB específico de producción en Atlas (hoy comparte el mismo de desarrollo), y conectar un servicio de logs (Better Stack/Logtail) cuando haya más tráfico real.
+- **Automatizar `backup.js`:** sigue sin hacerse a propósito — es una automatización 100% local (solo esta PC) que no serviría en Render. Se resuelve cuando haga falta un backup automático de producción (cron en Render, GitHub Actions, o los backups nativos de un Atlas de pago M10+).
+- **Gotcha recurrente de esta sesión:** la conexión local a Atlas falló repetidas veces con `SSL alert number 80` / `tlsv1 alert internal error` — casi siempre porque la IP local había dejado de estar en la whitelist de Network Access (sobre todo si se usó una entrada "temporal" que expiró). Si el server local no conecta pero Render sí, revisar Network Access primero antes de sospechar del código.
 
 ## Hecho (resumen de hitos)
 - 9 formatos con plantillas específicas implementadas (calidad_agua, control_temperatura, control_plagas, manejo_residuos, limpieza_salon, limpieza_bano, limpieza_campana_trampa, recepcion_materias_primas, presentacion_personal — este último además de gestionar empleados, verifica BPM de manipuladores día a día).
@@ -271,8 +272,12 @@ Cuando el usuario diga "vamos a desplegar" o "subir a producción" o "Render", *
 - Pase de seguridad completo (NoSQL sanitization, body limit, session.regenerate, hash falso anti-timing, SVG bloqueado, etc.).
 - Pase de accesibilidad completo (role/aria, focus trap, skip-link, color-no-solo, touch targets, prefers-reduced-motion).
 - Pase de estilo visual (`impeccable quieter` + `harden`): eliminados gradients/side-tabs/animaciones decorativas/marca de agua de números. Score audit /20 estimado: 20/20.
+- Horas extra semanales + saldo persistente (banco de horas) + jornada esperada configurable + panel resumen de todos los empleados en Asistencia.
+- Reporte de seguimiento de formatos (en pantalla, imprimible, protegido con clave de administrador).
+- Tests automatizados (Jest + Supertest + Mongo en memoria) de los flujos críticos, corriendo solos en GitHub Actions en cada push/PR.
+- **Desplegado en producción (Render)**, con el checklist obligatorio completo: `connect-mongo`, Cloudinary, Google Sheets por variable de entorno, Atlas restringido, logger con `pino`.
 
 ## Gotchas
-- Si "Could not connect to MongoDB Atlas": agregar la IP actual o usar `0.0.0.0/0` en Network Access.
+- Si "Could not connect to MongoDB Atlas" (o `SSL alert number 80` / `tlsv1 alert internal error`): la whitelist de Network Access ya no tiene `0.0.0.0/0` (ver "Servicios externos") — agregar/renovar la IP actual del que esté desarrollando localmente.
 - Si `EADDRINUSE` (puerto 3000 ocupado): cerrar el otro `node` (en **PowerShell**, no CMD) o reiniciar; el servidor ya muestra un mensaje claro.
 - Comandos como `Get-Process` son de PowerShell, no de CMD.

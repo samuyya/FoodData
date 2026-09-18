@@ -543,6 +543,12 @@ textarea:focus {
   gap: .5rem;
 }
 
+/* tarjeta de seleccionar empleado con el verde clarito de arriba de la pagina; los botones de nombre se quedan blancos (tienen su propio background) */
+#paso-seleccion {
+  background: #ecf9f5;
+  border-color: #c8ede2;
+}
+
 .form-inline {
   display: flex;
   align-items: flex-end;

@@ -864,8 +864,8 @@ textarea:focus {
 }
 
 .resumen-empleados-tabla thead th {
-  background: var(--color-primario);
-  color: #fff;
+  background: #ecf9f5;
+  color: var(--color-texto);
 }
 
 #contenedor-tabla {

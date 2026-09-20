@@ -327,7 +327,7 @@ body {
   background: var(--color-superficie);
   border-radius: var(--radio);
   box-shadow: var(--sombra);
-  padding: 1.1rem 1.1rem 1.1rem 0;
+  padding: 0 1.1rem 0 0;
   display: flex;
   align-items: stretch;
   gap: 1rem;
@@ -361,6 +361,7 @@ body {
   flex-direction: column;
   justify-content: center;
   gap: .35rem;
+  padding: 1.1rem 0;
 }
 
 .formato-nombre {
@@ -866,6 +867,10 @@ textarea:focus {
 .resumen-empleados-tabla thead th {
   background: #ecf9f5;
   color: var(--color-texto);
+  border-right: 1px solid var(--color-borde);
+}
+.resumen-empleados-tabla thead th:last-child {
+  border-right: none;
 }
 
 #contenedor-tabla {
@@ -1097,6 +1102,7 @@ textarea:focus {
 .sub-acciones {
   display: flex;
   flex-wrap: wrap;
+  justify-content: space-between;
   gap: .5rem;
   margin-bottom: 1.5rem;
 }
@@ -1444,7 +1450,7 @@ textarea:focus {
   }
 
   .sub-topbar {
-    padding: 1.2rem 1rem 2rem;
+    padding: 1.2rem 1rem 1rem;
   }
 
   /* en pantallas chicas "Cerrar sesion" y "Volver" quedaban muy apretados contra el borde */
@@ -1456,7 +1462,7 @@ textarea:focus {
   }
 
   .sub-main {
-    padding: 1.5rem 1rem 2.5rem;
+    padding: .75rem 1rem 2.5rem;
   }
 
   /* en mobile el titulo y la tarjeta del establecimiento se apilan: la tarjeta va primero, y necesita su propio recuadro blanco porque ya no queda pegada al titulo */
@@ -2527,6 +2533,7 @@ textarea:focus {
   place-items: center;
   width: 56px;
   min-height: 72px;
+  align-self: stretch;
   background: var(--color-primario);
   color: #fff;
   font-size: 1.6rem;

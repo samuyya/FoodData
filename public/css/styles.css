@@ -1488,18 +1488,6 @@ textarea:focus {
     box-shadow: 0 8px 24px rgba(15, 40, 32, .08);
   }
 
-  /* en Programas no hay subtitulo, la tarjeta arriba se sentia muy pesada y tapaba el verde de siempre — se queda con el orden de antes */
-  .pagina-programas .sub-titulo-grupo {
-    order: 1;
-  }
-  .pagina-programas .sub-encabezado .establecimiento {
-    order: 2;
-    width: auto;
-    background: transparent;
-    border: none;
-    box-shadow: none;
-  }
-
   .topbar-left { gap: .5rem; }
   .topbar img.logo-empresa { height: 32px; }
   .topbar-right { flex-wrap: wrap; }

@@ -104,10 +104,9 @@ body {
 
 .login-logo {
   display: block;
-  width: calc(100% + 3.4rem);
-  max-width: none;
+  width: 100%;
   height: auto;
-  margin: -0.75rem -1.7rem 1.5rem;
+  margin: 0 0 1rem;
 }
 
 .login-card .btn-primario {
@@ -1444,6 +1443,7 @@ textarea:focus {
 
   .establecimiento {
     gap: 1rem;
+    margin-bottom: 1rem;
   }
 
   .establecimiento-logo {
@@ -1533,8 +1533,7 @@ textarea:focus {
   }
 
   .login-logo {
-    width: calc(100% + 1.7rem);
-    margin: -0.5rem -0.85rem 1.25rem;
+    margin-bottom: .75rem;
   }
 
   .modal {

@@ -332,7 +332,7 @@ body {
   align-items: stretch;
   gap: 1rem;
   cursor: pointer;
-  border: 2px solid transparent;
+  border: 2px solid var(--color-borde);
   transition: transform .12s, border-color .12s, box-shadow .12s;
 }
 .formato-card:hover {

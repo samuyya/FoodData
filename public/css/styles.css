@@ -1424,7 +1424,7 @@ textarea:focus {
   }
 
   .menu-topbar {
-    padding: 1.3rem 1rem 2.2rem;
+    padding: 1.3rem 1rem 1rem;
     gap: .6rem;
   }
 
@@ -1456,7 +1456,7 @@ textarea:focus {
   }
 
   .menu-main {
-    padding: 1.25rem 1rem 2.5rem;
+    padding: .5rem 1rem 2.5rem;
   }
 
   .sub-topbar {

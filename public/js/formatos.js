@@ -330,6 +330,7 @@ function mostrarFormatos(clave) {
 
   vistaCarpetas.hidden = true;
   vistFormatos.hidden = false;
+  btnVolver.textContent = '← Volver a carpetas';
 }
 
 function volverACarpetas() {
@@ -338,6 +339,7 @@ function volverACarpetas() {
   subtituloPaginaEl.textContent = 'Selecciona una carpeta.';
   vistaCarpetas.hidden = false;
   vistFormatos.hidden = true;
+  btnVolver.textContent = '← Volver al menú';
 }
 
 function cerrarModal() {

@@ -1419,10 +1419,11 @@ textarea:focus {
 
   .menu-topbar {
     padding: 1.3rem 1rem 2.2rem;
+    gap: .6rem;
   }
 
   .menu-marca-logo {
-    height: 58px;
+    height: 40px;
   }
 
   .establecimiento {
@@ -1444,6 +1445,14 @@ textarea:focus {
 
   .sub-topbar {
     padding: 1.2rem 1rem 2rem;
+  }
+
+  /* en pantallas chicas "Cerrar sesion" y "Volver" quedaban muy apretados contra el borde */
+  .menu-topbar .btn-secundario,
+  .sub-acciones .btn-secundario {
+    padding: .35rem .6rem;
+    font-size: .78rem;
+    white-space: nowrap;
   }
 
   .sub-main {

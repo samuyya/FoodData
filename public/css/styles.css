@@ -344,6 +344,7 @@ body {
   display: grid;
   place-items: center;
   width: 56px;
+  flex-shrink: 0;
   background: var(--color-primario);
   color: #fff;
   font-weight: 700;
@@ -1429,7 +1430,16 @@ textarea:focus {
   }
 
   .menu-marca-logo {
-    height: 40px;
+    height: 58px;
+  }
+
+  /* con el logo grande no entra "Cerrar sesion" completo - se muestra "Salir" nomas en mobile */
+  #btn-logout {
+    font-size: 0;
+  }
+  #btn-logout::after {
+    content: "Salir";
+    font-size: .85rem;
   }
 
   .establecimiento {

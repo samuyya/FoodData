@@ -1455,7 +1455,8 @@ textarea:focus {
 
   /* en pantallas chicas "Cerrar sesion" y "Volver" quedaban muy apretados contra el borde */
   .menu-topbar .btn-secundario,
-  .sub-acciones .btn-secundario {
+  .sub-acciones .btn-secundario,
+  .btn-volver-sub {
     padding: .35rem .6rem;
     font-size: .78rem;
     white-space: nowrap;
@@ -1475,6 +1476,18 @@ textarea:focus {
     background: #fff;
     border: 1px solid #e1efe9;
     box-shadow: 0 8px 24px rgba(15, 40, 32, .08);
+  }
+
+  /* en Programas no hay subtitulo, la tarjeta arriba se sentia muy pesada y tapaba el verde de siempre — se queda con el orden de antes */
+  .pagina-programas .sub-titulo-grupo {
+    order: 1;
+  }
+  .pagina-programas .sub-encabezado .establecimiento {
+    order: 2;
+    width: auto;
+    background: transparent;
+    border: none;
+    box-shadow: none;
   }
 
   .topbar-left { gap: .5rem; }

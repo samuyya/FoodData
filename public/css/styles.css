@@ -1087,12 +1087,15 @@ textarea:focus {
 
 .sub-topbar {
   background: linear-gradient(180deg, #a4ddcd 0%, #ffffff 100%);
-  padding: 1.5rem 1.75rem 2.5rem;
+  padding: 1.5rem 0 2.5rem;
 }
 
 .sub-topbar-inner {
   max-width: 880px;
   margin: 0 auto;
+  /* mismo padding lateral que .sub-main, para que la tarjeta del establecimiento
+     (que ahora ocupa todo el ancho) quede alineada con el contenido de abajo */
+  padding: 0 1.75rem;
 }
 
 .btn-volver-sub {
@@ -1124,7 +1127,14 @@ textarea:focus {
   gap: 1.5rem;
 }
 
+/* el establecimiento va primero, ancho completo (misma alineacion que el
+   contenido de abajo), y el titulo de la pagina queda debajo sin caja */
+.sub-titulo-grupo {
+  order: 2;
+}
 .sub-encabezado .establecimiento {
+  order: 1;
+  width: 100%;
   margin-bottom: 0;
   padding: .55rem .9rem;
   border-radius: 10px;
@@ -1522,7 +1532,11 @@ textarea:focus {
   }
 
   .sub-topbar {
-    padding: 1.2rem 1rem 1rem;
+    padding: 1.2rem 0 1rem;
+  }
+
+  .sub-topbar-inner {
+    padding: 0 1rem;
   }
 
   /* en pantallas chicas "Cerrar sesion" y "Volver" quedaban muy apretados contra el borde */
@@ -1536,15 +1550,6 @@ textarea:focus {
 
   .sub-main {
     padding: .75rem 1rem 2.5rem;
-  }
-
-  /* en mobile el titulo y la tarjeta del establecimiento se apilan: la tarjeta va primero */
-  .sub-titulo-grupo {
-    order: 2;
-  }
-  .sub-encabezado .establecimiento {
-    order: 1;
-    width: 100%;
   }
 
   .topbar-left { gap: .5rem; }
@@ -2675,7 +2680,9 @@ textarea:focus {
 
 .fila-acciones-formatos {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: .75rem;
   margin-bottom: 1rem;
 }
 

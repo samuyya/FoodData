@@ -140,7 +140,7 @@ Cada botón aparece u oculta según `empresa.modulosActivos`:
 - **Logo del establecimiento (`.establecimiento-logo`):** el logo real (`.establecimiento-logo-img`) se pinta sin marco (sin fondo blanco/borde/padding alrededor) para que se vea "incrustado" en la página tal cual es el archivo — un logo redondo con transparencia se ve redondo, no dentro de un cuadrito blanco. El marco blanco con borde (`.establecimiento-logo-ph`) se quedó **solo** en el placeholder "Logo" (cuando la empresa todavía no subió uno), porque ahí sí hace falta un contenedor visible.
 - **Encabezado institucional del formato:** `<details>` colapsable — abierto la 1ra vez, cerrado después (recordado por formato en `localStorage`). Indicador visual ▼/▲ que rota.
 
-**Logos en `public/img/`:** `logo-fooddata.png` (lockup con lema — login), `logo-solo.fooddata.png` (solo wordmark — cabeceras), `icon-fooddata.png` (ícono PWA). Logos de empresas (subidos) en `public/img/logos/`.
+**Logos en `public/img/`:** `logo-fooddata.png` (lockup con lema — login), `logo-solo.fooddata.png` (solo wordmark — cabeceras), `icon-fooddata.png` (ícono PWA). Logos de empresas (subidos) en `public/img/logos/`. Los 3 PNG de marca están comprimidos con paleta de colores (2026-09-22, `sharp` usado una sola vez, no quedó como dependencia) — de ~726KB en total a ~176KB, sin diferencia visible. Si se reemplaza alguno a mano después, conviene comprimirlo antes de subirlo (cualquier optimizador de PNG con paleta sirve).
 
 ## Accesibilidad (WCAG AA)
 - **Skip-link** "Saltar al contenido" — inyectado en todas las páginas por `util.js`, oculto excepto en focus de teclado.

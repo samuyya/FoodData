@@ -312,7 +312,10 @@ router.post('/administradores', requireSuperadmin, async (req, res) => {
     const empresa = await Empresa.findById(empresa_id);
     if (!empresa) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });
 
-    const passwordHash = await bcrypt.hash(password, 12);
+    // 8 rounds en vez de 12: esto es un PIN de cocina (min 4 caracteres), no una
+    // cuenta real -- ya esta protegido por el rate limit, no hace falta que el
+    // hash tambien sea lento. Con 12 rounds cada verificacion tardaba ~1s en Render.
+    const passwordHash = await bcrypt.hash(password, 8);
     const admin = await Administrador.create({ nombre: nombre.trim(), passwordHash, empresa_id });
     res.status(201).json({ ok: true, administrador: { id: admin._id, nombre: admin.nombre, empresa_id: admin.empresa_id } });
   } catch (err) {

@@ -471,8 +471,8 @@ btnLogout.addEventListener('click', async () => {
 });
 
 (async function iniciar() {
+  // cargarEmpresas necesita catalogoFormatos, que lo llena cargarCatalogo — el resto
+  // no depende de nada entre si y puede pedirse en paralelo
   await cargarCatalogo();
-  await cargarGoogleInfo();
-  await cargarEmpresas();
-  await cargarAdmins();
+  await Promise.all([cargarGoogleInfo(), cargarEmpresas(), cargarAdmins()]);
 })();

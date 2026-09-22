@@ -442,9 +442,9 @@ async function iniciar() {
     const me = await rMe.json();
     if (me.rol !== 'empleado') { window.location.href = '/'; return; }
     pintarHeader(me.empresa);
-    await cargarEmpleados();
-    await cargarMeses();
-    await cargarResumenEmpleados();
+    // cargarResumenEmpleados necesita que selectMes ya tenga valor (lo pone cargarMeses),
+    // pero cargarEmpleados no depende de nada de esto — corre en paralelo
+    await Promise.all([cargarEmpleados(), cargarMeses().then(cargarResumenEmpleados)]);
   } catch (err) {
     document.body.innerHTML = '<p style="padding:2rem;color:#b91c1c">Error cargando la página. Recarga.</p>';
   }

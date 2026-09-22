@@ -1128,10 +1128,10 @@ textarea:focus {
   margin-bottom: 0;
   padding: .55rem .9rem;
   border-radius: 10px;
-  box-shadow: none;
+  box-shadow: 0 8px 24px rgba(15, 40, 32, .08);
   gap: 1rem;
-  background: transparent;
-  border: none;
+  background: #fff;
+  border: 1px solid #e1efe9;
 }
 .sub-encabezado .establecimiento-logo {
   width: 112px;
@@ -1538,16 +1538,13 @@ textarea:focus {
     padding: .75rem 1rem 2.5rem;
   }
 
-  /* en mobile el titulo y la tarjeta del establecimiento se apilan: la tarjeta va primero, y necesita su propio recuadro blanco porque ya no queda pegada al titulo */
+  /* en mobile el titulo y la tarjeta del establecimiento se apilan: la tarjeta va primero */
   .sub-titulo-grupo {
     order: 2;
   }
   .sub-encabezado .establecimiento {
     order: 1;
     width: 100%;
-    background: #fff;
-    border: 1px solid #e1efe9;
-    box-shadow: 0 8px 24px rgba(15, 40, 32, .08);
   }
 
   .topbar-left { gap: .5rem; }

@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const Asistencia = require('../models/Asistencia');
 const EmpleadoLista = require('../models/EmpleadoLista');
 const Administrador = require('../models/Administrador');
+const AjusteHorasExtra = require('../models/AjusteHorasExtra');
 const { requireEmpresa, ah } = require('../middleware/sesion');
 const { limiteAdmin } = require('../middleware/limites');
 const { guardarFotoAsistencia, obtenerFotoAsistencia, borrarFotoAsistencia } = require('../servicios/almacenamiento');
@@ -307,6 +308,13 @@ router.get('/registro/:empleadoId', requireEmpresa, ah(async (req, res) => {
     });
   });
 
+  // ultimos ajustes manuales del admin, solo para mostrar transparencia -- no
+  // afectan el calculo de nada de lo de arriba
+  const ajustesHorasExtra = await AjusteHorasExtra.find({
+    empresa_id: req.session.empresa.id,
+    empleado_id: req.params.empleadoId
+  }).sort({ fecha: -1 }).limit(10).lean();
+
   res.json({
     ok: true,
     empleado: { id: empleado._id, nombre: empleado.nombre },
@@ -314,7 +322,70 @@ router.get('/registro/:empleadoId', requireEmpresa, ah(async (req, res) => {
     dias,
     totalHoras: Math.round(totalHoras * 100) / 100,
     horasExtra: { total: Math.round(totalExtraMes * 100) / 100, semanas },
-    bancoHoras
+    bancoHoras,
+    ajustesHorasExtra
+  });
+}));
+
+// ajuste manual del admin a una categoria del banco de horas -- reemplaza el
+// valor tal cual (las semanas nuevas que se cierren siguen sumando/restando
+// sobre este numero), y deja un registro de auditoria aparte para que el
+// empleado siempre pueda ver si se lo tocaron
+router.post('/ajustar-horas-extra', limiteAdmin, requireEmpresa, ah(async (req, res) => {
+  const { empleadoId, categoria, nuevoValor, motivo, password } = req.body;
+  const CATEGORIAS = ['diurnas', 'dominicales', 'nocturnas', 'dominicalesNocturnas'];
+  if (!empleadoId || !CATEGORIAS.includes(categoria)) {
+    return res.status(400).json({ ok: false, error: 'Faltan datos (empleado o categoría)' });
+  }
+  const valor = Number(nuevoValor);
+  if (!Number.isFinite(valor) || valor < 0) {
+    return res.status(400).json({ ok: false, error: 'El nuevo valor debe ser un número mayor o igual a 0' });
+  }
+  if (!password) {
+    return res.status(400).json({ ok: false, error: 'Falta la contraseña de administrador' });
+  }
+
+  const admins = await Administrador.find({ empresa_id: req.session.empresa.id });
+  if (admins.length === 0) {
+    return res.status(404).json({ ok: false, error: 'Esta empresa aún no tiene administrador asignado' });
+  }
+  let admin = null;
+  for (const a of admins) {
+    if (await bcrypt.compare(password, a.passwordHash)) { admin = a; break; }
+  }
+  if (!admin) {
+    return res.status(401).json({ ok: false, error: 'Contraseña de administrador incorrecta' });
+  }
+
+  const empleado = await EmpleadoLista.findOne({ _id: empleadoId, empresa_id: req.session.empresa.id });
+  if (!empleado) return res.status(404).json({ ok: false, error: 'Empleado no encontrado' });
+
+  const empresa = await Empresa.findById(req.session.empresa.id);
+  // me aseguro de que el saldo este al dia antes de tocarlo
+  const saldo = await actualizarSaldo(req.session.empresa.id, empleadoId, empresa.jornadaEsperada);
+
+  const valorAnterior = saldo[categoria];
+  saldo[categoria] = Math.round(valor * 100) / 100;
+  await saldo.save();
+
+  const ajuste = await AjusteHorasExtra.create({
+    empresa_id: req.session.empresa.id,
+    empleado_id: empleadoId,
+    categoria,
+    valorAnterior,
+    valorNuevo: saldo[categoria],
+    motivo: (motivo || '').trim(),
+    adminNombre: admin.nombre
+  });
+
+  res.json({
+    ok: true,
+    bancoHoras: {
+      diurnas: saldo.diurnas, dominicales: saldo.dominicales,
+      nocturnas: saldo.nocturnas, dominicalesNocturnas: saldo.dominicalesNocturnas,
+      total: Math.round((saldo.diurnas + saldo.dominicales + saldo.nocturnas + saldo.dominicalesNocturnas) * 100) / 100
+    },
+    ajuste
   });
 }));
 

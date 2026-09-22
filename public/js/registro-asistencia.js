@@ -20,12 +20,27 @@ const corregirDia = document.getElementById('corregir-dia');
 const corregirError = document.getElementById('corregir-error');
 const btnCancelarCorregir = document.getElementById('btn-cancelar-corregir');
 
+const modalEditarHoras = document.getElementById('modal-editar-horas');
+const formEditarHoras = document.getElementById('form-editar-horas');
+const editarHorasCategoriaEl = document.getElementById('editar-horas-categoria');
+const editarHorasActualEl = document.getElementById('editar-horas-actual');
+const editarHorasError = document.getElementById('editar-horas-error');
+const btnCancelarEditarHoras = document.getElementById('btn-cancelar-editar-horas');
+
 const MESES_LARGOS = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
 ];
 
+const NOMBRES_CATEGORIA = {
+  diurnas: 'Diurnas',
+  dominicales: 'Con recargo dominical',
+  nocturnas: 'Nocturnas',
+  dominicalesNocturnas: 'Dominicales nocturnas'
+};
+
 let registroIdEnCorreccion = null;
+let categoriaEnEdicion = null;
 
 function escapeHTML(s) {
   return String(s)
@@ -161,6 +176,7 @@ function renderTabla(data) {
 
   pintarBancoHoras(data.bancoHoras);
   pintarHorasExtra(data.horasExtra);
+  pintarAjustesHoras(data.ajustesHorasExtra);
 
   contenedorTabla.querySelectorAll('.foto-mini').forEach(img => {
     img.addEventListener('click', () => {
@@ -172,6 +188,10 @@ function renderTabla(data) {
 
   contenedorTabla.querySelectorAll('.btn-corregir').forEach(btn => {
     btn.addEventListener('click', () => abrirCorregir(btn.dataset.id, btn.dataset.dia));
+  });
+
+  contenedorTabla.querySelectorAll('.btn-editar-horas').forEach(btn => {
+    btn.addEventListener('click', () => abrirEditarHoras(btn.dataset.categoria, btn.dataset.valor));
   });
 }
 
@@ -200,6 +220,16 @@ function semanaHTML(s) {
   `;
 }
 
+function itemBancoHTML(categoria, valor) {
+  return `
+    <div class="banco-item">
+      <span class="banco-item-valor">${valor}</span>
+      <span class="banco-item-label">${NOMBRES_CATEGORIA[categoria]}</span>
+      <button type="button" class="btn-editar-horas" data-categoria="${categoria}" data-valor="${valor}" title="Ajustar ${NOMBRES_CATEGORIA[categoria]}" aria-label="Ajustar ${NOMBRES_CATEGORIA[categoria]}">✏️</button>
+    </div>
+  `;
+}
+
 function pintarBancoHoras(banco) {
   if (!banco) return;
   const div = document.createElement('div');
@@ -210,12 +240,36 @@ function pintarBancoHoras(banco) {
       <strong class="resumen-extra-valor">${banco.total} h</strong>
     </div>
     <div class="banco-horas-grid">
-      <div class="banco-item"><span class="banco-item-valor">${banco.diurnas}</span><span class="banco-item-label">Diurnas</span></div>
-      <div class="banco-item"><span class="banco-item-valor">${banco.dominicales}</span><span class="banco-item-label">Con recargo dominical</span></div>
-      <div class="banco-item"><span class="banco-item-valor">${banco.nocturnas}</span><span class="banco-item-label">Nocturnas</span></div>
-      <div class="banco-item"><span class="banco-item-valor">${banco.dominicalesNocturnas}</span><span class="banco-item-label">Dominicales nocturnas</span></div>
+      ${itemBancoHTML('diurnas', banco.diurnas)}
+      ${itemBancoHTML('dominicales', banco.dominicales)}
+      ${itemBancoHTML('nocturnas', banco.nocturnas)}
+      ${itemBancoHTML('dominicalesNocturnas', banco.dominicalesNocturnas)}
     </div>
   `;
+  contenedorTabla.appendChild(div);
+}
+
+// historial de ajustes manuales -- siempre visible (no oculto), para que el
+// empleado sepa si le tocaron las horas aunque no haya ninguno hoy
+function pintarAjustesHoras(ajustes) {
+  const div = document.createElement('div');
+  div.className = 'ajustes-horas';
+  if (!ajustes || ajustes.length === 0) {
+    div.innerHTML = `<h3 class="ajustes-horas-titulo">Historial de ajustes</h3><p class="ajustes-horas-vacio">Sin ajustes manuales en este banco de horas.</p>`;
+  } else {
+    const filas = ajustes.map(a => {
+      const fecha = new Date(a.fecha).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' });
+      const motivo = a.motivo ? `<span class="ajuste-motivo">Motivo: ${escapeHTML(a.motivo)}</span>` : '';
+      return `
+        <li class="ajuste-linea">
+          <strong>${escapeHTML(a.adminNombre)}</strong> modificó <strong>${NOMBRES_CATEGORIA[a.categoria]}</strong>
+          de <strong>${a.valorAnterior} h</strong> a <strong>${a.valorNuevo} h</strong> el ${fecha}.
+          ${motivo}
+        </li>
+      `;
+    }).join('');
+    div.innerHTML = `<h3 class="ajustes-horas-titulo">Historial de ajustes</h3><ul class="ajustes-horas-lista">${filas}</ul>`;
+  }
   contenedorTabla.appendChild(div);
 }
 
@@ -356,16 +410,36 @@ function cerrarCorregir() {
   registroIdEnCorreccion = null;
 }
 
+function abrirEditarHoras(categoria, valorActual) {
+  categoriaEnEdicion = categoria;
+  editarHorasCategoriaEl.textContent = NOMBRES_CATEGORIA[categoria];
+  editarHorasActualEl.textContent = valorActual;
+  editarHorasError.hidden = true;
+  formEditarHoras.reset();
+  formEditarHoras.nuevoValor.value = valorActual;
+  modalEditarHoras.hidden = false;
+  setTimeout(() => formEditarHoras.nuevoValor.focus(), 50);
+}
+
+function cerrarEditarHoras() {
+  modalEditarHoras.hidden = true;
+  categoriaEnEdicion = null;
+}
+
 btnCerrarFoto.addEventListener('click', () => { modalFoto.hidden = true; });
 modalFoto.addEventListener('click', (e) => { if (e.target === modalFoto) modalFoto.hidden = true; });
 
 btnCancelarCorregir.addEventListener('click', cerrarCorregir);
 modalCorregir.addEventListener('click', (e) => { if (e.target === modalCorregir) cerrarCorregir(); });
 
+btnCancelarEditarHoras.addEventListener('click', cerrarEditarHoras);
+modalEditarHoras.addEventListener('click', (e) => { if (e.target === modalEditarHoras) cerrarEditarHoras(); });
+
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   if (!modalFoto.hidden) modalFoto.hidden = true;
   if (!modalCorregir.hidden) cerrarCorregir();
+  if (!modalEditarHoras.hidden) cerrarEditarHoras();
 });
 
 formCorregir.addEventListener('submit', async (e) => {
@@ -394,6 +468,38 @@ formCorregir.addEventListener('submit', async (e) => {
     } catch (err) {
       corregirError.textContent = 'no hay conexion';
       corregirError.hidden = false;
+    }
+  });
+});
+
+formEditarHoras.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  editarHorasError.hidden = true;
+  const btnGuardar = formEditarHoras.querySelector('button[type="submit"]');
+  await conBotonCargando(btnGuardar, 'Guardando...', async () => {
+    try {
+      const r = await fetch('/api/asistencia/ajustar-horas-extra', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          empleadoId: selectEmpleado.value,
+          categoria: categoriaEnEdicion,
+          nuevoValor: formEditarHoras.nuevoValor.value,
+          motivo: formEditarHoras.motivo.value,
+          password: formEditarHoras.password.value
+        })
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        editarHorasError.textContent = data.error || 'No se pudo ajustar';
+        editarHorasError.hidden = false;
+        return;
+      }
+      cerrarEditarHoras();
+      cargarRegistro();
+    } catch (err) {
+      editarHorasError.textContent = 'no hay conexion';
+      editarHorasError.hidden = false;
     }
   });
 });

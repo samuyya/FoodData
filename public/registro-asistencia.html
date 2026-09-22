@@ -94,6 +94,32 @@
     </div>
   </div>
 
+  <div id="modal-editar-horas" class="modal-backdrop" hidden role="dialog" aria-modal="true">
+    <div class="modal">
+      <h2>Ajustar horas extra</h2>
+      <p class="subtitulo"><span id="editar-horas-categoria"></span> — valor actual: <strong id="editar-horas-actual"></strong> h. Solo el administrador puede ajustarlas.</p>
+      <form id="form-editar-horas" class="form">
+        <label class="campo">
+          <span>Nuevo valor (horas)</span>
+          <input type="number" name="nuevoValor" min="0" step="0.01" required />
+        </label>
+        <label class="campo">
+          <span>Motivo (opcional)</span>
+          <input type="text" name="motivo" maxlength="200" placeholder="Ej: error en la marcación del día 12" />
+        </label>
+        <label class="campo">
+          <span>Contraseña de administrador</span>
+          <input type="password" name="password" required autocomplete="current-password" />
+        </label>
+        <p id="editar-horas-error" class="mensaje mensaje-error" hidden></p>
+        <div class="modal-acciones">
+          <button type="button" id="btn-cancelar-editar-horas" class="btn-secundario">Cancelar</button>
+          <button type="submit" class="btn-primario">Guardar ajuste</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="/js/util.js"></script>
   <script src="/js/festivos.js"></script>
   <script src="/js/registro-asistencia.js"></script>

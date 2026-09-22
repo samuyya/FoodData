@@ -1391,25 +1391,87 @@ textarea:focus {
 }
 
 .banco-item {
-  text-align: center;
   display: flex;
-  flex-direction: column;
-  gap: .1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .4rem;
+  padding: .5rem .6rem;
+  border: 1px solid var(--color-borde-suave);
+  border-radius: 10px;
 }
 
 .banco-item-valor {
+  display: block;
   font-weight: 700;
   font-size: 1.05rem;
   color: var(--color-texto);
 }
 
 .banco-item-label {
+  display: block;
+  margin-top: .1rem;
   font-size: .72rem;
   color: var(--color-texto-suave);
 }
 
+.btn-editar-horas {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: .85rem;
+  line-height: 1;
+  padding: .25rem;
+  border-radius: 6px;
+}
+.btn-editar-horas:hover { background: var(--color-superficie); }
+
 @media (max-width: 640px) {
   .banco-horas-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.ajustes-horas {
+  margin-top: .8rem;
+  padding: .9rem 1rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie-suave);
+}
+
+.ajustes-horas-titulo {
+  margin: 0 0 .5rem;
+  font-size: .8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: var(--color-texto-suave);
+}
+
+.ajustes-horas-vacio {
+  margin: 0;
+  font-size: .85rem;
+  color: var(--color-texto-suave);
+}
+
+.ajustes-horas-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ajuste-linea {
+  padding: .5rem 0;
+  border-top: 1px solid var(--color-borde-suave);
+  font-size: .85rem;
+  color: var(--color-texto);
+  line-height: 1.5;
+}
+.ajuste-linea:first-child { border-top: none; padding-top: 0; }
+
+.ajuste-motivo {
+  display: block;
+  color: var(--color-texto-suave);
+  font-style: italic;
 }
 
 .btn-descarga-mes {

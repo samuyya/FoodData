@@ -570,19 +570,26 @@ function pintarHojaMultiMes(sheet, registros, formatoId, formato, opciones = {})
   });
 }
 
-// Sincronizar la hoja de (formato, carpeta) en el archivo de la empresa
-async function sincronizarFormatoCarpeta(empresaId, formatoId, carpeta) {
+// Sincronizar la hoja de (formato, carpeta) en el archivo de la empresa.
+// `conocidos` es opcional: si el que llama ya tiene el config/nombre de la
+// empresa a mano (routes/registros.js los pide igual para otras validaciones),
+// se los pasa y esta funcion se ahorra 2 consultas a Mongo que ya son redundantes.
+async function sincronizarFormatoCarpeta(empresaId, formatoId, carpeta, conocidos = {}) {
   const formato = getFormato(formatoId);
   if (!formato) throw new Error(`Formato desconocido: ${formatoId}`);
 
-  const config = await getConfigEmpresa(empresaId);
+  const config = conocidos.config || await getConfigEmpresa(empresaId);
   const esCompartido = config.compartidos.includes(formatoId);
 
-  const empresa = await Empresa.findById(empresaId).select('nombre').lean();
-  const { dir, filePath } = rutaArchivoEmpresa(empresaId, empresa && empresa.nombre);
+  let empresaNombre = conocidos.empresaNombre;
+  if (empresaNombre === undefined) {
+    const empresa = await Empresa.findById(empresaId).select('nombre').lean();
+    empresaNombre = empresa && empresa.nombre;
+  }
+  const { dir, filePath } = rutaArchivoEmpresa(empresaId, empresaNombre);
   await fs.promises.mkdir(dir, { recursive: true });
 
-  const wb = await abrirWorkbook(filePath, empresa && empresa.nombre);
+  const wb = await abrirWorkbook(filePath, empresaNombre);
 
   // compartido => una sola hoja sin sufijo, juntando registros de TODAS las carpetas
   // no compartido => hoja con sufijo, solo los registros de esa carpeta
@@ -642,9 +649,13 @@ async function reconstruirArchivoCompleto(empresaId) {
 
   if (instancias.length === 0) return { filePath: null };
 
+  // config y nombre ya se piden una sola vez aca arriba -- se los paso a cada
+  // sincronizarFormatoCarpeta del loop para no repetir la misma consulta N veces
+  const config = await getConfigEmpresa(empresaId);
+  const conocidos = { config, empresaNombre: empresa && empresa.nombre };
   for (const { _id } of instancias) {
     if (!getFormato(_id.formato)) continue;
-    await sincronizarFormatoCarpeta(empresaId, _id.formato, _id.carpeta || 'cocina');
+    await sincronizarFormatoCarpeta(empresaId, _id.formato, _id.carpeta || 'cocina', conocidos);
   }
   return { filePath };
 }

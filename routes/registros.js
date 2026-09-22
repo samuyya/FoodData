@@ -164,10 +164,6 @@ router.get('/hoy/:formatoId', requireEmpresa, ah(async (req, res) => {
 }));
 
 router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
-  // medicion temporal para encontrar donde se va el tiempo al guardar -- sacar despues
-  const t0 = Date.now();
-  const tiempos = {};
-  const marcar = (nombre) => { tiempos[nombre] = Date.now() - t0; };
   try {
     const { formatoId, carpeta, responsable, observaciones, datos } = req.body;
     const formato = getFormato(formatoId);
@@ -184,7 +180,6 @@ router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
     }
 
     const config = await getConfigEmpresa(req.session.empresa.id);
-    marcar('config');
     const { activos, carpetas } = config;
     if (!activos.includes(formatoId)) {
       return res.status(403).json({ ok: false, error: 'Esta empresa no tiene este formato habilitado' });
@@ -195,7 +190,6 @@ router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
     }
 
     const info = await infoPendientes(req.session.empresa.id, formatoId, carpeta);
-    marcar('infoPendientes');
     if (info.completoHoy) {
       return res.status(409).json({ ok: false, error: 'Ya completaste todos los días de este mes hasta hoy' });
     }
@@ -231,7 +225,6 @@ router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
         }
       }
     }
-    marcar('checkAdmin');
 
     const dia = info.siguienteDia;
     const fecha = new Date(info.anio, info.mes - 1, dia);
@@ -248,7 +241,6 @@ router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
       observaciones: (observaciones || '').trim(),
       datos: datos || {}
     });
-    marcar('registroCreate');
 
     // excel y google sheets arrancan los dos al mismo tiempo, pero solo se espera
     // a excel para responder -- sheets le hace 5-6 llamadas seguidas a la API de
@@ -259,7 +251,11 @@ router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
     // (Better Stack) para que el admin se entere, aunque no se vea en pantalla
     async function sincronizarExcel() {
       try {
-        await sincronizarFormatoCarpeta(req.session.empresa.id, formatoId, carpeta);
+        // le paso el config y el nombre que ya tenemos a mano en este request,
+        // asi no los vuelve a pedir a Mongo (eran 2 consultas redundantes)
+        await sincronizarFormatoCarpeta(req.session.empresa.id, formatoId, carpeta, {
+          config, empresaNombre: req.session.empresa.nombre
+        });
         return null;
       } catch (errSync) {
         logger.warn(`no se pudo escribir excel: ${errSync.message}`);
@@ -298,9 +294,7 @@ router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
     const excelPromise = sincronizarExcel();
     sincronizarGoogleSheets(); // no lo espero -- corre de fondo, su error ya se loguea adentro
     const excelError = await excelPromise;
-    marcar('excel');
     const googleSheetsError = null; // no se sabe todavia en este momento, ver comentario arriba
-    logger.info({ tiempos }, 'tiempos guardar formato (temporal)');
 
     // ya sabemos exactamente que cambio (se guardo el dia "info.siguienteDia"), asi
     // que armo el info actualizado a mano en vez de volver a consultar la BD

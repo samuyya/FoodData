@@ -94,14 +94,19 @@ router.get('/resumen-pendientes', requireEmpresa, ah(async (req, res) => {
     }
   }
 
+  // reuso infoPendientes (la misma logica de dias faltantes que usa cada formato)
+  // en vez de recalcular el conteo aparte, asi no se pueden desincronizar -- se piden
+  // todas las instancias a la vez en vez de una por una, cada una es una consulta aparte
+  const infos = await Promise.all(
+    [...instancias].map(key => {
+      const [formatoId, carpeta] = key.split('|');
+      return infoPendientes(empresaId, formatoId, carpeta);
+    })
+  );
+
   let totalDiasPendientes = 0;
   let formatosConPendientes = 0;
-
-  // reuso infoPendientes (la misma logica de dias faltantes que usa cada formato)
-  // en vez de recalcular el conteo aparte, asi no se pueden desincronizar
-  for (const key of instancias) {
-    const [formatoId, carpeta] = key.split('|');
-    const info = await infoPendientes(empresaId, formatoId, carpeta);
+  for (const info of infos) {
     if (info.pendientes.length > 0) {
       formatosConPendientes++;
       totalDiasPendientes += info.pendientes.length;
@@ -237,42 +242,60 @@ router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
       datos: datos || {}
     });
 
-    let excelError = null;
-    try {
-      await sincronizarFormatoCarpeta(req.session.empresa.id, formatoId, carpeta);
-    } catch (errSync) {
-      logger.warn(`no se pudo escribir excel: ${errSync.message}`);
-      // EBUSY o EPERM => archivo abierto en Excel desktop (Windows lo bloquea)
-      if (errSync.code === 'EBUSY' || errSync.code === 'EPERM' || /resource busy|permission denied|access is denied/i.test(errSync.message)) {
-        excelError = 'El archivo Excel está abierto en tu computador y no se pudo actualizar. Ciérralo y vuelve a guardar (o descárgalo nuevamente desde la app).';
-      } else {
-        excelError = 'No se pudo actualizar el Excel: ' + errSync.message;
+    // excel y google sheets no dependen uno del otro, asi que corren en paralelo
+    // en vez de esperar uno para recien empezar el otro
+    async function sincronizarExcel() {
+      try {
+        await sincronizarFormatoCarpeta(req.session.empresa.id, formatoId, carpeta);
+        return null;
+      } catch (errSync) {
+        logger.warn(`no se pudo escribir excel: ${errSync.message}`);
+        // EBUSY o EPERM => archivo abierto en Excel desktop (Windows lo bloquea)
+        if (errSync.code === 'EBUSY' || errSync.code === 'EPERM' || /resource busy|permission denied|access is denied/i.test(errSync.message)) {
+          return 'El archivo Excel está abierto en tu computador y no se pudo actualizar. Ciérralo y vuelve a guardar (o descárgalo nuevamente desde la app).';
+        }
+        return 'No se pudo actualizar el Excel: ' + errSync.message;
       }
     }
 
-    let googleSheetsError = null;
-    try {
-      const empresaDoc = await Empresa.findById(req.session.empresa.id).select('googleSheetId').lean();
-      if (!empresaDoc || !empresaDoc.googleSheetId) {
-        googleSheetsError = 'Esta empresa no tiene una hoja de Google Sheets vinculada. Pídele al superadmin que la configure.';
-      } else if (!googleSheets.estaDisponible()) {
-        googleSheetsError = 'El servidor no tiene configuradas las credenciales de Google Sheets.';
-      } else {
+    async function sincronizarGoogleSheets() {
+      try {
+        const empresaDoc = await Empresa.findById(req.session.empresa.id).select('googleSheetId').lean();
+        if (!empresaDoc || !empresaDoc.googleSheetId) {
+          return 'Esta empresa no tiene una hoja de Google Sheets vinculada. Pídele al superadmin que la configure.';
+        }
+        if (!googleSheets.estaDisponible()) {
+          return 'El servidor no tiene configuradas las credenciales de Google Sheets.';
+        }
         await googleSheets.sincronizarFormato(empresaDoc.googleSheetId, req.session.empresa.id, formatoId, carpeta);
-      }
-    } catch (errGS) {
-      logger.warn(`no se sincronizo google sheets: ${errGS.message}`);
-      const msg = String(errGS.message || '');
-      if (/permission|403/i.test(msg)) {
-        googleSheetsError = `La cuenta de servicio no tiene permiso para editar esta hoja. Compártela como Editor con: ${googleSheets.getCuentaServicio()}`;
-      } else if (/not found|404/i.test(msg)) {
-        googleSheetsError = 'El ID de la hoja de Google Sheets no existe o se borró.';
-      } else {
-        googleSheetsError = 'Google Sheets no se pudo actualizar: ' + msg;
+        return null;
+      } catch (errGS) {
+        logger.warn(`no se sincronizo google sheets: ${errGS.message}`);
+        const msg = String(errGS.message || '');
+        if (/permission|403/i.test(msg)) {
+          return `La cuenta de servicio no tiene permiso para editar esta hoja. Compártela como Editor con: ${googleSheets.getCuentaServicio()}`;
+        }
+        if (/not found|404/i.test(msg)) {
+          return 'El ID de la hoja de Google Sheets no existe o se borró.';
+        }
+        return 'Google Sheets no se pudo actualizar: ' + msg;
       }
     }
 
-    const infoNuevo = await infoPendientes(req.session.empresa.id, formatoId, carpeta);
+    const [excelError, googleSheetsError] = await Promise.all([sincronizarExcel(), sincronizarGoogleSheets()]);
+
+    // ya sabemos exactamente que cambio (se guardo el dia "info.siguienteDia"), asi
+    // que armo el info actualizado a mano en vez de volver a consultar la BD
+    const infoNuevo = {
+      ...info,
+      pendientes: info.pendientes.filter(d => d !== dia),
+      diasGuardados: [...info.diasGuardados, dia].sort((a, b) => a - b),
+      registrosMes: [...info.registrosMes, registro]
+    };
+    infoNuevo.siguienteDia = infoNuevo.pendientes.length > 0 ? infoNuevo.pendientes[0] : null;
+    infoNuevo.completoHoy = infoNuevo.pendientes.length === 0;
+    if (dia === info.diaActual) infoNuevo.registroHoy = registro;
+
     res.status(201).json({ ok: true, registro, info: infoNuevo, excelError, googleSheetsError });
   } catch (err) {
     if (err.code === 11000) {

@@ -86,7 +86,8 @@ async function iniciar() {
     if (me.rol !== 'empleado') { window.location.href = '/'; return; }
     pintarHeader(me.empresa);
     aplicarModulos(me.empresa.modulosActivos);
-    await fetch('/api/admin/limpiar', { method: 'POST' });
+    // limpiar los marcadores de admin vencidos no bloquea nada visual, corre aparte
+    fetch('/api/admin/limpiar', { method: 'POST' }).catch(() => {});
     if (!Array.isArray(me.empresa.modulosActivos) || me.empresa.modulosActivos.includes('formatos')) {
       cargarBadgePendientes();
     }

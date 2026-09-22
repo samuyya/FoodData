@@ -6,4 +6,6 @@ const administradorSchema = new mongoose.Schema({
   empresa_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true }
 }, { timestamps: true });
 
+administradorSchema.index({ empresa_id: 1 });
+
 module.exports = mongoose.model('Administrador', administradorSchema);

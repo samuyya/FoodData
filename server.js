@@ -9,6 +9,7 @@ const path = require('path');
 const session = require('express-session');
 const { MongoStore } = require('connect-mongo');
 const helmet = require('helmet');
+const compression = require('compression');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const { conectarDB } = require('./db');
@@ -67,6 +68,11 @@ app.use(helmet({
   frameguard: { action: 'deny' },
   referrerPolicy: { policy: 'same-origin' }
 }));
+
+// comprime CSS/JS/HTML/JSON antes de mandarlos — con la latencia que ya tenemos
+// de por si (Render en EEUU, clientes en Colombia), no vale la pena mandar los
+// archivos sin comprimir
+app.use(compression());
 
 const origenesPermitidos = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
   .split(',')

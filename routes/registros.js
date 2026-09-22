@@ -9,14 +9,16 @@ const { FORMATOS, getFormato } = require('../formatos');
 const { getConfigEmpresa } = require('../empresaConfig');
 const { requireEmpresa, ah } = require('../middleware/sesion');
 const { limiteAdmin } = require('../middleware/limites');
-const { adminCarpetaAdministracionActivo, adminHistorialActivo, adminAtrasadoActivo, adminReporteActivo } = require('./admin');
-const { sincronizarFormatoCarpeta, reconstruirArchivoCompleto, getRutaArchivoActual } = require('../servicios/excel');
+const { adminCarpetaAdministracionActivo, adminHistorialActivo, adminAtrasadoActivo, adminReporteActivo, adminInspeccionActivo } = require('./admin');
+const { sincronizarFormatoCarpeta, reconstruirArchivoCompleto, getRutaArchivoActual, columnasYFila } = require('../servicios/excel');
 const googleSheets = require('../servicios/googleSheets');
+const correo = require('../servicios/correo');
 const logger = require('../logger');
 
 const router = express.Router();
 
 const REGEX_LETRAS = /^[A-Za-zÀ-ÿÑñ\s]+$/;
+const NOMBRES_CARPETA = { cocina: 'Cocina', salon: 'Salón', administracion: 'Administración' };
 
 async function verificarPasswordAdmin(empresaId, password) {
   if (!password) {
@@ -489,6 +491,92 @@ router.get('/reporte', requireEmpresa, ah(async (req, res) => {
     totalNovedades,
     carpetas: bloques
   });
+}));
+
+// datos reales (no solo % de cumplimiento) de todos los formatos activos de un
+// mes, agrupados por carpeta -- para mostrarle a sanidad en una inspeccion.
+// reusa columnasYFila, el mismo adaptador que ya arma las filas del Excel
+async function armarDatosInspeccion(empresaId, anio, mes) {
+  const config = await getConfigEmpresa(empresaId);
+  const carpetas = [];
+
+  for (const clave of ['cocina', 'salon', 'administracion']) {
+    const formatoIds = config.carpetas[clave] || [];
+    if (formatoIds.length === 0) continue;
+
+    const formatos = [];
+    for (const formatoId of formatoIds) {
+      const registros = await Registro.find({
+        empresa_id: empresaId, formato: formatoId, carpeta: clave, anio, mes
+      }).sort({ dia: 1 }).lean();
+      if (registros.length === 0) continue; // sin datos ese mes, se omite
+
+      const { columnas, fila, expandirFilas } = columnasYFila(formatoId);
+      const filas = expandirFilas ? registros.flatMap(r => expandirFilas(r)) : registros.map(fila);
+      const formato = getFormato(formatoId) || {};
+
+      formatos.push({
+        formatoId,
+        nombre: formato.nombre || formatoId,
+        titulo: formato.titulo || formato.nombre || formatoId,
+        plan: formato.plan || '',
+        programa: formato.programa || '',
+        codigo: formato.codigo || '',
+        columnas,
+        filas
+      });
+    }
+    if (formatos.length > 0) carpetas.push({ clave, nombre: NOMBRES_CARPETA[clave], formatos });
+  }
+  return carpetas;
+}
+
+router.get('/inspeccion', requireEmpresa, ah(async (req, res) => {
+  if (!adminInspeccionActivo(req)) {
+    return res.status(401).json({ ok: false, error: 'Se requiere contraseña de administrador para ver los formatos de inspección', requiereClaveAdmin: true });
+  }
+  const anio = parseInt(req.query.anio, 10);
+  const mes = parseInt(req.query.mes, 10);
+  if (isNaN(anio) || isNaN(mes) || mes < 1 || mes > 12) {
+    return res.status(400).json({ ok: false, error: 'Mes o año inválidos' });
+  }
+
+  const carpetas = await armarDatosInspeccion(req.session.empresa.id, anio, mes);
+  res.json({ ok: true, anio, mes, empresaNombre: req.session.empresa.nombre, carpetas });
+}));
+
+router.post('/inspeccion/enviar', requireEmpresa, limiteAdmin, ah(async (req, res) => {
+  if (!adminInspeccionActivo(req)) {
+    return res.status(401).json({ ok: false, error: 'Se requiere contraseña de administrador', requiereClaveAdmin: true });
+  }
+  if (!correo.estaDisponible()) {
+    return res.status(503).json({ ok: false, error: 'El envío de correo no está configurado todavía. Pídele al superadmin que configure el servidor de correo.' });
+  }
+
+  const anio = parseInt(req.body.anio, 10);
+  const mes = parseInt(req.body.mes, 10);
+  if (isNaN(anio) || isNaN(mes) || mes < 1 || mes > 12) {
+    return res.status(400).json({ ok: false, error: 'Mes o año inválidos' });
+  }
+  const destinatario = String(req.body.destinatario || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destinatario)) {
+    return res.status(400).json({ ok: false, error: 'El correo destinatario no es válido' });
+  }
+
+  const carpetas = await armarDatosInspeccion(req.session.empresa.id, anio, mes);
+  if (carpetas.length === 0) {
+    return res.status(404).json({ ok: false, error: 'No hay registros guardados en ese mes' });
+  }
+
+  try {
+    await correo.enviarInspeccion(destinatario, {
+      empresaNombre: req.session.empresa.nombre, anio, mes, carpetas
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    logger.warn(`no se pudo enviar correo de inspeccion: ${err.message}`);
+    res.status(500).json({ ok: false, error: 'No se pudo enviar el correo: ' + err.message });
+  }
 }));
 
 router.get('/excel', requireEmpresa, descargarExcel);

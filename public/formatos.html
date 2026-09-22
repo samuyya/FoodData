@@ -34,6 +34,35 @@
   <main class="sub-main">
     <div class="fila-acciones-formatos">
       <button type="button" id="btn-abrir-reporte" class="btn-secundario">📄 Generar reporte de formatos</button>
+      <button type="button" id="btn-abrir-inspeccion" class="btn-secundario">🩺 Ver formatos para inspección</button>
+    </div>
+
+    <div class="controles-reporte card" id="panel-inspeccion" hidden>
+      <h2 style="margin-top:0">Formatos para inspección</h2>
+      <p class="ayuda" style="margin-top:-.5rem">Datos reales del mes elegido, listos para mostrar o imprimir. Si sanidad necesita una copia, también puedes enviarlos por correo.</p>
+
+      <div class="controles-reporte-fila">
+        <label class="campo">
+          <span>Mes</span>
+          <input type="month" id="input-mes-inspeccion" />
+        </label>
+        <button type="button" class="btn-primario" id="btn-ver-inspeccion" style="height:36px">Ver formatos</button>
+      </div>
+
+      <div class="controles-reporte-fila" id="fila-enviar-inspeccion" style="margin-top:1rem;" hidden>
+        <label class="campo">
+          <span>Enviar por correo (opcional)</span>
+          <input type="email" id="input-correo-inspeccion" placeholder="ejemplo@correo.com" />
+        </label>
+        <button type="button" class="btn-secundario" id="btn-enviar-inspeccion" style="height:36px">✉️ Enviar</button>
+      </div>
+      <p id="inspeccion-envio-mensaje" class="mensaje" hidden></p>
+    </div>
+
+    <div class="hoja" id="hoja-inspeccion" hidden></div>
+
+    <div class="barra-imprimir" id="barra-imprimir-inspeccion" hidden>
+      <button type="button" class="btn-secundario" id="btn-imprimir-inspeccion">🖨️ Imprimir / Guardar como PDF</button>
     </div>
 
     <div class="controles-reporte card" id="panel-reporte" hidden>
@@ -111,6 +140,26 @@
         <p id="modal-reporte-error" class="mensaje mensaje-error" hidden></p>
         <div class="modal-acciones">
           <button type="button" id="modal-reporte-cancelar" class="btn-secundario">Cancelar</button>
+          <button type="submit" class="btn-primario">Verificar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal contraseña para ver formatos de inspección -->
+  <div id="modal-admin-inspeccion" class="modal-backdrop" hidden role="dialog" aria-modal="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-inspeccion-titulo">
+      <h2 id="modal-inspeccion-titulo">Acceso a formatos para inspección</h2>
+      <p class="subtitulo">Ingresa la contraseña de administrador para ver los formatos del mes.</p>
+
+      <form id="form-admin-inspeccion" class="form">
+        <label class="campo">
+          <span>Contraseña de administrador</span>
+          <input type="password" name="password" required autocomplete="current-password" />
+        </label>
+        <p id="modal-inspeccion-error" class="mensaje mensaje-error" hidden></p>
+        <div class="modal-acciones">
+          <button type="button" id="modal-inspeccion-cancelar" class="btn-secundario">Cancelar</button>
           <button type="submit" class="btn-primario">Verificar</button>
         </div>
       </form>

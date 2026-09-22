@@ -2917,6 +2917,23 @@ textarea:focus {
   text-align: center;
 }
 
+.inspeccion-formato {
+  margin-top: 1.4rem;
+}
+
+.inspeccion-formato-titulo {
+  font-size: .88rem;
+  color: var(--color-texto);
+  margin: 0 0 .15rem;
+}
+
+.inspeccion-formato-meta {
+  font-size: .76rem;
+  font-style: italic;
+  color: var(--color-texto-suave);
+  margin: 0 0 .5rem;
+}
+
 .barra-imprimir {
   margin: 1.25rem 0 0;
   display: flex;

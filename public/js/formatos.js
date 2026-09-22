@@ -32,8 +32,27 @@ const modalReporteError     = document.getElementById('modal-reporte-error');
 const formAdminReporte      = document.getElementById('form-admin-reporte');
 const btnModalReporteCancelar = document.getElementById('modal-reporte-cancelar');
 
+const btnAbrirInspeccion    = document.getElementById('btn-abrir-inspeccion');
+const panelInspeccion       = document.getElementById('panel-inspeccion');
+const inputMesInspeccion    = document.getElementById('input-mes-inspeccion');
+const btnVerInspeccion      = document.getElementById('btn-ver-inspeccion');
+const filaEnviarInspeccion  = document.getElementById('fila-enviar-inspeccion');
+const inputCorreoInspeccion = document.getElementById('input-correo-inspeccion');
+const btnEnviarInspeccion   = document.getElementById('btn-enviar-inspeccion');
+const inspeccionEnvioMensaje= document.getElementById('inspeccion-envio-mensaje');
+const hojaInspeccion        = document.getElementById('hoja-inspeccion');
+const barraImprimirInspeccion = document.getElementById('barra-imprimir-inspeccion');
+const btnImprimirInspeccion = document.getElementById('btn-imprimir-inspeccion');
+
+const modalInspeccion          = document.getElementById('modal-admin-inspeccion');
+const modalInspeccionError     = document.getElementById('modal-inspeccion-error');
+const formAdminInspeccion      = document.getElementById('form-admin-inspeccion');
+const btnModalInspeccionCancelar = document.getElementById('modal-inspeccion-cancelar');
+
 let empresaActual = null;
 let rangoReportePendiente = null;
+let mesInspeccionPendiente = null;
+let mesInspeccionActual = null;
 
 const MESES_LARGOS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const MESES_CORTOS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
@@ -228,6 +247,183 @@ btnGenerarRango.addEventListener('click', () => {
 });
 
 btnImprimir.addEventListener('click', () => window.print());
+
+function mesActualISO() {
+  const h = new Date();
+  return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function formatoInspeccionHTML(formato) {
+  const encabezados = formato.columnas.map(c => `<th>${escapeHTML(c.header)}</th>`).join('');
+  const filas = formato.filas.map(f => `
+    <tr>${formato.columnas.map(c => `<td>${escapeHTML(f[c.key] ?? '')}</td>`).join('')}</tr>
+  `).join('');
+
+  return `
+    <div class="inspeccion-formato">
+      <h3 class="inspeccion-formato-titulo">${escapeHTML(formato.titulo)}</h3>
+      <p class="inspeccion-formato-meta">${escapeHTML(formato.plan)} · ${escapeHTML(formato.programa)} · Código ${escapeHTML(formato.codigo)}</p>
+      <table class="reporte-tabla">
+        <thead><tr>${encabezados}</tr></thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function bloqueInspeccionCarpetaHTML(bloque) {
+  return `
+    <div class="bloque-carpeta">
+      <h2>${ICONOS_CARPETA[bloque.clave]} ${escapeHTML(bloque.nombre)}</h2>
+      ${bloque.formatos.map(formatoInspeccionHTML).join('')}
+    </div>
+  `;
+}
+
+function pintarInspeccion(data) {
+  const logoHTML = empresaActual && empresaActual.logo
+    ? `<img class="hoja-logo" src="${empresaActual.logo}" alt="Logo de ${escapeHTML(empresaActual.nombre)}" />`
+    : `<div class="hoja-logo establecimiento-logo-ph" style="display:flex;align-items:center;justify-content:center;font-size:.65rem;">Logo</div>`;
+
+  if (data.carpetas.length === 0) {
+    hojaInspeccion.innerHTML = `<p class="ayuda">No hay registros guardados en ${MESES_LARGOS[data.mes - 1]} de ${data.anio}.</p>`;
+    return;
+  }
+
+  hojaInspeccion.innerHTML = `
+    <div class="hoja-topline">
+      <span>Generado por FoodData</span>
+      <span>${escapeHTML(new Date().toLocaleString('es-CO', { dateStyle: 'long', timeStyle: 'short' }))}</span>
+    </div>
+    <div class="hoja-encabezado">
+      ${logoHTML}
+      <div>
+        <p class="hoja-empresa-nombre">${escapeHTML(data.empresaNombre)}</p>
+        <p class="hoja-empresa-meta">Restaurante · Formatos para inspección de sanidad</p>
+      </div>
+    </div>
+    <div class="hoja-titulo-inst">
+      <h1>FORMATOS DE ${MESES_LARGOS[data.mes - 1].toUpperCase()} DE ${data.anio}</h1>
+    </div>
+    ${data.carpetas.map(bloqueInspeccionCarpetaHTML).join('')}
+    <p class="hoja-pie">Documento de referencia generado por FoodData a partir de los registros diarios de la empresa.</p>
+  `;
+}
+
+async function verInspeccion(anio, mes) {
+  hojaInspeccion.innerHTML = '<p class="ayuda">Cargando...</p>';
+  hojaInspeccion.hidden = false;
+  barraImprimirInspeccion.hidden = true;
+  filaEnviarInspeccion.hidden = true;
+  try {
+    const r = await fetch(`/api/registros/inspeccion?anio=${anio}&mes=${mes}`);
+    const data = await r.json();
+    if (r.status === 401 && data.requiereClaveAdmin) {
+      hojaInspeccion.hidden = true;
+      mesInspeccionPendiente = { anio, mes };
+      modalInspeccionError.hidden = true;
+      formAdminInspeccion.reset();
+      modalInspeccion.hidden = false;
+      setTimeout(() => formAdminInspeccion.password.focus(), 50);
+      return;
+    }
+    if (!r.ok) {
+      hojaInspeccion.innerHTML = `<p class="mensaje mensaje-error">${escapeHTML(data.error || 'No se pudo cargar')}</p>`;
+      return;
+    }
+    mesInspeccionActual = { anio, mes };
+    pintarInspeccion(data);
+    barraImprimirInspeccion.hidden = false;
+    filaEnviarInspeccion.hidden = false;
+    hojaInspeccion.scrollIntoView({ behavior: 'smooth' });
+  } catch (err) {
+    hojaInspeccion.innerHTML = '<p class="mensaje mensaje-error">no hay conexion</p>';
+  }
+}
+
+function cerrarModalInspeccion() {
+  modalInspeccion.hidden = true;
+  mesInspeccionPendiente = null;
+}
+
+btnModalInspeccionCancelar.addEventListener('click', cerrarModalInspeccion);
+modalInspeccion.addEventListener('click', e => { if (e.target === modalInspeccion) cerrarModalInspeccion(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modalInspeccion.hidden) cerrarModalInspeccion(); });
+
+formAdminInspeccion.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  modalInspeccionError.hidden = true;
+  const btnVerificarInspeccion = formAdminInspeccion.querySelector('button[type="submit"]');
+  await conBotonCargando(btnVerificarInspeccion, 'Verificando...', async () => {
+    try {
+      const r = await fetch('/api/admin/verificar-inspeccion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: formAdminInspeccion.password.value })
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        modalInspeccionError.textContent = data.error || 'Error';
+        modalInspeccionError.hidden = false;
+        return;
+      }
+      modalInspeccion.hidden = true;
+      if (mesInspeccionPendiente) {
+        const { anio, mes } = mesInspeccionPendiente;
+        mesInspeccionPendiente = null;
+        verInspeccion(anio, mes);
+      }
+    } catch (err) {
+      modalInspeccionError.textContent = 'no hay conexion';
+      modalInspeccionError.hidden = false;
+    }
+  });
+});
+
+btnAbrirInspeccion.addEventListener('click', () => {
+  panelInspeccion.hidden = !panelInspeccion.hidden;
+  if (!panelInspeccion.hidden) panelInspeccion.scrollIntoView({ behavior: 'smooth' });
+});
+
+btnVerInspeccion.addEventListener('click', () => {
+  if (!inputMesInspeccion.value) return;
+  const [anio, mes] = inputMesInspeccion.value.split('-').map(Number);
+  verInspeccion(anio, mes);
+});
+
+btnEnviarInspeccion.addEventListener('click', async () => {
+  inspeccionEnvioMensaje.hidden = true;
+  if (!mesInspeccionActual) return;
+  const destinatario = inputCorreoInspeccion.value.trim();
+  if (!destinatario) {
+    inspeccionEnvioMensaje.className = 'mensaje mensaje-error';
+    inspeccionEnvioMensaje.textContent = 'Escribe un correo destinatario';
+    inspeccionEnvioMensaje.hidden = false;
+    return;
+  }
+  await conBotonCargando(btnEnviarInspeccion, 'Enviando...', async () => {
+    try {
+      const r = await fetch('/api/registros/inspeccion/enviar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anio: mesInspeccionActual.anio, mes: mesInspeccionActual.mes, destinatario })
+      });
+      const data = await r.json();
+      inspeccionEnvioMensaje.className = r.ok ? 'mensaje mensaje-ok' : 'mensaje mensaje-error';
+      inspeccionEnvioMensaje.textContent = r.ok ? `Enviado a ${destinatario}` : (data.error || 'No se pudo enviar');
+      inspeccionEnvioMensaje.hidden = false;
+    } catch (err) {
+      inspeccionEnvioMensaje.className = 'mensaje mensaje-error';
+      inspeccionEnvioMensaje.textContent = 'no hay conexion';
+      inspeccionEnvioMensaje.hidden = false;
+    }
+  });
+});
+
+btnImprimirInspeccion.addEventListener('click', () => window.print());
+
+inputMesInspeccion.max = mesActualISO();
+inputMesInspeccion.value = mesActualISO();
 
 inputDesde.max = hoyISO();
 inputHasta.max = hoyISO();

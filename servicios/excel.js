@@ -771,5 +771,6 @@ module.exports = {
   sincronizarFormatoCarpeta,
   reconstruirArchivoCompleto,
   getRutaArchivoActual,
-  generarExcelAsistencia
+  generarExcelAsistencia,
+  columnasYFila
 };

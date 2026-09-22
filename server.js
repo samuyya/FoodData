@@ -132,7 +132,11 @@ if (process.env.MONGODB_URI && process.env.NODE_ENV !== 'test') {
 }
 app.use(session(sessionConfig));
 
-app.use(express.static(path.join(__dirname, 'public')));
+// 1h de cache en el navegador para CSS/JS/imagenes — asi no se vuelven a pedir
+// en cada cambio de pagina dentro de la misma sesion. no mas que eso porque el
+// proyecto se sigue actualizando seguido y no quiero que quede algo viejo cacheado
+// mucho tiempo (si hace falta ver un cambio ya, Ctrl+F5 lo fuerza)
+app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1h' }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/superadmin', superadminRoutes);

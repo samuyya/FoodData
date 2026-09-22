@@ -36,7 +36,7 @@ alimentaria exigidos por sanidad en **Colombia**. Multiempresa: cada empresa
 - **Deps:** bcryptjs, compression, cors, dotenv, exceljs, express, express-rate-limit, express-session, googleapis, helmet, mongoose, multer. Dev: nodemon.
 
 ## Estructura
-- `server.js` — arranque: helmet (CSP, HSTS, frameguard), `compression` (gzip en CSS/JS/HTML/JSON), cors, body-parser con `limit: 256kb`, middleware anti-NoSQL, sesión persistente con `connect-mongo`, estáticos, rutas, `seedSuperadmin()`, `sincronizarIndicesRegistro()`, `googleSheets.inicializar()`. Error handler global. Maneja `EADDRINUSE` con mensaje claro.
+- `server.js` — arranque: helmet (CSP, HSTS, frameguard), `compression` (gzip en CSS/JS/HTML/JSON), cors, body-parser con `limit: 256kb`, middleware anti-NoSQL, sesión persistente con `connect-mongo`, estáticos (`express.static` con `maxAge: '1h'` — el navegador no vuelve a pedir CSS/JS/imágenes al cambiar de página dentro de la misma hora), rutas, `seedSuperadmin()`, `sincronizarIndicesRegistro()`, `googleSheets.inicializar()`. Error handler global. Maneja `EADDRINUSE` con mensaje claro.
 - `db.js` — conexión Mongoose.
 - `logger.js` — logger real (pino): pretty-print en desarrollo, JSON plano por stdout en producción, y si hay `LOGTAIL_SOURCE_TOKEN`/`LOGTAIL_ENDPOINT` también manda en paralelo a Better Stack.
 - `formatos.js` — catálogo de **9 formatos** (`FORMATOS`, `getFormato`).

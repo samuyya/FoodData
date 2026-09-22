@@ -242,8 +242,13 @@ router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
       datos: datos || {}
     });
 
-    // excel y google sheets no dependen uno del otro, asi que corren en paralelo
-    // en vez de esperar uno para recien empezar el otro
+    // excel y google sheets arrancan los dos al mismo tiempo, pero solo se espera
+    // a excel para responder -- sheets le hace 5-6 llamadas seguidas a la API de
+    // Google (chequear/crear pestana, limpiar, escribir, formatear) y eso solo ya
+    // suma 1-2s; no vale la pena que el usuario espere eso para ver "guardado".
+    // si sheets falla, no es algo que el empleado pueda resolver ahi mismo de
+    // todas formas (suele ser permisos o configuracion) -- queda en los logs
+    // (Better Stack) para que el admin se entere, aunque no se vea en pantalla
     async function sincronizarExcel() {
       try {
         await sincronizarFormatoCarpeta(req.session.empresa.id, formatoId, carpeta);
@@ -282,7 +287,10 @@ router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
       }
     }
 
-    const [excelError, googleSheetsError] = await Promise.all([sincronizarExcel(), sincronizarGoogleSheets()]);
+    const excelPromise = sincronizarExcel();
+    sincronizarGoogleSheets(); // no lo espero -- corre de fondo, su error ya se loguea adentro
+    const excelError = await excelPromise;
+    const googleSheetsError = null; // no se sabe todavia en este momento, ver comentario arriba
 
     // ya sabemos exactamente que cambio (se guardo el dia "info.siguienteDia"), asi
     // que armo el info actualizado a mano en vez de volver a consultar la BD

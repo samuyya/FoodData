@@ -19,6 +19,7 @@ if (disponible) {
 function estaDisponible() { return disponible; }
 
 const NOMBRES_CARPETA = { cocina: 'Cocina', salon: 'Salón', administracion: 'Administración' };
+const ICONOS_CARPETA = { cocina: '🍳', salon: '🪑', administracion: '🔒' };
 
 function escaparHtml(v) {
   return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({
@@ -26,17 +27,20 @@ function escaparHtml(v) {
   }[c]));
 }
 
+// mismo tamaño compacto que ya usamos al imprimir (@media print en styles.css) --
+// en px en vez de rem porque algunos clientes de correo (Outlook viejo, sobre todo)
+// no resuelven bien las unidades relativas en estilos inline
 function tablaFormato(formato) {
-  const encabezados = formato.columnas.map(c => `<th style="border:1px solid #ccc;padding:4px 8px;background:#ecf9f5;text-align:left;">${escaparHtml(c.header)}</th>`).join('');
+  const encabezados = formato.columnas.map(c => `<th style="border:1px solid #ccc;padding:2px 5px;background:#ecf9f5;text-align:left;font-size:10px;line-height:1.15;">${escaparHtml(c.header)}</th>`).join('');
   const filas = formato.filas.map(f => {
-    const celdas = formato.columnas.map(c => `<td style="border:1px solid #ccc;padding:4px 8px;">${escaparHtml(f[c.key])}</td>`).join('');
+    const celdas = formato.columnas.map(c => `<td style="border:1px solid #ccc;padding:2px 5px;font-size:11px;line-height:1.15;">${escaparHtml(f[c.key])}</td>`).join('');
     return `<tr>${celdas}</tr>`;
   }).join('');
 
   return `
     <h3 style="margin:24px 0 4px;color:#0e3a31;">${escaparHtml(formato.titulo)}</h3>
-    <p style="margin:0 0 8px;color:#555;font-size:.85rem;">${escaparHtml(formato.plan)} · ${escaparHtml(formato.programa)} · Código ${escaparHtml(formato.codigo)}</p>
-    <table style="border-collapse:collapse;width:100%;font-size:.85rem;">
+    <p style="margin:0 0 8px;color:#555;font-size:13px;font-style:italic;">${escaparHtml(formato.plan)} · ${escaparHtml(formato.programa)} · Código ${escaparHtml(formato.codigo)}</p>
+    <table style="border-collapse:collapse;width:100%;">
       <thead><tr>${encabezados}</tr></thead>
       <tbody>${filas}</tbody>
     </table>
@@ -47,7 +51,7 @@ const NOMBRES_MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'jul
 
 function construirHtmlInspeccion({ empresaNombre, anio, mes, carpetas }) {
   const bloques = carpetas.map(c => `
-    <h2 style="color:#16c2a3;border-bottom:2px solid #a4ddcd;padding-bottom:4px;">${escaparHtml(c.nombre)}</h2>
+    <h2 style="color:#16c2a3;border-bottom:2px solid #a4ddcd;padding-bottom:4px;">${ICONOS_CARPETA[c.clave] || ''} ${escaparHtml(c.nombre)}</h2>
     ${c.formatos.map(tablaFormato).join('')}
   `).join('');
 

@@ -21,7 +21,7 @@ jobs:
       # falta un paso aparte para sacarla)
       - name: permitir la IP de este runner en Atlas
         run: |
-          IP=$(curl -s https://api.ipify.org)
+          IP=$(dig +short myip.opendns.com @resolver1.opendns.com)
           VENCE=$(date -u -d '+1 hour' +"%Y-%m-%dT%H:%M:%SZ")
           curl --fail --digest -u "${{ secrets.ATLAS_PUBLIC_KEY }}:${{ secrets.ATLAS_PRIVATE_KEY }}" \
             -H "Content-Type: application/json" \

@@ -11,27 +11,34 @@ const FUENTE_ENCABEZADO = 7;
 const FUENTE_CELDA = 7.5;
 const PAD_CELDA = 3;
 
+// el ancho de cada columna sale de "width" (el mismo dato que ya trae cada
+// columna desde columnasYFila() en servicios/excel.js, pensado originalmente
+// para Excel) en vez de repartir el ancho parejo entre todas -- si no,
+// "Fecha" quedaba tan angosta como "Olor" y el texto se envolvia de mas
 function dibujarTabla(doc, columnas, filas) {
   const anchoUtil = doc.page.width - MARGEN * 2;
-  const anchoCol = anchoUtil / columnas.length;
+  const pesoTotal = columnas.reduce((s, c) => s + (c.width || 15), 0);
+  const anchos = columnas.map(c => (c.width || 15) / pesoTotal * anchoUtil);
   const abajoPagina = doc.page.height - MARGEN;
 
   function dibujarEncabezado(y) {
     doc.font('Helvetica-Bold').fontSize(FUENTE_ENCABEZADO);
+    const altos = columnas.map((c, i) => doc.heightOfString(c.header, { width: anchos[i] - PAD_CELDA * 2 }));
+    const alto = Math.max(16, ...altos.map(h => h + PAD_CELDA * 2));
     let x = MARGEN;
-    columnas.forEach(c => {
-      doc.rect(x, y, anchoCol, 16).fill('#ecf9f5');
-      doc.fillColor('#333').text(c.header, x + PAD_CELDA, y + 4, { width: anchoCol - PAD_CELDA * 2 });
-      x += anchoCol;
+    columnas.forEach((c, i) => {
+      doc.rect(x, y, anchos[i], alto).fill('#ecf9f5');
+      doc.fillColor('#333').text(c.header, x + PAD_CELDA, y + PAD_CELDA, { width: anchos[i] - PAD_CELDA * 2 });
+      x += anchos[i];
     });
-    return y + 16;
+    return y + alto;
   }
 
   let y = dibujarEncabezado(doc.y);
 
   doc.font('Helvetica').fontSize(FUENTE_CELDA);
   filas.forEach(fila => {
-    const alturas = columnas.map(c => doc.heightOfString(String(fila[c.key] ?? ''), { width: anchoCol - PAD_CELDA * 2 }));
+    const alturas = columnas.map((c, i) => doc.heightOfString(String(fila[c.key] ?? ''), { width: anchos[i] - PAD_CELDA * 2 }));
     const altoFila = Math.max(14, ...alturas.map(h => h + PAD_CELDA * 2));
 
     if (y + altoFila > abajoPagina) {
@@ -41,10 +48,10 @@ function dibujarTabla(doc, columnas, filas) {
     }
 
     let x = MARGEN;
-    columnas.forEach(c => {
-      doc.rect(x, y, anchoCol, altoFila).stroke('#cccccc');
-      doc.fillColor('#222').text(String(fila[c.key] ?? ''), x + PAD_CELDA, y + PAD_CELDA, { width: anchoCol - PAD_CELDA * 2 });
-      x += anchoCol;
+    columnas.forEach((c, i) => {
+      doc.rect(x, y, anchos[i], altoFila).stroke('#cccccc');
+      doc.fillColor('#222').text(String(fila[c.key] ?? ''), x + PAD_CELDA, y + PAD_CELDA, { width: anchos[i] - PAD_CELDA * 2 });
+      x += anchos[i];
     });
     y += altoFila;
   });

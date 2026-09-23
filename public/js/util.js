@@ -91,7 +91,9 @@ async function conBotonCargando(boton, textoCargando, accion) {
   }
 
   agregarLink('manifest', '/manifest.json');
-  agregarLink('apple-touch-icon', '/img/icon-fooddata.png');
+  // apple-touch-icon con fondo solido (no transparente) -- iOS viejo pinta
+  // negro detras de los pixeles transparentes, se ve mal
+  agregarLink('apple-touch-icon', '/img/icon-fooddata-maskable.png');
   agregarMeta('theme-color', '#16c2a3');
   agregarMeta('apple-mobile-web-app-capable', 'yes');
   agregarMeta('apple-mobile-web-app-title', 'FoodData');

@@ -9,7 +9,8 @@
   "background_color": "#ffffff",
   "theme_color": "#16c2a3",
   "icons": [
-    { "src": "/img/icon-fooddata.png", "type": "image/png", "sizes": "192x192" },
-    { "src": "/img/icon-fooddata.png", "type": "image/png", "sizes": "512x512" }
+    { "src": "/img/icon-fooddata-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any" },
+    { "src": "/img/icon-fooddata.png", "type": "image/png", "sizes": "512x512", "purpose": "any" },
+    { "src": "/img/icon-fooddata-maskable.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" }
   ]
 }

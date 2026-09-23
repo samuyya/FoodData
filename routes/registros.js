@@ -9,7 +9,7 @@ const { FORMATOS, getFormato } = require('../formatos');
 const { getConfigEmpresa } = require('../empresaConfig');
 const { requireEmpresa, ah } = require('../middleware/sesion');
 const { limiteAdmin } = require('../middleware/limites');
-const { adminCarpetaAdministracionActivo, adminHistorialActivo, adminAtrasadoActivo, adminReporteActivo, adminInspeccionActivo, adminCorregirActivo } = require('./admin');
+const { adminCarpetaAdministracionActivo, adminHistorialActivo, adminAtrasadoActivo, adminReporteActivo, adminInspeccionActivo } = require('./admin');
 const { sincronizarFormatoCarpeta, reconstruirArchivoCompleto, getRutaArchivoActual, columnasYFila } = require('../servicios/excel');
 const googleSheets = require('../servicios/googleSheets');
 const correo = require('../servicios/correo');
@@ -320,10 +320,11 @@ router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
 });
 
 // trae un registro puntual por su _id, para el modo "corregir" que se abre
-// desde una novedad del reporte -- gateado por el mismo marcador que ese
-// modo (no por adminHistorial/adminReporte, esos son para otras pantallas)
+// desde una novedad del reporte -- gateado por el mismo marcador que el
+// reporte (adminReporte), asi no hay que volver a pedir la clave apenas se
+// llega desde ahi
 router.get('/registro/:id', requireEmpresa, ah(async (req, res) => {
-  if (!adminCorregirActivo(req)) {
+  if (!adminReporteActivo(req)) {
     return res.status(401).json({ ok: false, error: 'Se requiere contraseña de administrador para corregir un registro', requiereClaveAdmin: true });
   }
   if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -337,7 +338,7 @@ router.get('/registro/:id', requireEmpresa, ah(async (req, res) => {
 // corrige un registro ya guardado (dia/mes/formato/carpeta no cambian, solo
 // sus datos) -- sin bitacora de auditoria a proposito, solo se sobreescribe.
 router.put('/:id', requireEmpresa, limiteAdmin, ah(async (req, res) => {
-  if (!adminCorregirActivo(req)) {
+  if (!adminReporteActivo(req)) {
     return res.status(401).json({ ok: false, error: 'Se requiere contraseña de administrador para corregir un registro', requiereClaveAdmin: true });
   }
   if (!mongoose.Types.ObjectId.isValid(req.params.id)) {

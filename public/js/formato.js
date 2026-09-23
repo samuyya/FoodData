@@ -431,7 +431,7 @@ function mostrarModalCorregir(onVerificadoOk) {
     btn.disabled = true;
     btn.textContent = 'Verificando...';
     try {
-      const r = await fetch('/api/admin/verificar-corregir', {
+      const r = await fetch('/api/admin/verificar-reporte', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: formAdminCorregir.password.value })
@@ -1703,7 +1703,10 @@ function arrancarModoCorreccion() {
     habilitarFormularioParaCorregir();
   };
 
-  mostrarModalCorregir(continuar);
+  // si ya se verifico la clave para el reporte (de donde viene el boton
+  // "Corregir"), esto entra directo sin volver a pedirla -- el modal solo
+  // aparece si el intento da 401 (sesion vencida o entraste por la url directo)
+  continuar();
 }
 
 async function cargar() {
@@ -1728,8 +1731,13 @@ async function cargar() {
     }
     const dF = await rFormato.json();
     formatoActual = dF.formato;
-    esCarpetaAdmin = formatoActual.carpeta === 'administracion';
     tituloEl.textContent = `${formatoActual.numero}. ${formatoActual.nombre}`;
+
+    // en modo corregir no aplica el gate de "estar dentro" de la carpeta
+    // Administracion -- esa corrección ya la autoriza la clave del reporte,
+    // y exigir tambien haber entrado a Administracion sacaba al admin de la
+    // pagina antes de que llegara a corregir nada
+    esCarpetaAdmin = !registroIdCorreccion && formatoActual.carpeta === 'administracion';
 
     if (esCarpetaAdmin) {
       const rE = await fetch('/api/admin/estado-carpeta');

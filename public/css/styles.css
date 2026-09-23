@@ -3005,4 +3005,35 @@ textarea:focus {
   .inspeccion-formato-contenido {
     display: block !important;
   }
+
+  /* un formato por hoja -- si no, un formato de 30 dias terminaba usando
+     hasta 3 hojas. El primero se queda en la hoja del encabezado, del
+     segundo en adelante cada uno arranca en hoja nueva */
+  .inspeccion-formato {
+    break-inside: avoid;
+    margin-top: 0;
+  }
+
+  .bloque-carpeta:not(:first-of-type) {
+    break-before: page;
+  }
+
+  .inspeccion-formato ~ .inspeccion-formato {
+    break-before: page;
+  }
+
+  /* tabla bien compacta para que un mes completo (hasta 31 dias) entre en una sola hoja */
+  .reporte-tabla th {
+    padding: .15rem .3rem;
+    font-size: .6rem;
+  }
+
+  .reporte-tabla td {
+    padding: .15rem .3rem;
+    font-size: .68rem;
+  }
+
+  .inspeccion-formato-meta {
+    margin-bottom: .3rem;
+  }
 }

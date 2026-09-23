@@ -2905,6 +2905,10 @@ textarea:focus {
   margin-top: .2rem;
 }
 
+.btn-corregir-novedad {
+  margin-top: .5rem;
+}
+
 .sin-novedades {
   font-size: .82rem;
   color: var(--color-texto-suave);
@@ -2950,7 +2954,8 @@ textarea:focus {
   #vista-formatos,
   .fila-acciones-formatos,
   .controles-reporte,
-  .barra-imprimir {
+  .barra-imprimir,
+  .btn-corregir-novedad {
     display: none;
   }
 

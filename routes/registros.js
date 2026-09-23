@@ -9,7 +9,7 @@ const { FORMATOS, getFormato } = require('../formatos');
 const { getConfigEmpresa } = require('../empresaConfig');
 const { requireEmpresa, ah } = require('../middleware/sesion');
 const { limiteAdmin } = require('../middleware/limites');
-const { adminCarpetaAdministracionActivo, adminHistorialActivo, adminAtrasadoActivo, adminReporteActivo, adminInspeccionActivo } = require('./admin');
+const { adminCarpetaAdministracionActivo, adminHistorialActivo, adminAtrasadoActivo, adminReporteActivo, adminInspeccionActivo, adminCorregirActivo } = require('./admin');
 const { sincronizarFormatoCarpeta, reconstruirArchivoCompleto, getRutaArchivoActual, columnasYFila } = require('../servicios/excel');
 const googleSheets = require('../servicios/googleSheets');
 const correo = require('../servicios/correo');
@@ -319,6 +319,87 @@ router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
   }
 });
 
+// trae un registro puntual por su _id, para el modo "corregir" que se abre
+// desde una novedad del reporte -- gateado por el mismo marcador que ese
+// modo (no por adminHistorial/adminReporte, esos son para otras pantallas)
+router.get('/registro/:id', requireEmpresa, ah(async (req, res) => {
+  if (!adminCorregirActivo(req)) {
+    return res.status(401).json({ ok: false, error: 'Se requiere contraseña de administrador para corregir un registro', requiereClaveAdmin: true });
+  }
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ ok: false, error: 'Id de registro inválido' });
+  }
+  const registro = await Registro.findOne({ _id: req.params.id, empresa_id: req.session.empresa.id }).lean();
+  if (!registro) return res.status(404).json({ ok: false, error: 'Registro no encontrado' });
+  res.json({ ok: true, registro });
+}));
+
+// corrige un registro ya guardado (dia/mes/formato/carpeta no cambian, solo
+// sus datos) -- sin bitacora de auditoria a proposito, solo se sobreescribe.
+router.put('/:id', requireEmpresa, limiteAdmin, ah(async (req, res) => {
+  if (!adminCorregirActivo(req)) {
+    return res.status(401).json({ ok: false, error: 'Se requiere contraseña de administrador para corregir un registro', requiereClaveAdmin: true });
+  }
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ ok: false, error: 'Id de registro inválido' });
+  }
+  const { responsable, observaciones, datos } = req.body;
+  if (datos && JSON.stringify(datos).length > 32000) {
+    return res.status(413).json({ ok: false, error: 'Los datos son demasiado grandes' });
+  }
+  if (observaciones && String(observaciones).length > 2000) {
+    return res.status(413).json({ ok: false, error: 'Las observaciones son muy largas (máx 2000 caracteres)' });
+  }
+  const limpio = (responsable || '').trim();
+  if (!limpio) return res.status(400).json({ ok: false, error: 'El responsable es obligatorio' });
+  if (!REGEX_LETRAS.test(limpio)) return res.status(400).json({ ok: false, error: 'El responsable solo puede contener letras y espacios' });
+
+  const registro = await Registro.findOne({ _id: req.params.id, empresa_id: req.session.empresa.id });
+  if (!registro) return res.status(404).json({ ok: false, error: 'Registro no encontrado' });
+
+  registro.responsable = limpio;
+  registro.observaciones = (observaciones || '').trim();
+  registro.datos = datos || {};
+  await registro.save();
+
+  // mismo patron de sincronizacion que al guardar un dia nuevo: excel se
+  // espera, google sheets corre de fondo (ver POST / mas arriba)
+  let excelError = null;
+  try {
+    const config = await getConfigEmpresa(req.session.empresa.id);
+    await sincronizarFormatoCarpeta(req.session.empresa.id, registro.formato, registro.carpeta, {
+      config, empresaNombre: req.session.empresa.nombre
+    });
+  } catch (errSync) {
+    logger.warn(`no se pudo escribir excel tras corregir: ${errSync.message}`);
+    excelError = 'No se pudo actualizar el Excel: ' + errSync.message;
+  }
+  (async () => {
+    try {
+      const empresaDoc = await Empresa.findById(req.session.empresa.id).select('googleSheetId').lean();
+      if (empresaDoc && empresaDoc.googleSheetId && googleSheets.estaDisponible()) {
+        await googleSheets.sincronizarFormato(empresaDoc.googleSheetId, req.session.empresa.id, registro.formato, registro.carpeta);
+      }
+    } catch (errGS) {
+      logger.warn(`no se sincronizo google sheets tras corregir: ${errGS.message}`);
+    }
+  })();
+
+  // le doy al frontend la misma forma que un "dia ya completo" (registroHoy),
+  // asi el mismo codigo de cada formato que ya sabe pintar/bloquear ese
+  // estado funciona tal cual, sin tener que duplicar logica por formato
+  res.json({
+    ok: true,
+    registro,
+    info: {
+      completoHoy: true, registroHoy: registro,
+      mes: registro.mes, anio: registro.anio,
+      pendientes: [], diasGuardados: [registro.dia], siguienteDia: null
+    },
+    excelError, googleSheetsError: null
+  });
+}));
+
 router.get('/meses/:formatoId', requireEmpresa, ah(async (req, res) => {
   const { formatoId } = req.params;
   const carpeta = req.query.carpeta || 'cocina';
@@ -447,8 +528,10 @@ router.get('/reporte', requireEmpresa, ah(async (req, res) => {
     const novedades = registrosConNovedad
       .filter(r => formatoIds.includes(r.formato))
       .map(r => ({
+        id: r._id,
         dia: r.dia, mes: r.mes, anio: r.anio,
         formatoId: r.formato,
+        carpeta: clave,
         nombre: (getFormato(r.formato) || {}).nombre || r.formato,
         observaciones: r.observaciones,
         responsable: r.responsable
@@ -466,8 +549,10 @@ router.get('/reporte', requireEmpresa, ah(async (req, res) => {
         const manipuladores = (r.datos && r.datos.manipuladores) || [];
         manipuladores.filter(m => !m.cumple).forEach(m => {
           novedades.push({
+            id: r._id,
             dia: r.dia, mes: r.mes, anio: r.anio,
             formatoId: 'presentacion_personal',
+            carpeta: clave,
             nombre: 'Presentación personal',
             observaciones: `${m.nombre} no cumplió: ${(m.criterios || []).join(', ')}`,
             responsable: r.responsable

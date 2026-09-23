@@ -51,6 +51,7 @@
       </div>
     </details>
 
+    <div id="banner-corregir"   class="banner banner-warning" hidden></div>
     <div id="banner-exito"      class="banner banner-exito"   hidden></div>
     <div id="banner-pendientes" class="banner banner-warning" hidden></div>
     <div id="banner-info"       class="banner banner-info"    hidden></div>
@@ -633,6 +634,24 @@
         <p id="modal-admin-atrasado-error" class="mensaje mensaje-error" hidden></p>
         <div class="modal-acciones">
           <button type="button" id="btn-cancelar-admin-atrasado" class="btn-secundario">Volver a formatos</button>
+          <button type="submit" class="btn-primario">Continuar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-admin-corregir" class="modal-backdrop" hidden role="dialog" aria-modal="true">
+    <div class="modal">
+      <h2>Corregir un registro</h2>
+      <p class="subtitulo">Vas a corregir un día ya guardado de este formato. Ingresa la contraseña de administrador para continuar.</p>
+      <form id="form-admin-corregir" class="form">
+        <label class="campo">
+          <span>Contraseña de administrador</span>
+          <input type="password" name="password" required autocomplete="current-password" />
+        </label>
+        <p id="modal-admin-corregir-error" class="mensaje mensaje-error" hidden></p>
+        <div class="modal-acciones">
+          <button type="button" id="btn-cancelar-admin-corregir" class="btn-secundario">Volver a formatos</button>
           <button type="submit" class="btn-primario">Continuar</button>
         </div>
       </form>

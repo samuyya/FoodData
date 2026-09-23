@@ -113,6 +113,7 @@ function bloqueCarpetaHTML(bloque) {
         <div class="novedad">
           <strong>${n.dia} ${MESES_CORTOS[n.mes - 1]} — ${escapeHTML(n.nombre)}:</strong> ${escapeHTML(n.observaciones)}
           <span class="novedad-meta">Responsable: ${escapeHTML(n.responsable)}</span>
+          <button type="button" class="btn-pequeno btn-corregir-novedad" data-id="${n.id}" data-formato="${n.formatoId}" data-carpeta="${n.carpeta}">✏️ Corregir</button>
         </div>
       `).join('');
 
@@ -161,6 +162,13 @@ function pintarReporte(data) {
     ${bloquesHTML}
     <p class="hoja-pie">Reporte de referencia generado por FoodData a partir de los registros diarios de la empresa.</p>
   `;
+
+  hojaReporte.querySelectorAll('.btn-corregir-novedad').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const { id, formato, carpeta } = btn.dataset;
+      window.location.href = `/formato.html?id=${encodeURIComponent(formato)}&carpeta=${encodeURIComponent(carpeta)}&corregir=${encodeURIComponent(id)}`;
+    });
+  });
 }
 
 async function generarReporte(desde, hasta) {

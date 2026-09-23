@@ -74,13 +74,22 @@ const formAdminAtrasado = $('form-admin-atrasado');
 const modalAdminAtrasadoError = $('modal-admin-atrasado-error');
 const btnCancelarAdminAtrasado = $('btn-cancelar-admin-atrasado');
 
+// modal + banner de "corregir un registro ya guardado" (llega desde el reporte)
+const modalAdminCorregir = $('modal-admin-corregir');
+const formAdminCorregir = $('form-admin-corregir');
+const modalAdminCorregirError = $('modal-admin-corregir-error');
+const btnCancelarAdminCorregir = $('btn-cancelar-admin-corregir');
+const bannerCorregir = $('banner-corregir');
+
 const params = new URLSearchParams(window.location.search);
 const formatoId = params.get('id');
 const carpetaId = params.get('carpeta') || 'cocina';
+const registroIdCorreccion = params.get('corregir');
 
 let formatoActual = null;
 let esCarpetaAdmin = false;
 let adminNombreSesion = null;
+let modoCorreccion = false;
 
 const MESES_LARGOS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -399,8 +408,57 @@ async function confirmarEliminar(emp) {
   }
 }
 
+// Modal para corregir un registro ya guardado (llega desde "Corregir" en el reporte).
+// Se reusa tambien cuando el marcador de sesion expira a mitad de una correccion
+// (ver el chequeo de modoCorreccion en mostrarModalAdminAtrasadoUpfront).
+function mostrarModalCorregir(onVerificadoOk) {
+  modalAdminCorregirError.hidden = true;
+  formAdminCorregir.reset();
+  modalAdminCorregir.hidden = false;
+  setTimeout(() => formAdminCorregir.password.focus(), 80);
+
+  btnCancelarAdminCorregir.onclick = () => { window.location.href = '/formatos.html'; };
+  modalAdminCorregir.onclick = (e) => { if (e.target === modalAdminCorregir) btnCancelarAdminCorregir.onclick(); };
+  document.onkeydown = (e) => {
+    if (e.key === 'Escape' && !modalAdminCorregir.hidden) btnCancelarAdminCorregir.onclick();
+  };
+
+  formAdminCorregir.onsubmit = async (e) => {
+    e.preventDefault();
+    modalAdminCorregirError.hidden = true;
+    const btn = formAdminCorregir.querySelector('button[type="submit"]');
+    const txt = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Verificando...';
+    try {
+      const r = await fetch('/api/admin/verificar-corregir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: formAdminCorregir.password.value })
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        modalAdminCorregirError.textContent = data.error || 'No se pudo verificar';
+        modalAdminCorregirError.hidden = false;
+        return;
+      }
+      modalAdminCorregir.hidden = true;
+      onVerificadoOk();
+    } catch (err) {
+      modalAdminCorregirError.textContent = 'no hay conexion';
+      modalAdminCorregirError.hidden = false;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = txt;
+    }
+  };
+}
+
 // Modal admin atrasado — UPFRONT (al entrar al formato)
 function mostrarModalAdminAtrasadoUpfront(info, onVerificadoOk) {
+  // en modo correccion no aplica "dias atrasados" -- si el marcador de sesion
+  // expiro a mitad de una correccion, se vuelve a pedir la clave de corregir
+  if (modoCorreccion) { mostrarModalCorregir(onVerificadoOk); return; }
   modalAdminAtrasadoError.hidden = true;
   formAdminAtrasado.reset();
   const dias = (info.pendientes || []).join(', ');
@@ -450,8 +508,9 @@ function mostrarModalAdminAtrasadoUpfront(info, onVerificadoOk) {
 // Llamada para guardar
 async function enviarRegistro(cuerpo) {
   try {
-    const r = await fetch('/api/registros', {
-      method: 'POST',
+    const url = modoCorreccion ? `/api/registros/${encodeURIComponent(registroIdCorreccion)}` : '/api/registros';
+    const r = await fetch(url, {
+      method: modoCorreccion ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(cuerpo)
     });
@@ -530,7 +589,13 @@ function iniciarFormGenerico(infoInicial) {
       res.excelError        ? `<br><span class="aviso-excel">⚠️ Excel local: ${escapeHTML(res.excelError)}</span>` : '',
       res.googleSheetsError ? `<br><span class="aviso-excel">⚠️ Google Sheets: ${escapeHTML(res.googleSheetsError)}</span>` : ''
     ].join('');
-    if (res.info.completoHoy) {
+    if (modoCorreccion) {
+      mostrarBannerExito(`✅ <strong>Corrección guardada.</strong> El día ${diaGuardado} quedó actualizado.${avisos}`);
+      inputResponsable.value = res.registro.responsable || inputResponsable.value;
+      inputObservaciones.value = res.registro.observaciones || '';
+      bannerInfo.hidden = true;
+      bannerPendientes.hidden = true;
+    } else if (res.info.completoHoy) {
       mostrarBannerExito(`✅ <strong>¡Listo!</strong> Día ${diaGuardado} guardado y el mes está al día.${avisos}`);
       aplicarInfo(res.info);
     } else {
@@ -700,7 +765,13 @@ function iniciarFormCalidadAgua(infoInicial) {
       res.googleSheetsError ? `<br><span class="aviso-excel">⚠️ Google Sheets: ${escapeHTML(res.googleSheetsError)}</span>` : ''
     ].join('');
 
-    if (res.info.completoHoy) {
+    if (modoCorreccion) {
+      mostrarBannerExito(`✅ <strong>Corrección guardada.</strong> El día ${diaGuardado} quedó actualizado.${avisos}`);
+      rellenarConRegistro(res.info.registroHoy);
+      bannerInfo.hidden = true;
+      bannerPendientes.hidden = true;
+      bloquearFormCompleto();
+    } else if (res.info.completoHoy) {
       // Bloquear el form con los datos guardados
       mostrarBannerExito(`✅ <strong>¡Listo!</strong> Día ${diaGuardado} guardado y el mes está al día.${avisos}`);
       rellenarConRegistro(res.info.registroHoy);
@@ -763,16 +834,22 @@ async function postRegistro(cuerpo, btn, msgEl, diaObjEl, formEl, opciones = {})
     res.googleSheetsError ? `<br><span class="aviso-excel">⚠️ Google Sheets: ${escapeHTML(res.googleSheetsError)}</span>` : ''
   ].join('');
 
-  if (res.info.completoHoy) {
+  if (modoCorreccion) {
+    mostrarBannerExito(`✅ <strong>Corrección guardada.</strong> El día ${diaGuardado} quedó actualizado.${avisos}`);
+    if (opciones.onCompleto) opciones.onCompleto(res.info);
+    bannerInfo.hidden = true;
+    bannerPendientes.hidden = true;
+  } else if (res.info.completoHoy) {
     mostrarBannerExito(`✅ <strong>¡Listo!</strong> Día ${diaGuardado} guardado y el mes está al día.${avisos}`);
     if (opciones.onCompleto) opciones.onCompleto(res.info);
+    pintarBanners(res.info, diaObjEl);
   } else {
     const sig = res.info.siguienteDia;
     const nombreMes = MESES_LARGOS[res.info.mes - 1];
     mostrarBannerExito(`✅ <strong>Día ${diaGuardado} guardado correctamente.</strong> Ahora llena el día <strong>${sig} de ${nombreMes}</strong>. El responsable se mantiene; los demás campos se limpiaron.${avisos}`);
     if (opciones.onAvance) opciones.onAvance(res.info);
+    pintarBanners(res.info, diaObjEl);
   }
-  pintarBanners(res.info, diaObjEl);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -1578,6 +1655,57 @@ const PLANTILLAS = {
   'presentacion_personal':     iniciarFormPresentacionPersonal
 };
 
+// deja editable el formulario que se acaba de poblar con el registro a
+// corregir -- reusa exactamente el mismo estado "ya guardado hoy" que cada
+// plantilla ya sabe pintar/bloquear (rellenar + bloquear), solo que aqui lo
+// desbloqueamos de nuevo en vez de dejarlo asi
+function habilitarFormularioParaCorregir() {
+  const formVisible = document.querySelector('form.card:not([hidden])');
+  if (formVisible) {
+    formVisible.querySelectorAll('input, textarea, select, button').forEach(el => { el.disabled = false; });
+    const btn = formVisible.querySelector('button[type="submit"]');
+    if (btn) { btn.textContent = 'Guardar corrección'; btn.title = ''; }
+  }
+  if (formatoActual.id === 'presentacion_personal') {
+    listaEmpleados.querySelectorAll('.empleado-formulario input').forEach(el => { el.disabled = false; });
+  }
+}
+
+function arrancarModoCorreccion() {
+  const continuar = async () => {
+    const rReg = await fetch(`/api/registros/registro/${encodeURIComponent(registroIdCorreccion)}`);
+    if (rReg.status === 401) {
+      mostrarModalCorregir(continuar);
+      return;
+    }
+    const dReg = await rReg.json();
+    if (!rReg.ok) {
+      document.body.innerHTML = `<p style="padding:2rem;color:#b91c1c">${dReg.error || 'No se pudo cargar el registro a corregir'}</p>`;
+      return;
+    }
+    modoCorreccion = true;
+    const reg = dReg.registro;
+    const nombreMes = MESES_LARGOS[reg.mes - 1];
+    bannerCorregir.innerHTML = `✏️ <strong>Estás corrigiendo el día ${reg.dia} de ${nombreMes} de ${reg.anio}.</strong> Los cambios reemplazan lo que había guardado ese día.`;
+    bannerCorregir.hidden = false;
+
+    const infoCorreccion = {
+      completoHoy: true, registroHoy: reg,
+      diaActual: reg.dia, mes: reg.mes, anio: reg.anio,
+      pendientes: [], diasGuardados: [reg.dia], siguienteDia: null
+    };
+    const iniciador = PLANTILLAS[formatoActual.id] || iniciarFormGenerico;
+    iniciador(infoCorreccion);
+    // pintarBanners (llamado dentro de cada plantilla) muestra "mes al dia" al
+    // ver completoHoy=true -- ese mensaje no aplica aqui, lo tapa el banner de arriba
+    bannerInfo.hidden = true;
+    bannerPendientes.hidden = true;
+    habilitarFormularioParaCorregir();
+  };
+
+  mostrarModalCorregir(continuar);
+}
+
 async function cargar() {
   if (!formatoId) {
     document.body.innerHTML = '<p style="padding:2rem;color:#b91c1c">Falta el parámetro de formato. Vuelve al menú.</p>';
@@ -1617,6 +1745,13 @@ async function cargar() {
     if (formatoActual.id === 'presentacion_personal') {
       seccionEmpleados.hidden = false;
       await cargarEmpleados(); // las filas tienen que existir antes de aplicarles el estado del dia
+    }
+
+    // si venimos de "Corregir" en el reporte, es un dia puntual del pasado,
+    // no el flujo normal de dias pendientes
+    if (registroIdCorreccion) {
+      arrancarModoCorreccion();
+      return;
     }
 
     // Cargar pendientes ANTES de mostrar el formulario

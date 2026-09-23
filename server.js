@@ -24,6 +24,7 @@ const registrosRoutes = require('./routes/registros');
 const empleadosRoutes = require('./routes/empleados');
 const asistenciaRoutes = require('./routes/asistencia');
 const documentosRoutes = require('./routes/documentos');
+const backupRoutes = require('./routes/backup');
 const { requireModulo } = require('./middleware/sesion');
 const googleSheets = require('./servicios/googleSheets');
 const Registro = require('./models/Registro');
@@ -148,6 +149,7 @@ app.use('/api/empleados', requireModulo('formatos'),  empleadosRoutes);
 app.use('/api/asistencia',requireModulo('asistencia'),asistenciaRoutes);
 // documentos: el superadmin sube; las empresas leen los suyos solo si tienen el modulo "programas"
 app.use('/api/documentos', documentosRoutes);
+app.use('/api/backup', backupRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, mensaje: 'Servidor en linea' });

@@ -9,33 +9,14 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      # Atlas solo acepta conexiones desde las IPs de Render -- este runner tiene
-      # una IP distinta y cambiante, asi que la agrego a la whitelist justo antes
-      # de conectarme, con vencimiento de 1 hora (Atlas la borra solo, no hace
-      # falta un paso aparte para sacarla)
-      - name: permitir la IP de este runner en Atlas
+      # le pide el backup al propio servidor de produccion (ya tiene acceso a Atlas,
+      # asi no hay que whitelistear nada nuevo -- solo un token secreto compartido)
+      - name: pedir el backup a produccion
         run: |
-          IP=$(dig +short myip.opendns.com @resolver1.opendns.com)
-          VENCE=$(date -u -d '+1 hour' +"%Y-%m-%dT%H:%M:%SZ")
-          curl --fail --digest -u "${{ secrets.ATLAS_PUBLIC_KEY }}:${{ secrets.ATLAS_PRIVATE_KEY }}" \
-            -H "Content-Type: application/json" \
-            -H "Accept: application/vnd.atlas.2023-01-01+json" \
-            -X POST "https://cloud.mongodb.com/api/atlas/v2/groups/${{ secrets.ATLAS_GROUP_ID }}/accessList" \
-            -d "[{\"ipAddress\": \"$IP\", \"comment\": \"github-actions-backup (auto)\", \"deleteAfterDate\": \"$VENCE\"}]"
-      - run: node scripts/backup.js
-        env:
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
-      # el runner no tiene datos/ ni logos (viven solo en Render/Cloudinary), asi que
-      # backup.js se salta esas partes solo -- este backup termina siendo solo de Mongo,
-      # que es donde vive la info real (el resto se regenera o ya esta en Cloudinary)
+          curl --fail -H "Authorization: Bearer ${{ secrets.BACKUP_TOKEN }}" \
+            https://fooddata.me/api/backup -o backup.json
       - uses: actions/upload-artifact@v4
         with:
           name: backup-mongo
-          path: backups/
+          path: backup.json
           retention-days: 90

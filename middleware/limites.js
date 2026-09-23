@@ -21,4 +21,9 @@ const limiteAdmin = crearLimite(
   'Demasiados intentos fallidos de verificación. Espera unos minutos e intenta de nuevo.'
 );
 
-module.exports = { limiteLogin, limiteAdmin };
+const limiteBackup = crearLimite(
+  10,
+  'Demasiados intentos. Espera unos minutos e intenta de nuevo.'
+);
+
+module.exports = { limiteLogin, limiteAdmin, limiteBackup };

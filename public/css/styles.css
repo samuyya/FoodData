@@ -2926,13 +2926,45 @@ textarea:focus {
 }
 
 .inspeccion-formato {
-  margin-top: 1.4rem;
+  margin-top: .6rem;
 }
 
-.inspeccion-formato-titulo {
+.inspeccion-formato-boton {
+  font: inherit;
+  font-weight: 600;
   font-size: .88rem;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .7rem .9rem;
+  background: #fff;
   color: var(--color-texto);
-  margin: 0 0 .15rem;
+  border: 1px solid var(--color-borde);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color .12s, background .12s;
+}
+
+.inspeccion-formato-boton:hover {
+  border-color: var(--color-primario);
+  background: #eafaf6;
+}
+
+.inspeccion-formato-flecha {
+  display: inline-block;
+  font-size: .7rem;
+  color: var(--color-primario);
+  transition: transform .15s;
+}
+
+.inspeccion-formato-boton.abierto .inspeccion-formato-flecha {
+  transform: rotate(90deg);
+}
+
+.inspeccion-formato-contenido {
+  padding: .8rem .2rem 0;
 }
 
 .inspeccion-formato-meta {
@@ -2962,5 +2994,15 @@ textarea:focus {
   .hoja {
     box-shadow: none;
     padding: 0;
+  }
+
+  /* en pantalla los formatos de inspeccion arrancan colapsados, pero al
+     imprimir/guardar PDF se necesita ver todo, no solo lo que estaba abierto */
+  .inspeccion-formato-boton {
+    display: none;
+  }
+
+  .inspeccion-formato-contenido {
+    display: block !important;
   }
 }

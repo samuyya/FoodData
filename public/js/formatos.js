@@ -261,7 +261,7 @@ function mesActualISO() {
   return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}`;
 }
 
-function formatoInspeccionHTML(formato) {
+function formatoInspeccionHTML(formato, id) {
   const encabezados = formato.columnas.map(c => `<th>${escapeHTML(c.header)}</th>`).join('');
   const filas = formato.filas.map(f => `
     <tr>${formato.columnas.map(c => `<td>${escapeHTML(f[c.key] ?? '')}</td>`).join('')}</tr>
@@ -269,12 +269,17 @@ function formatoInspeccionHTML(formato) {
 
   return `
     <div class="inspeccion-formato">
-      <h3 class="inspeccion-formato-titulo">${escapeHTML(formato.titulo)}</h3>
-      <p class="inspeccion-formato-meta">${escapeHTML(formato.plan)} · ${escapeHTML(formato.programa)} · Código ${escapeHTML(formato.codigo)}</p>
-      <table class="reporte-tabla">
-        <thead><tr>${encabezados}</tr></thead>
-        <tbody>${filas}</tbody>
-      </table>
+      <button type="button" class="inspeccion-formato-boton" data-toggle="${id}">
+        <span class="inspeccion-formato-flecha">▶</span>
+        ${escapeHTML(formato.titulo)}
+      </button>
+      <div class="inspeccion-formato-contenido" id="${id}" hidden>
+        <p class="inspeccion-formato-meta">${escapeHTML(formato.plan)} · ${escapeHTML(formato.programa)} · Código ${escapeHTML(formato.codigo)}</p>
+        <table class="reporte-tabla">
+          <thead><tr>${encabezados}</tr></thead>
+          <tbody>${filas}</tbody>
+        </table>
+      </div>
     </div>
   `;
 }
@@ -283,10 +288,20 @@ function bloqueInspeccionCarpetaHTML(bloque) {
   return `
     <div class="bloque-carpeta">
       <h2>${ICONOS_CARPETA[bloque.clave]} ${escapeHTML(bloque.nombre)}</h2>
-      ${bloque.formatos.map(formatoInspeccionHTML).join('')}
+      ${bloque.formatos.map((f, i) => formatoInspeccionHTML(f, `insp-${bloque.clave}-${i}`)).join('')}
     </div>
   `;
 }
+
+// los formatos arrancan colapsados (mas compacto) -- se despliegan al hacer clic
+hojaInspeccion.addEventListener('click', (e) => {
+  const boton = e.target.closest('.inspeccion-formato-boton');
+  if (!boton) return;
+  const contenido = document.getElementById(boton.dataset.toggle);
+  if (!contenido) return;
+  contenido.hidden = !contenido.hidden;
+  boton.classList.toggle('abierto', !contenido.hidden);
+});
 
 function pintarInspeccion(data) {
   const logoHTML = empresaActual && empresaActual.logo

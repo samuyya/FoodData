@@ -3,6 +3,7 @@
 // credenciales), solo que el boton de "enviar por correo" avisa que falta.
 const nodemailer = require('nodemailer');
 const logger = require('../logger');
+const { construirPdfInspeccion } = require('./pdfInspeccion');
 
 const disponible = !!process.env.SMTP_HOST;
 let transporter = null;
@@ -66,11 +67,17 @@ function construirHtmlInspeccion({ empresaNombre, anio, mes, carpetas }) {
 
 async function enviarInspeccion(destinatario, datos) {
   const html = construirHtmlInspeccion(datos);
+  // el pdf va adjunto para que a quien reciba el correo le sea facil imprimirlo
+  // de una, sin depender de que su cliente de correo respete el html del cuerpo
+  const pdf = await construirPdfInspeccion(datos);
+  const nombreArchivo = `Formatos ${datos.empresaNombre} - ${NOMBRES_MES[datos.mes - 1]} ${datos.anio}.pdf`;
+
   await transporter.sendMail({
     from: process.env.SMTP_FROM || process.env.SMTP_USER,
     to: destinatario,
     subject: `Formatos de ${datos.empresaNombre} — ${NOMBRES_MES[datos.mes - 1]} ${datos.anio}`,
-    html
+    html,
+    attachments: [{ filename: nombreArchivo, content: pdf, contentType: 'application/pdf' }]
   });
   logger.info(`correo de inspeccion enviado a ${destinatario}`);
 }

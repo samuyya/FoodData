@@ -9,6 +9,7 @@ const vistaCarpetas  = document.getElementById('vista-carpetas');
 const vistFormatos   = document.getElementById('vista-formatos');
 const listaCarpetas  = document.getElementById('lista-carpetas');
 const listaFormatos  = document.getElementById('lista-formatos');
+const filaAccionesFormatos = document.querySelector('.fila-acciones-formatos');
 
 const modal          = document.getElementById('modal-admin');
 const modalError     = document.getElementById('modal-error');
@@ -549,6 +550,7 @@ function mostrarFormatos(clave) {
 
   vistaCarpetas.hidden = true;
   vistFormatos.hidden = false;
+  filaAccionesFormatos.hidden = true; // el reporte y la inspeccion son de todas las carpetas juntas, no de una sola
   btnVolver.textContent = '← Volver a carpetas';
 }
 
@@ -558,6 +560,7 @@ function volverACarpetas() {
   subtituloPaginaEl.textContent = 'Selecciona una carpeta.';
   vistaCarpetas.hidden = false;
   vistFormatos.hidden = true;
+  filaAccionesFormatos.hidden = false;
   btnVolver.textContent = '← Volver al menú';
 }
 

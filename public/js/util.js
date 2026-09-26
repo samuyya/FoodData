@@ -92,8 +92,10 @@ async function conBotonCargando(boton, textoCargando, accion) {
 
   agregarLink('manifest', '/manifest.json');
   // apple-touch-icon con fondo solido (no transparente) -- iOS viejo pinta
-  // negro detras de los pixeles transparentes, se ve mal
-  agregarLink('apple-touch-icon', '/img/icon-fooddata-maskable.png');
+  // negro detras de los pixeles transparentes, se ve mal. iOS no necesita
+  // el margen de seguridad de Android (su recorte es mas suave), asi que
+  // este usa el logo grande -- archivo aparte del maskable de Android
+  agregarLink('apple-touch-icon', '/img/icon-fooddata-apple.png');
   agregarMeta('theme-color', '#16c2a3');
   agregarMeta('apple-mobile-web-app-capable', 'yes');
   agregarMeta('apple-mobile-web-app-title', 'FoodData');

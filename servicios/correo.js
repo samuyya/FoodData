@@ -82,29 +82,4 @@ async function enviarInspeccion(destinatario, datos) {
   logger.info(`correo de inspeccion enviado a ${destinatario}`);
 }
 
-// aviso cuando alguien llena el formulario de contacto de la landing --
-// va al mismo correo del superadmin, no hace falta una variable de entorno nueva
-async function enviarNotificacionContacto({ nombre, correo, telefono, establecimiento, mensaje }) {
-  const destino = process.env.SUPERADMIN_EMAIL;
-  if (!destino) return; // sin superadmin configurado no hay a quien avisarle
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: destino,
-    replyTo: correo,
-    subject: `Nuevo contacto desde fooddata.me — ${nombre}`,
-    html: `
-      <div style="font-family:Arial,sans-serif;color:#222;">
-        <h2 style="color:#0e3a31;">Nuevo mensaje desde la página de FoodData</h2>
-        <p><b>Nombre:</b> ${escaparHtml(nombre)}</p>
-        <p><b>Correo:</b> ${escaparHtml(correo)}</p>
-        ${telefono ? `<p><b>Teléfono:</b> ${escaparHtml(telefono)}</p>` : ''}
-        ${establecimiento ? `<p><b>Establecimiento:</b> ${escaparHtml(establecimiento)}</p>` : ''}
-        <p><b>Mensaje:</b></p>
-        <p style="white-space:pre-wrap;">${escaparHtml(mensaje)}</p>
-      </div>
-    `
-  });
-  logger.info(`notificacion de contacto enviada (de ${correo})`);
-}
-
-module.exports = { estaDisponible, enviarInspeccion, enviarNotificacionContacto };
+module.exports = { estaDisponible, enviarInspeccion };

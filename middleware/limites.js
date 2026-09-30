@@ -26,15 +26,4 @@ const limiteBackup = crearLimite(
   'Demasiados intentos. Espera unos minutos e intenta de nuevo.'
 );
 
-// el formulario de contacto es publico (sin login) -- a diferencia de los
-// demas limites, aca SI cuentan los envios exitosos (si no, alguien podria
-// mandar spam sin limite mientras cada envio "funcione")
-const limiteContacto = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { ok: false, error: 'Demasiados mensajes enviados. Espera unos minutos e intenta de nuevo.' }
-});
-
-module.exports = { limiteLogin, limiteAdmin, limiteBackup, limiteContacto };
+module.exports = { limiteLogin, limiteAdmin, limiteBackup };

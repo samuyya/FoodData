@@ -544,9 +544,9 @@ btnVolver.addEventListener('click', () => { window.location.href = '/asistencia.
 async function iniciar() {
   try {
     const rMe = await fetch('/api/auth/me');
-    if (rMe.status === 401) { window.location.href = '/'; return; }
+    if (rMe.status === 401) { window.location.href = '/index.html'; return; }
     const me = await rMe.json();
-    if (me.rol !== 'empleado') { window.location.href = '/'; return; }
+    if (me.rol !== 'empleado') { window.location.href = '/index.html'; return; }
     pintarHeader(me.empresa);
     // cargarResumenEmpleados necesita que selectMes ya tenga valor (lo pone cargarMeses),
     // pero cargarEmpleados no depende de nada de esto — corre en paralelo

@@ -140,7 +140,7 @@ function activosDeEmpresa(emp) {
 
 async function cargarCatalogo() {
   const r = await fetch('/api/superadmin/catalogo');
-  if (r.status === 401) { window.location.href = '/'; return; }
+  if (r.status === 401) { window.location.href = '/index.html'; return; }
   const data = await r.json();
   catalogoFormatos = data.formatos;
   pintarCheckboxes(contenedorCheckboxes, 'formatosActivos', idsTodos());
@@ -176,7 +176,7 @@ async function cargarGoogleInfo() {
 
 async function cargarEmpresas() {
   const r = await fetch('/api/superadmin/empresas');
-  if (r.status === 401) { window.location.href = '/'; return; }
+  if (r.status === 401) { window.location.href = '/index.html'; return; }
   const data = await r.json();
   listaEmpresas.innerHTML = '';
   selectEmpresa.innerHTML = '<option value="">-- selecciona --</option>';
@@ -467,7 +467,7 @@ formAdmin.addEventListener('submit', async (e) => {
 
 btnLogout.addEventListener('click', async () => {
   await fetch('/api/auth/logout', { method: 'POST' });
-  window.location.href = '/';
+  window.location.href = '/index.html';
 });
 
 (async function iniciar() {

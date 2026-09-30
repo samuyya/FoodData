@@ -25,6 +25,7 @@ const empleadosRoutes = require('./routes/empleados');
 const asistenciaRoutes = require('./routes/asistencia');
 const documentosRoutes = require('./routes/documentos');
 const backupRoutes = require('./routes/backup');
+const contactoRoutes = require('./routes/contacto');
 const { requireModulo } = require('./middleware/sesion');
 const googleSheets = require('./servicios/googleSheets');
 const Registro = require('./models/Registro');
@@ -133,6 +134,16 @@ if (process.env.MONGODB_URI && process.env.NODE_ENV !== 'test') {
 }
 app.use(session(sessionConfig));
 
+// la raiz del dominio es publica: si ya hay sesion activa (alguien que entro
+// por un acceso directo viejo, por ejemplo) lo mando derecho a lo suyo en vez
+// de mostrarle la landing de nuevo. el login real sigue en /index.html tal
+// cual, asi que ningun link/redirect existente hacia el login se rompe
+app.get('/', (req, res) => {
+  if (req.session.superadmin) return res.redirect('/superadmin/dashboard.html');
+  if (req.session.empresa) return res.redirect('/menu.html');
+  res.sendFile(path.join(__dirname, 'public', 'presentacion.html'));
+});
+
 // 1h de cache en el navegador para CSS/JS/imagenes — asi no se vuelven a pedir
 // en cada cambio de pagina dentro de la misma sesion. no mas que eso porque el
 // proyecto se sigue actualizando seguido y no quiero que quede algo viejo cacheado
@@ -150,6 +161,7 @@ app.use('/api/asistencia',requireModulo('asistencia'),asistenciaRoutes);
 // documentos: el superadmin sube; las empresas leen los suyos solo si tienen el modulo "programas"
 app.use('/api/documentos', documentosRoutes);
 app.use('/api/backup', backupRoutes);
+app.use('/api/contacto', contactoRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, mensaje: 'Servidor en linea' });

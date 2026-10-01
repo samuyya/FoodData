@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>FoodData · Formatos de sanidad para restaurantes</title>
+  <meta name="description" content="Los formatos de sanidad de tu restaurante en línea: tu equipo los llena desde cualquier dispositivo y los tienes listos para la inspección." />
+  <meta name="theme-color" content="#16c2a3" />
+  <link rel="icon" href="/img/icon-fooddata-favicon.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Caveat:wght@500&display=swap" />
+  <link rel="stylesheet" href="/css/presentacion.css" />
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-check" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-pista" viewBox="0 0 56 20"><path d="M1 16h21l10-10h13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="50" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="2.4"/></symbol>
+    <symbol id="i-candado" viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+    <symbol id="i-whatsapp" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 00-8.6 15.1L2 22l5-1.3A10 10 0 1012 2zm0 18.2a8.2 8.2 0 01-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1112 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 01-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 00-.7.3 3 3 0 00-.9 2.2 5.2 5.2 0 001.1 2.7 11.8 11.8 0 004.5 4c1.7.7 2.3.8 3.2.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></symbol>
+    <symbol id="i-tenedor" viewBox="0 0 24 24"><path d="M7 3v7a2 2 0 002 2v9M11 3v7a2 2 0 01-2 2M9 3v6M17 21V3c-2 1-3 4-3 7s1 4 3 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-llave" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 12l8-8m-3 3l2 2m-4 0l1.5 1.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-local" viewBox="0 0 24 24"><path d="M4 10v10h16V10M3 10l2-6h14l2 6H3zM10 20v-5h4v5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="i-celular" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 18.5h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-tablet" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 18h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-portatil" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M2.5 18.5h19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-sobre" viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 7l8.5 6 8.5-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="i-flecha" viewBox="0 0 16 16"><path d="M8 3v10m0 0l-4-4m4 4l4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<a class="salto" href="#inicio">Saltar al contenido</a>
+
+<header class="cabecera">
+  <div class="contenedor">
+    <a href="#inicio" aria-label="FoodData, inicio"><img src="/img/logo-solo.fooddata.png" alt="FoodData" width="133" height="26"></a>
+    <nav class="nav" aria-label="Principal">
+      <a href="/index.html">Iniciar sesión</a>
+      <a class="btn" href="#empezar">Hablemos</a>
+    </nav>
+  </div>
+</header>
+
+<main id="inicio">
+  <section class="hero">
+    <div class="contenedor">
+      <div class="hero-texto">
+        <span class="ceja"><svg width="44" height="16"><use href="#i-pista"/></svg>Formatos de sanidad para restaurantes</span>
+        <h1>Una puerta ideal al llegar <span class="resalte">sanidad.</span></h1>
+        <p class="hero-bajada">Tus formatos pueden estar a un clic, abre tu dispositivo. Este sistema reemplaza las carpetas y trabajos manuales de tu restaurante.</p>
+        <div class="hero-acciones">
+          <a class="btn btn-principal" href="https://wa.me/573054044325?text=Hola%2C%20quiero%20saber%20m%C3%A1s%20de%20FoodData%20para%20mi%20establecimiento"><svg width="20" height="20"><use href="#i-whatsapp"/></svg>Escríbenos por WhatsApp</a>
+          <a class="btn btn-texto" href="#como-funciona">Ver cómo funciona <svg width="16" height="16"><use href="#i-flecha"/></svg></a>
+        </div>
+      </div>
+
+      <div class="hero-escena" aria-hidden="true">
+        <div class="hoja">
+          <div class="hoja-titulo"><span>PRESENTACIÓN PERSONAL</span><span>CA-F-03</span></div>
+          <div class="hoja-fila"><span>12</span><span class="mano">Laura M.</span><span class="mano">✓</span></div>
+          <div class="hoja-fila"><span>13</span><span class="mano tachon">Andres</span><span class="mano">✓</span></div>
+          <div class="hoja-fila"><span>14</span><span></span><span></span></div>
+          <div class="hoja-fila"><span>15</span><span class="mano">¿?</span><span></span></div>
+          <div class="hoja-fila"><span>16</span><span></span><span></span></div>
+          <div class="hoja-fila"><span>17</span><span></span><span></span></div>
+          <div class="hoja-mancha"></div>
+        </div>
+
+        <div class="telefono">
+          <div class="pantalla">
+            <div class="pantalla-top">
+              <small>Cocina · Hoy, 30 de septiembre</small>
+              <strong>Control de temperatura</strong>
+            </div>
+            <div class="pantalla-cuerpo">
+              <div class="medicion"><span>Nevera 1</span><b>3 °C</b><span class="ok" style="--i:0"><svg width="14" height="14"><use href="#i-check"/></svg></span></div>
+              <div class="medicion"><span>Congelador</span><b>−18 °C</b><span class="ok" style="--i:1"><svg width="14" height="14"><use href="#i-check"/></svg></span></div>
+              <div class="medicion"><span>Nevera de lácteos</span><b>4 °C</b><span class="ok" style="--i:2"><svg width="14" height="14"><use href="#i-check"/></svg></span></div>
+              <div class="campo-mini">Responsable<span>Laura Martínez</span></div>
+              <div class="guardado"><svg width="16" height="16"><use href="#i-check"/></svg>Guardado</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chip-flotante">
+          <span class="ok"><svg width="14" height="14"><use href="#i-check"/></svg></span>
+          <span>Cocina al día<small>9 de 9 formatos llenos hoy</small></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="en-linea">
+    <div class="contenedor">
+      <div class="dispositivos" aria-hidden="true">
+        <i><svg width="22" height="22"><use href="#i-celular"/></svg></i>
+        <i><svg width="24" height="24"><use href="#i-tablet"/></svg></i>
+        <i><svg width="26" height="26"><use href="#i-portatil"/></svg></i>
+      </div>
+      <p><strong>Funciona en celular, tablet y computador.</strong> Olvídate de tediosos procesos de actualizaciones o correcciones con aplicaciones, ya que en FoodData no es necesario descargar nada. Todo es en línea.</p>
+    </div>
+  </section>
+
+  <section class="audiencias" id="como-funciona">
+    <div class="contenedor">
+      <h2>Cada quien ve lo que necesita.</h2>
+      <div class="audiencias-grid">
+        <article class="audiencia">
+          <div class="audiencia-rol"><i><svg width="20" height="20"><use href="#i-tenedor"/></svg></i>Quien opera</div>
+          <p>Llena cada formato del día en un minuto, desde el dispositivo principal.</p>
+        </article>
+        <article class="audiencia">
+          <div class="audiencia-rol"><i><svg width="20" height="20"><use href="#i-llave"/></svg></i>Quien administra</div>
+          <p>Ve qué días faltan, corrige lo que quedó mal y aprueba con su clave.</p>
+        </article>
+        <article class="audiencia">
+          <div class="audiencia-rol"><i><svg width="20" height="20"><use href="#i-local"/></svg></i>El dueño</div>
+          <p>Sabe que todo está al día sin abrir una sola carpeta.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="modulo">
+    <div class="contenedor">
+      <div class="modulo-texto">
+        <span class="ceja"><svg width="44" height="16"><use href="#i-pista"/></svg>Formatos</span>
+        <h2>Los formatos del día, en orden y sin papel.</h2>
+        <p class="modulo-bajada">Trabajaremos de la mano de tu ingeniero de alimentos, con el fin de entregarle a tu establecimiento solo los formatos necesarios y a la medida, nada de trabajo extra.</p>
+        <ul class="puntos">
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Sabe qué días faltan</strong><span>Si un día quedó sin llenar, FoodData lo recuerda y lo pide en orden.</span></div></li>
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Reconoce los festivos</strong><span>Los festivos de Colombia se marcan solos en cada tabla.</span></div></li>
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Se respalda solo</strong><span>Cada registro queda también en Excel y en Google Sheets.</span></div></li>
+        </ul>
+      </div>
+      <div class="ventana" aria-hidden="true">
+        <div class="ventana-cabeza"><small>Septiembre</small><strong>Formatos</strong></div>
+        <div class="pestanas">
+          <span class="pestana activa">Cocina</span>
+          <span class="pestana">Salón</span>
+          <span class="pestana">Bar</span>
+          <span class="pestana">Servicios generales</span>
+          <span class="pestana"><svg width="13" height="13"><use href="#i-candado"/></svg>Administración</span>
+        </div>
+        <ul class="lista-formatos">
+          <li>Control de temperatura<span class="pill pill-ok"><svg width="12" height="12"><use href="#i-check"/></svg>Al día</span></li>
+          <li>Recepción de materias primas<span class="pill pill-ok"><svg width="12" height="12"><use href="#i-check"/></svg>Al día</span></li>
+          <li>Calidad del agua<span class="pill pill-pend">1 día pendiente</span></li>
+          <li>Limpieza de campana y trampa<span class="pill pill-ok"><svg width="12" height="12"><use href="#i-check"/></svg>Al día</span></li>
+          <li>Manejo de residuos<span class="pill pill-ok"><svg width="12" height="12"><use href="#i-check"/></svg>Al día</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="inspeccion">
+    <div class="contenedor">
+      <div class="inspeccion-cabeza">
+        <div class="modulo-texto">
+          <span class="ceja"><svg width="44" height="16"><use href="#i-pista"/></svg>Día de inspección</span>
+          <h2>Te piden los formatos. Los muestras en un minuto.</h2>
+        </div>
+        <ul class="puntos">
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Todo el mes en una vista</strong><span>Los datos reales, día por día, agrupados por carpeta.</span></div></li>
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Listo para imprimir</strong><span>En hoja horizontal, un formato por página.</span></div></li>
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>O por correo</strong><span>Con el PDF adjunto, si sanidad lo pide a distancia.</span></div></li>
+        </ul>
+      </div>
+
+      <div class="hoja-horizontal" aria-hidden="true">
+        <div class="hoja-horizontal-cabeza">
+          <strong>Control de temperatura de equipos de frío</strong>
+          <small>Plan de Saneamiento Básico · Cocina · Agosto 2026</small>
+        </div>
+        <div class="tabla-scroll">
+          <table>
+            <thead><tr><th>Día</th><th>Nevera 1</th><th>Congelador</th><th>Nevera de lácteos</th><th>Responsable</th><th>Observaciones</th></tr></thead>
+            <tbody>
+              <tr><td class="dia">05 mié</td><td class="num">3 °C</td><td class="num">−18 °C</td><td class="num">4 °C</td><td>Laura Martínez</td><td></td></tr>
+              <tr><td class="dia">06 jue</td><td class="num">3 °C</td><td class="num">−17 °C</td><td class="num">4 °C</td><td>Laura Martínez</td><td></td></tr>
+              <tr><td class="dia festivo" title="Día feriado">07 vie<sup>F</sup></td><td class="num">4 °C</td><td class="num">−18 °C</td><td class="num">5 °C</td><td>Andrés Gómez</td><td>Se reguló la nevera de lácteos</td></tr>
+              <tr><td class="dia">08 sáb</td><td class="num">3 °C</td><td class="num">−19 °C</td><td class="num">4 °C</td><td>Andrés Gómez</td><td></td></tr>
+              <tr><td class="dia">09 dom</td><td class="num">2 °C</td><td class="num">−18 °C</td><td class="num">3 °C</td><td>Laura Martínez</td><td></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="modulo invertido">
+    <div class="contenedor">
+      <div class="modulo-texto">
+        <span class="ceja"><svg width="44" height="16"><use href="#i-pista"/></svg>Asistencia</span>
+        <h2>Entrada y salida con una foto.</h2>
+        <p class="modulo-bajada">Cada persona marca su llegada y su salida desde el dispositivo del establecimiento. La foto queda como evidencia.</p>
+        <ul class="puntos">
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Horas sumadas solas</strong><span>El total del mes por persona, sin calculadora.</span></div></li>
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Horas extra de referencia</strong><span>Semana a semana: diurnas, nocturnas y dominicales.</span></div></li>
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Correcciones con clave</strong><span>Si alguien olvidó marcar la salida, solo el administrador la corrige.</span></div></li>
+        </ul>
+      </div>
+      <div class="ventana" aria-hidden="true">
+        <div class="persona">
+          <span class="avatar">AG</span>
+          <div><strong>Andrés Gómez</strong><small>Registro de septiembre</small></div>
+        </div>
+        <table class="marcas">
+          <thead><tr><th>Día</th><th>Entrada</th><th>Salida</th><th>Horas</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>Lun 28</td><td>6:58</td><td>15:04</td><td>8,1</td><td><span class="foto"></span></td></tr>
+            <tr><td>Mar 29</td><td>7:01</td><td>15:10</td><td>8,2</td><td><span class="foto"></span></td></tr>
+            <tr><td>Mié 30</td><td>6:55</td><td><span class="pill pill-pend">Sin salida</span></td><td>—</td><td><span class="foto"></span></td></tr>
+          </tbody>
+        </table>
+        <div class="totales">
+          <div><small>Total del mes</small><b>162,4 h</b></div>
+          <div><small>Horas extra (referencia)</small><b>2,5 h</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="modulo">
+    <div class="contenedor">
+      <div class="modulo-texto">
+        <span class="ceja"><svg width="44" height="16"><use href="#i-pista"/></svg>Capacitaciones</span>
+        <h2>Capacitaciones sin frenar la operación.</h2>
+        <p class="modulo-bajada">Si tu establecimiento ya tiene sus materiales de capacitación, los subimos a FoodData. Cada persona los ve desde el dispositivo, a su ritmo, sin reuniones grupales largas que retrasan el servicio.</p>
+        <ul class="puntos">
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Sin detener la cocina</strong><span>Cada quien se capacita en su momento, no todos a la misma hora.</span></div></li>
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Con tus propios recursos</strong><span>Usamos los documentos y materiales que ya tiene tu establecimiento.</span></div></li>
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Según el cargo de cada persona</strong><span>Cocina, bar o servicios generales: cada quien ve lo que le corresponde.</span></div></li>
+        </ul>
+      </div>
+      <div class="ventana" aria-hidden="true">
+        <div class="persona">
+          <span class="avatar">LM</span>
+          <div><strong>Laura Martínez</strong><small>Cocina · Capacitaciones asignadas</small></div>
+        </div>
+        <ul class="cursos">
+          <li><span>Manipulación higiénica de alimentos<small>Vista el 2 de septiembre</small></span><span class="pill pill-ok"><svg width="12" height="12"><use href="#i-check"/></svg>Vista</span></li>
+          <li><span>Lavado y desinfección de manos<small>Vista el 9 de septiembre</small></span><span class="pill pill-ok"><svg width="12" height="12"><use href="#i-check"/></svg>Vista</span></li>
+          <li><span>Control de temperaturas<small>En curso</small><i class="barra"><i style="width:60%"></i></i></span><span class="pill pill-curso">60 %</span></li>
+          <li><span>Manejo de residuos<small>Asignada esta semana</small></span><span class="pill pill-pend">Pendiente</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="modulo invertido">
+    <div class="contenedor">
+      <div class="modulo-texto">
+        <span class="ceja"><svg width="44" height="16"><use href="#i-pista"/></svg>Programas</span>
+        <h2>Los programas del plan de saneamiento, a la mano.</h2>
+        <p class="modulo-bajada">Los documentos de cada programa, ordenados y listos para abrir desde cualquier dispositivo.</p>
+        <ul class="puntos">
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Un lugar por programa</strong><span>Agua potable, plagas, residuos, capacitaciones y los demás.</span></div></li>
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Nada se pierde</strong><span>PDF, Word, Excel o fotos, guardados en la nube.</span></div></li>
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Siempre a mano</strong><span>Se abren desde tu dispositivo el día que alguien los pida.</span></div></li>
+        </ul>
+      </div>
+      <div class="ventana" aria-hidden="true">
+        <div class="ventana-cabeza"><small>Plan de Saneamiento Básico</small><strong>Programas</strong></div>
+        <ul class="programas-grid">
+          <li><b>01</b><span>Limpieza y desinfección<small>4 documentos</small></span></li>
+          <li><b>02</b><span>Residuos sólidos<small>2 documentos</small></span></li>
+          <li><b>03</b><span>Control de plagas<small>3 documentos</small></span></li>
+          <li class="abierto"><b>04</b><span>Agua potable<small>3 documentos</small></span></li>
+          <li><b>05</b><span>Capacitaciones<small>5 documentos</small></span></li>
+          <li><b>06</b><span>Mantenimiento<small>2 documentos</small></span></li>
+          <li><b>07</b><span>Trazabilidad<small>1 documento</small></span></li>
+          <li><b>08</b><span>Proveedores<small>2 documentos</small></span></li>
+          <li><b>09</b><span>Muestreo<small>1 documento</small></span></li>
+          <li><b>10</b><span>PQRS<small>1 documento</small></span></li>
+          <li><b>11</b><span>Recall<small>1 documento</small></span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="modulo aparte">
+    <div class="contenedor">
+      <div class="modulo-texto">
+        <span class="ceja"><svg width="44" height="16"><use href="#i-pista"/></svg>Inventarios</span>
+        <h2>Lo que entra, lo que se pierde, cada mes.</h2>
+        <p class="modulo-bajada">Un módulo adicional para el dueño: registra las compras y las pérdidas del día y al final del mes sabes cuánta plata se fue en cada una.</p>
+        <ul class="puntos">
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Lo que entra</strong><span>Cada ingreso de materia prima con su costo, el mismo día.</span></div></li>
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Lo que se pierde</strong><span>Cada baja con su motivo y su costo: vencido, dañado, mal almacenado.</span></div></li>
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>El mes en dos números</strong><span>Comprado y perdido por carpeta, más el conteo de mobiliario y menaje.</span></div></li>
+        </ul>
+        <p class="nota-chica">Es una referencia para el dueño, no contabilidad oficial.</p>
+      </div>
+      <div class="ventana" aria-hidden="true">
+        <div class="ventana-cabeza"><small>Cocina · Septiembre</small><strong>Inventario del mes</strong></div>
+        <div class="totales totales-plata">
+          <div><small>Comprado</small><b>$ 4.820.000</b></div>
+          <div><small>Perdido</small><b class="perdido">$ 186.400</b></div>
+        </div>
+        <table class="marcas bajas">
+          <thead><tr><th>Baja</th><th>Motivo</th><th>Costo</th></tr></thead>
+          <tbody>
+            <tr><td>Leche entera 2 L</td><td class="motivo">Vencida</td><td>$ 9.800</td></tr>
+            <tr><td>Tomate chonto 3 kg</td><td class="motivo">Dañado</td><td>$ 10.500</td></tr>
+            <tr><td>Pechuga 1,5 kg</td><td class="motivo">Cadena de frío</td><td>$ 27.000</td></tr>
+          </tbody>
+        </table>
+        <div class="menaje"><svg width="16" height="16"><use href="#i-local"/></svg>Conteo de menaje: faltan 4 copas y 2 cucharones frente a agosto.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="medida">
+    <div class="contenedor">
+      <div class="medida-cabeza">
+        <div class="modulo-texto">
+          <span class="ceja"><svg width="44" height="16"><use href="#i-pista"/></svg>A la medida</span>
+          <h2>Tu establecimiento decide qué módulos usa.</h2>
+        </div>
+        <p class="modulo-bajada">Formatos y Programas vienen siempre. Asistencia, Capacitaciones e Inventarios se agregan o se quitan según lo que necesite tu establecimiento. Pruébalo aquí abajo.</p>
+      </div>
+      <div class="medida-grid">
+        <div class="grupo grupo-fijo">
+          <span class="grupo-titulo">Siempre incluidos</span>
+          <div class="mod fijo"><div class="mod-cabeza"><strong>Formatos</strong><span class="pill pill-ok">Incluido</span></div><p>Los formatos diarios que pide sanidad.</p></div>
+          <div class="mod fijo"><div class="mod-cabeza"><strong>Programas</strong><span class="pill pill-ok">Incluido</span></div><p>Los documentos del plan de saneamiento.</p></div>
+        </div>
+        <div class="grupo grupo-opcional">
+        <span class="grupo-titulo">Según lo que necesites</span>
+        <div class="mod"><div class="mod-cabeza"><strong>Asistencia</strong><button class="switch" type="button" role="switch" aria-checked="true" aria-label="Asistencia" data-mod="Asistencia"><i></i></button></div><p>Entradas y salidas con foto.</p></div>
+        <div class="mod"><div class="mod-cabeza"><strong>Capacitaciones</strong><button class="switch" type="button" role="switch" aria-checked="true" aria-label="Capacitaciones" data-mod="Capacitaciones"><i></i></button></div><p>El personal se capacita a su ritmo.</p></div>
+        <div class="mod"><div class="mod-cabeza"><strong>Inventarios</strong><button class="switch" type="button" role="switch" aria-checked="true" aria-label="Inventarios" data-mod="Inventarios"><i></i></button></div><p>Compras y pérdidas del mes.</p></div>
+        </div>
+      </div>
+      <p class="medida-resumen" aria-live="polite">Tu FoodData: <b id="resumen-mods">Formatos, Programas, Asistencia, Capacitaciones e Inventarios.</b></p>
+    </div>
+  </section>
+
+  <section class="empezar" id="empezar">
+    <div class="contenedor">
+      <span class="ceja"><svg width="44" height="16"><use href="#i-pista"/></svg>Cómo empezar</span>
+      <h2>Empezar es una conversación.</h2>
+      <ol class="pasos">
+        <li class="paso"><div class="paso-num">1</div><h3>Escríbenos</h3><p>Por WhatsApp o por correo. Cuéntanos cómo es tu restaurante.</p></li>
+        <li class="paso"><div class="paso-num">2</div><h3>Armamos tu cuenta</h3><p>Con los formatos y las carpetas que usa tu equipo.</p></li>
+        <li class="paso"><div class="paso-num">3</div><h3>Tu equipo arranca</h3><p>Entran desde su dispositivo y empiezan a llenar los formatos del día.</p></li>
+      </ol>
+      <div class="contacto">
+        <a class="btn btn-principal" href="https://wa.me/573054044325?text=Hola%2C%20quiero%20saber%20m%C3%A1s%20de%20FoodData%20para%20mi%20establecimiento"><svg width="20" height="20"><use href="#i-whatsapp"/></svg>Escribir por WhatsApp</a>
+        <a class="btn btn-correo" href="mailto:fooddata.notificaciones@gmail.com?subject=Quiero%20conocer%20FoodData"><svg width="20" height="20"><use href="#i-sobre"/></svg>Escribir por correo</a>
+      </div>
+      <p class="contacto-nota">También puedes escribirnos a <span id="correo">fooddata.notificaciones@gmail.com</span> <button class="btn-mini" id="copiar" type="button">Copiar</button></p>
+    </div>
+  </section>
+</main>
+
+<footer class="pie">
+  <div class="contenedor">
+    <div class="pie-marca"><img src="/img/icon-fooddata-apple.png" alt="" width="38" height="38"><span>Hecho en Colombia para restaurantes, cafeterías y cocinas.</span></div>
+    <a href="/index.html">Iniciar sesión</a>
+  </div>
+</footer>
+
+<script src="/js/presentacion.js"></script>
+</body>
+</html>

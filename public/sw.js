@@ -1,6 +1,7 @@
-const CACHE = 'fooddata-v1';
+// v2: '/' ahora es la presentacion, el respaldo offline tiene que ser el login
+const CACHE = 'fooddata-v2';
 const SHELL = [
-  '/',
+  '/index.html',
   '/css/styles.css',
   '/js/util.js',
   '/img/logo-fooddata.png',
@@ -39,6 +40,6 @@ self.addEventListener('fetch', (e) => {
         caches.open(CACHE).then((c) => c.put(req, copia)).catch(() => {});
         return resp;
       })
-      .catch(() => caches.match(req).then((m) => m || caches.match('/')))
+      .catch(() => caches.match(req).then((m) => m || caches.match('/index.html')))
   );
 });

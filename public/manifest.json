@@ -2,7 +2,7 @@
   "name": "FoodData",
   "short_name": "FoodData",
   "description": "Control de calidad e inocuidad alimentaria",
-  "start_url": "/",
+  "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

@@ -50,10 +50,11 @@ app.use(helmet({
       baseUri: ["'self'"],
       scriptSrc: ["'self'"],
       scriptSrcAttr: ["'none'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      // google fonts solo lo usa la presentacion publica (presentacion.html)
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       // res.cloudinary.com: ahi quedan los logos de empresa cuando esta activo Cloudinary
       imgSrc: ["'self'", 'data:', 'blob:', 'https://res.cloudinary.com'],
-      fontSrc: ["'self'"],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
       connectSrc: ["'self'"],
       objectSrc: ["'none'"],
       formAction: ["'self'"],
@@ -132,6 +133,14 @@ if (process.env.MONGODB_URI && process.env.NODE_ENV !== 'test') {
   });
 }
 app.use(session(sessionConfig));
+
+// la raiz es la presentacion publica. si ya hay sesion lo mando a lo suyo,
+// el login sigue en /index.html como siempre
+app.get('/', (req, res) => {
+  if (req.session.superadmin) return res.redirect('/superadmin/dashboard.html');
+  if (req.session.empresa) return res.redirect('/menu.html');
+  res.sendFile(path.join(__dirname, 'public', 'presentacion.html'));
+});
 
 // 1h de cache en el navegador para CSS/JS/imagenes — asi no se vuelven a pedir
 // en cada cambio de pagina dentro de la misma sesion. no mas que eso porque el

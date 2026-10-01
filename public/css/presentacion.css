@@ -157,9 +157,6 @@ section[id] { scroll-margin-top: 84px; }
 .puntos strong { display: block; font-weight: 700; }
 .puntos span { color: var(--tinta-suave); font-size: .98rem; }
 
-.vista { display: flex; flex-direction: column; gap: .8rem; min-width: 0; }
-.vista-titulo { font-weight: 600; color: var(--tinta-suave); }
-
 /* ventana genérica de la app */
 .ventana {
   background: var(--blanco); border: 1px solid var(--linea); border-radius: 22px;
@@ -184,7 +181,7 @@ section[id] { scroll-margin-top: 84px; }
 
 /* inspección */
 .inspeccion { background: var(--menta-2); padding-block: clamp(4rem, 9vw, 7.5rem); }
-.inspeccion-cabeza { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: clamp(2rem, 5vw, 4rem); align-items: end; }
+.inspeccion-cabeza { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: clamp(2rem, 5vw, 4rem); align-items: center; }
 .inspeccion h2 { font-size: clamp(2.1rem, 4.6vw, 3.7rem); font-weight: 800; letter-spacing: -.03em; line-height: 1; }
 .inspeccion .ceja { color: var(--tinta); }
 .inspeccion .puntos li { border-color: var(--menta); }
@@ -257,10 +254,10 @@ td.festivo sup { color: var(--turquesa-texto); font-weight: 700; font-family: va
 .medida { padding-block: clamp(4rem, 9vw, 7.5rem); background: var(--menta-3); border-top: 1px solid var(--linea); }
 .medida-cabeza { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: clamp(1.5rem, 5vw, 4rem); align-items: end; }
 .medida h2 { font-size: clamp(2.1rem, 4.4vw, 3.5rem); font-weight: 800; letter-spacing: -.03em; line-height: 1; }
-.medida-grid { margin-top: clamp(2rem, 4vw, 3rem); display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 1.5rem; }
+.medida-grid { margin-top: clamp(2rem, 4vw, 3rem); display: grid; gap: 1.8rem; }
 .grupo { display: grid; gap: .8rem; align-content: start; }
-.grupo-fijo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.grupo-opcional { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* las dos filas con el mismo ancho de tarjeta, si no el interruptor no cabe al lado del nombre */
+.grupo-fijo, .grupo-opcional { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .grupo-titulo { grid-column: 1 / -1; font-size: .8rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--tinta-debil); }
 .mod { display: flex; flex-direction: column; gap: .7rem; padding: 1.2rem; border-radius: var(--radio); background: var(--blanco); border: 1px solid var(--linea); transition: opacity .2s, border-color .2s; }
 .mod-cabeza { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
@@ -278,7 +275,7 @@ td.festivo sup { color: var(--turquesa-texto); font-weight: 700; font-family: va
 }
 .medida-resumen { margin-top: 1.5rem; color: var(--tinta-suave); }
 .medida-resumen b { color: var(--tinta); }
-@media (max-width: 1100px) { .medida-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 900px) { .grupo-fijo, .grupo-opcional { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 900px) { .medida-cabeza { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) { .grupo-fijo, .grupo-opcional { grid-template-columns: minmax(0, 1fr); } }
 

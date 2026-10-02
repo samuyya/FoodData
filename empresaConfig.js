@@ -1,5 +1,5 @@
 const Empresa = require('./models/Empresa');
-const { FORMATOS } = require('./formatos');
+const { FORMATOS, CARPETAS } = require('./formatos');
 
 const TODOS_IDS = FORMATOS.map(f => f.id);
 
@@ -17,33 +17,28 @@ async function getConfigEmpresa(empresaId) {
       : TODOS_IDS.slice();
 
   const cDoc = (e && e.formatosCarpeta) || {};
-  const cocina        = Array.isArray(cDoc.cocina)        ? cDoc.cocina.filter(id => activos.includes(id))        : [];
-  const salon         = Array.isArray(cDoc.salon)         ? cDoc.salon.filter(id => activos.includes(id))         : [];
-  const administracion= Array.isArray(cDoc.administracion)? cDoc.administracion.filter(id => activos.includes(id)): [];
+  const carpetas = {};
+  CARPETAS.forEach(c => {
+    carpetas[c] = Array.isArray(cDoc[c]) ? cDoc[c].filter(id => activos.includes(id)) : [];
+  });
 
   // Formatos que no están en ninguna carpeta van a cocina por defecto
-  const conAlgunaCarpeta = new Set([...cocina, ...salon, ...administracion]);
+  const conAlgunaCarpeta = new Set(CARPETAS.flatMap(c => carpetas[c]));
   const sinAsignar = activos.filter(id => !conAlgunaCarpeta.has(id));
+  carpetas.cocina = [...carpetas.cocina, ...sinAsignar];
 
   const compartidos = Array.isArray(e && e.formatosCompartidos) ? e.formatosCompartidos : [];
 
   return {
     activos,
-    carpetas: {
-      cocina: [...cocina, ...sinAsignar],
-      salon,
-      administracion
-    },
+    carpetas,
     compartidos: compartidos.filter(id => activos.includes(id))
   };
 }
 
 // Devuelve TODAS las carpetas a las que pertenece un formato (puede ser más de una)
 function getCarpetasDeFormato(carpetas, formatoId) {
-  const resultado = [];
-  if (carpetas.cocina.includes(formatoId))        resultado.push('cocina');
-  if (carpetas.salon.includes(formatoId))         resultado.push('salon');
-  if (carpetas.administracion.includes(formatoId))resultado.push('administracion');
+  const resultado = CARPETAS.filter(c => carpetas[c].includes(formatoId));
   return resultado.length > 0 ? resultado : ['cocina'];
 }
 

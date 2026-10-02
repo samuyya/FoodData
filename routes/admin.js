@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const Administrador = require('../models/Administrador');
+const { CARPETAS } = require('../formatos');
 const { requireEmpresa, ah } = require('../middleware/sesion');
 const { limiteAdmin } = require('../middleware/limites');
 
@@ -44,7 +45,7 @@ function adminInventarioActivo(req) {
 }
 
 // la verificacion para dias atrasados es INDEPENDIENTE por carpeta.
-// la sesion guarda { cocina: { ts }, salon: { ts }, administracion: { ts } }.
+// la sesion guarda { cocina: { ts }, salon: { ts }, bar: { ts }, ... } (una por carpeta).
 // si la sesion vieja tiene formato distinto (un solo { ts }) lo trato como invalido.
 function adminAtrasadoActivo(req, carpeta) {
   if (!carpeta) return false;
@@ -86,7 +87,7 @@ router.get('/estado-carpeta', requireEmpresa, (req, res) => {
 router.post('/verificar-atrasado', limiteAdmin, requireEmpresa, ah(async (req, res) => {
   const { password, carpeta } = req.body;
   if (!password) return res.status(400).json({ ok: false, error: 'Falta la contraseña' });
-  if (!['cocina', 'salon', 'administracion'].includes(carpeta)) {
+  if (!CARPETAS.includes(carpeta)) {
     return res.status(400).json({ ok: false, error: 'Carpeta inválida' });
   }
   const admins = await Administrador.find({ empresa_id: req.session.empresa.id });

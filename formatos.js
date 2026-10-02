@@ -152,4 +152,14 @@ function getFormato(id) {
   return FORMATOS.find(f => f.id === id);
 }
 
-module.exports = { FORMATOS, getFormato };
+// ojo: este orden es el que se ve en el menu de la empresa
+const CARPETAS = ['cocina', 'salon', 'bar', 'servicios_generales', 'administracion'];
+const NOMBRES_CARPETA = {
+  cocina: 'Cocina',
+  salon: 'Salón',
+  bar: 'Bar',
+  servicios_generales: 'Servicios generales',
+  administracion: 'Administración'
+};
+
+module.exports = { FORMATOS, getFormato, CARPETAS, NOMBRES_CARPETA };

@@ -19,8 +19,7 @@ if (disponible) {
 
 function estaDisponible() { return disponible; }
 
-const NOMBRES_CARPETA = { cocina: 'Cocina', salon: 'Salón', administracion: 'Administración' };
-const ICONOS_CARPETA = { cocina: '🍳', salon: '🪑', administracion: '🔒' };
+const ICONOS_CARPETA = { cocina: '🍳', salon: '🪑', bar: '🍹', servicios_generales: '🧹', administracion: '🔒' };
 
 function escaparHtml(v) {
   return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({

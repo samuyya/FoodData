@@ -2608,11 +2608,6 @@ textarea:focus {
   align-items: center;
 }
 
-.carpeta-card--vacia {
-  opacity: .55;
-  cursor: default;
-}
-
 .carpeta-icono {
   display: grid;
   place-items: center;

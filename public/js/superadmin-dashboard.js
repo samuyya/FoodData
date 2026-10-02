@@ -61,12 +61,18 @@ function pintarCheckboxes(contenedor, nombreCampo, marcadosIds) {
 // tabla de asignacion: para cada formato activo, marcar en cuales carpetas va.
 // la 5ta columna "Compartido" solo se habilita si el formato esta en 2+ carpetas:
 // si esta marcado, las carpetas apuntan al MISMO conjunto de registros.
+const CARPETAS_SUPER = [
+  { clave: 'cocina', nombre: 'Cocina', icono: '🍳' },
+  { clave: 'salon', nombre: 'Salón', icono: '🪑' },
+  { clave: 'bar', nombre: 'Bar', icono: '🍹' },
+  { clave: 'servicios_generales', nombre: 'Servicios generales', icono: '🧹' },
+  { clave: 'administracion', nombre: 'Administración', icono: '🔒' }
+];
+
 function pintarTablaCarpetas(contenedor, activosIds, carpetaDoc, compartidosIds) {
   const cDoc = carpetaDoc || {};
-  const enCocina         = Array.isArray(cDoc.cocina)         ? cDoc.cocina         : activosIds.slice();
-  const enSalon          = Array.isArray(cDoc.salon)          ? cDoc.salon          : [];
-  const enAdministracion = Array.isArray(cDoc.administracion) ? cDoc.administracion : [];
-  const compartidos      = Array.isArray(compartidosIds)      ? compartidosIds      : [];
+  const compartidos = Array.isArray(compartidosIds) ? compartidosIds : [];
+  const lista = c => Array.isArray(cDoc[c.clave]) ? cDoc[c.clave] : (c.clave === 'cocina' ? activosIds.slice() : []);
 
   contenedor.innerHTML = '';
   const tabla = document.createElement('table');
@@ -75,9 +81,7 @@ function pintarTablaCarpetas(contenedor, activosIds, carpetaDoc, compartidosIds)
     <thead>
       <tr>
         <th>Formato</th>
-        <th>🍳 Cocina</th>
-        <th>🪑 Salón</th>
-        <th>🔒 Administración</th>
+        ${CARPETAS_SUPER.map(c => `<th>${c.icono} ${c.nombre}</th>`).join('')}
         <th title="Si marcas el mismo formato en 2+ carpetas, puedes elegir que compartan los mismos registros (en vez de duplicar)">🔗 Compartido</th>
       </tr>
     </thead>
@@ -88,20 +92,22 @@ function pintarTablaCarpetas(contenedor, activosIds, carpetaDoc, compartidosIds)
   catalogoFormatos
     .filter(f => activosIds.includes(f.id))
     .forEach(f => {
-      const enC = enCocina.includes(f.id) || (!enSalon.includes(f.id) && !enAdministracion.includes(f.id));
-      const enS = enSalon.includes(f.id);
-      const enA = enAdministracion.includes(f.id);
-      const enCuantas = [enC, enS, enA].filter(Boolean).length;
+      // si no esta en ninguna carpeta, cae en cocina (igual que en el servidor)
+      const enNinguna = !CARPETAS_SUPER.some(c => lista(c).includes(f.id));
+      const marcas = CARPETAS_SUPER.map(c => lista(c).includes(f.id) || (c.clave === 'cocina' && enNinguna));
+      const enCuantas = marcas.filter(Boolean).length;
       const compChecked = compartidos.includes(f.id);
       const compDisabled = enCuantas < 2;
+
+      const celdas = CARPETAS_SUPER.map((c, i) =>
+        `<td class="td-radio"><input type="checkbox" name="carpeta_${c.clave}" value="${f.id}" ${marcas[i] ? 'checked' : ''} /></td>`
+      ).join('');
 
       const tr = document.createElement('tr');
       tr.dataset.formatoId = f.id;
       tr.innerHTML = `
         <td>${escapeHTML(f.nombre)}</td>
-        <td class="td-radio"><input type="checkbox" name="carpeta_cocina"         value="${f.id}" ${enC ? 'checked' : ''} /></td>
-        <td class="td-radio"><input type="checkbox" name="carpeta_salon"          value="${f.id}" ${enS ? 'checked' : ''} /></td>
-        <td class="td-radio"><input type="checkbox" name="carpeta_administracion" value="${f.id}" ${enA ? 'checked' : ''} /></td>
+        ${celdas}
         <td class="td-radio td-compartido">
           <input type="checkbox" name="formatosCompartidos" value="${f.id}"
                  ${compChecked && !compDisabled ? 'checked' : ''} ${compDisabled ? 'disabled' : ''}

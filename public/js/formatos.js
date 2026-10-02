@@ -61,11 +61,15 @@ const MESES_CORTOS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct
 const NOMBRES_CARPETA = {
   cocina:         'Cocina',
   salon:          'Salón',
+  bar:            'Bar',
+  servicios_generales: 'Servicios generales',
   administracion: 'Administración'
 };
 const ICONOS_CARPETA = {
   cocina:         '🍳',
   salon:          '🪑',
+  bar:            '🍹',
+  servicios_generales: '🧹',
   administracion: '🔒'
 };
 
@@ -470,9 +474,11 @@ function pintarHeader(empresa) {
 
 function pintarCarpetas() {
   listaCarpetas.innerHTML = '';
-  const orden = ['cocina', 'salon', 'administracion'];
+  const orden = ['cocina', 'salon', 'bar', 'servicios_generales', 'administracion'];
   orden.forEach(clave => {
     const formatos = dataCarpetas[clave] || [];
+    // sin formatos habilitados, la carpeta ni se muestra
+    if (formatos.length === 0) return;
     const li = document.createElement('li');
     li.className = 'formato-card carpeta-card' + (clave === 'administracion' ? ' carpeta-card--admin' : '');
 
@@ -492,12 +498,7 @@ function pintarCarpetas() {
       <span class="carpeta-flecha">›</span>
     `;
 
-    if (cantidad === 0) {
-      li.classList.add('carpeta-card--vacia');
-      li.title = 'Esta carpeta no tiene formatos asignados';
-    } else {
-      li.addEventListener('click', () => abrirCarpeta(clave));
-    }
+    li.addEventListener('click', () => abrirCarpeta(clave));
 
     listaCarpetas.appendChild(li);
   });

@@ -21,7 +21,7 @@ const MESES_LARGOS = [
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
 ];
 
-const SUFIJO_CARPETA = { cocina: '', salon: ' (Sal)', administracion: ' (Adm)' };
+const SUFIJO_CARPETA = { cocina: '', salon: ' (Sal)', bar: ' (Bar)', servicios_generales: ' (Serv)', administracion: ' (Adm)' };
 
 // Utilidades
 
@@ -409,7 +409,7 @@ function columnasYFila(formatoId) {
   }
 }
 
-const NOMBRES_CARPETA = { cocina: 'Cocina', salon: 'Salón', administracion: 'Administración' };
+const { NOMBRES_CARPETA } = require('../formatos');
 
 function pintarHojaMultiMes(sheet, registros, formatoId, formato, opciones = {}) {
   const esCalidadAgua = formatoId === 'calidad_agua';

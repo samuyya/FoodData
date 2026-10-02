@@ -12,7 +12,7 @@ async function requireAccesoFormato3(req, res, next) {
   try {
     const { carpetas } = await getConfigEmpresa(req.session.empresa.id);
     const esCarpetaAdmin   = carpetas.administracion.includes('presentacion_personal');
-    const tieneOtraCarpeta = carpetas.cocina.includes('presentacion_personal') || carpetas.salon.includes('presentacion_personal');
+    const tieneOtraCarpeta = Object.keys(carpetas).some(c => c !== 'administracion' && carpetas[c].includes('presentacion_personal'));
     // adminReporte tambien vale aca -- corregir un dia de presentacion_personal
     // necesita leer la lista de empleados para repoblar el formulario, y esa
     // correccion ya la autoriza la clave del reporte (no hace falta ademas

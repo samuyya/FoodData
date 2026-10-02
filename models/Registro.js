@@ -14,7 +14,7 @@ const FORMATOS_VALIDOS = [
   'limpieza_desinfeccion'
 ];
 
-const CARPETAS_VALIDAS = ['cocina', 'salon', 'administracion'];
+const { CARPETAS: CARPETAS_VALIDAS } = require('../formatos');
 
 const registroSchema = new mongoose.Schema({
   empresa_id:   { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true },

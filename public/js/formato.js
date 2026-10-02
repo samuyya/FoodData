@@ -1,4 +1,5 @@
 const $ = (id) => document.getElementById(id);
+const NOMBRES_CARPETA_F = { cocina: 'Cocina', salon: 'Salón', bar: 'Bar', servicios_generales: 'Servicios generales', administracion: 'Administración' };
 
 // elementos del header
 const logoEl = $('logo-empresa');
@@ -462,7 +463,7 @@ function mostrarModalAdminAtrasadoUpfront(info, onVerificadoOk) {
   modalAdminAtrasadoError.hidden = true;
   formAdminAtrasado.reset();
   const dias = (info.pendientes || []).join(', ');
-  const nombreCarpeta = carpetaId === 'cocina' ? 'Cocina' : (carpetaId === 'salon' ? 'Salón' : 'Administración');
+  const nombreCarpeta = NOMBRES_CARPETA_F[carpetaId] || carpetaId;
   modalAdminAtrasadoInfo.innerHTML = `Este formato de <strong>${nombreCarpeta}</strong> tiene <strong>${info.pendientes.length} día(s) atrasado(s)</strong> sin registrar (${dias}). Solo el administrador puede llenarlos; ingresa la contraseña para continuar.`;
   modalAdminAtrasado.hidden = false;
   setTimeout(() => formAdminAtrasado.password.focus(), 80);

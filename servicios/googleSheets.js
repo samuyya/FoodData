@@ -2,7 +2,7 @@ const { google } = require('googleapis');
 const path = require('path');
 const fs = require('fs');
 const Registro = require('../models/Registro');
-const { getFormato } = require('../formatos');
+const { getFormato, NOMBRES_CARPETA } = require('../formatos');
 const { esFestivo } = require('../festivos');
 const { getConfigEmpresa } = require('../empresaConfig');
 const logger = require('../logger');
@@ -19,7 +19,7 @@ const MESES_LARGOS = [
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
 ];
 
-const SUFIJO_CARPETA_GS = { cocina: '', salon: ' (Salón)', administracion: ' (Admón)' };
+const SUFIJO_CARPETA_GS = { cocina: '', salon: ' (Salón)', bar: ' (Bar)', servicios_generales: ' (Serv. generales)', administracion: ' (Admón)' };
 
 // Colores (formato Google Sheets: 0-1 en cada canal)
 const COLOR_PRIMARIO   = { red: 0.087, green: 0.760, blue: 0.639 };  // #16C2A3 turquoise
@@ -535,7 +535,7 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
       regs.forEach(r => {
         const filasData = expandirFilas ? expandirFilas(r) : [fila(r)];
         const esFest = esFestivo(r.anio, r.mes, r.dia);
-        const NOMBRES_C = { cocina: 'Cocina', salon: 'Salón', administracion: 'Administración' };
+        const NOMBRES_C = NOMBRES_CARPETA;
 
         filasData.forEach((data, idxItem) => {
           if (esCompartido) data.carpeta = NOMBRES_C[r.carpeta] || r.carpeta || '';

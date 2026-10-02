@@ -12,7 +12,7 @@ const Registro = require('../models/Registro');
 const Asistencia = require('../models/Asistencia');
 const Documento = require('../models/Documento');
 const SaldoHorasExtra = require('../models/SaldoHorasExtra');
-const { FORMATOS } = require('../formatos');
+const { FORMATOS, CARPETAS } = require('../formatos');
 const { requireSuperadmin, ah } = require('../middleware/sesion');
 const googleSheets = require('../servicios/googleSheets');
 const { guardarLogo, borrarLogo } = require('../servicios/almacenamiento');
@@ -83,18 +83,18 @@ function parsearListaFormatos(valor) {
 }
 
 function parsearCarpetas(body, activos) {
-  // Cada carpeta es un campo de checkboxes: carpeta_cocina, carpeta_salon, carpeta_administracion
+  // Cada carpeta es un campo de checkboxes: carpeta_cocina, carpeta_salon, carpeta_bar...
   // Un formato puede estar en ninguna, una o varias carpetas
-  const extraer = campo => parsearListaFormatos(body[campo]).filter(id => activos.includes(id));
-  const cocina        = extraer('carpeta_cocina');
-  const salon         = extraer('carpeta_salon');
-  const administracion= extraer('carpeta_administracion');
+  const r = {};
+  CARPETAS.forEach(c => {
+    r[c] = parsearListaFormatos(body['carpeta_' + c]).filter(id => activos.includes(id));
+  });
 
   // Si un formato activo no quedó en ninguna carpeta, lo ponemos en cocina por defecto
-  const conAlguna = new Set([...cocina, ...salon, ...administracion]);
-  activos.filter(id => !conAlguna.has(id)).forEach(id => cocina.push(id));
+  const conAlguna = new Set(CARPETAS.flatMap(c => r[c]));
+  activos.filter(id => !conAlguna.has(id)).forEach(id => r.cocina.push(id));
 
-  return { cocina, salon, administracion };
+  return r;
 }
 
 function parsearModulos(valor) {
@@ -111,8 +111,7 @@ function parsearCompartidos(body, activos, carpetas) {
   const ids = parsearListaFormatos(body.formatosCompartidos);
   return ids.filter(id => {
     if (!activos.includes(id)) return false;
-    const en = [carpetas.cocina, carpetas.salon, carpetas.administracion]
-      .filter(arr => arr.includes(id)).length;
+    const en = CARPETAS.filter(c => carpetas[c].includes(id)).length;
     return en >= 2;
   });
 }

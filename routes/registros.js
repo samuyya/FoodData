@@ -5,7 +5,7 @@ const Registro = require('../models/Registro');
 const Empresa = require('../models/Empresa');
 const Administrador = require('../models/Administrador');
 const bcrypt = require('bcryptjs');
-const { FORMATOS, getFormato } = require('../formatos');
+const { FORMATOS, getFormato, CARPETAS, NOMBRES_CARPETA } = require('../formatos');
 const { getConfigEmpresa } = require('../empresaConfig');
 const { requireEmpresa, ah } = require('../middleware/sesion');
 const { limiteAdmin } = require('../middleware/limites');
@@ -18,7 +18,6 @@ const logger = require('../logger');
 const router = express.Router();
 
 const REGEX_LETRAS = /^[A-Za-zÀ-ÿÑñ\s]+$/;
-const NOMBRES_CARPETA = { cocina: 'Cocina', salon: 'Salón', administracion: 'Administración' };
 
 async function verificarPasswordAdmin(empresaId, password) {
   if (!password) {
@@ -90,7 +89,7 @@ router.get('/resumen-pendientes', requireEmpresa, ah(async (req, res) => {
 
   // cada (formato, carpeta) cuenta como una instancia independiente, incluso si son compartidos
   const instancias = new Set();
-  for (const carpeta of ['cocina', 'salon', 'administracion']) {
+  for (const carpeta of CARPETAS) {
     for (const formatoId of (config.carpetas[carpeta] || [])) {
       instancias.add(`${formatoId}|${carpeta}`);
     }
@@ -500,7 +499,7 @@ router.get('/reporte', requireEmpresa, ah(async (req, res) => {
   const bloques = [];
   let sumaRegistrados = 0, sumaTotales = 0, totalNovedades = 0;
 
-  for (const clave of ['cocina', 'salon', 'administracion']) {
+  for (const clave of CARPETAS) {
     const formatoIds = config.carpetas[clave] || [];
     if (formatoIds.length === 0) continue;
 
@@ -586,7 +585,7 @@ async function armarDatosInspeccion(empresaId, anio, mes) {
   const config = await getConfigEmpresa(empresaId);
   const carpetas = [];
 
-  for (const clave of ['cocina', 'salon', 'administracion']) {
+  for (const clave of CARPETAS) {
     const formatoIds = config.carpetas[clave] || [];
     if (formatoIds.length === 0) continue;
 

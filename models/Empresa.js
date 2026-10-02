@@ -25,6 +25,8 @@ const empresaSchema = new mongoose.Schema({
   formatosCarpeta: {
     cocina:        { type: [String], default: () => IDS_FORMATOS.slice() },
     salon:         { type: [String], default: () => [] },
+    bar:           { type: [String], default: () => [] },
+    servicios_generales: { type: [String], default: () => [] },
     administracion:{ type: [String], default: () => [] }
   },
   // formatos que estan en varias carpetas pero son la MISMA fuente de datos

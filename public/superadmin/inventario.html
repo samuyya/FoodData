@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventario - Superadmin</title>
+  <link rel="icon" href="/img/icon-fooddata-favicon.png" type="image/png" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="stylesheet" href="/css/inventarios.css" />
+</head>
+<body class="sub-body inv">
+  <header class="sub-topbar">
+    <div class="sub-topbar-inner">
+      <button type="button" id="btn-volver" class="btn-secundario btn-volver-sub">← Volver al panel</button>
+
+      <div class="sub-encabezado">
+        <div class="sub-titulo-grupo">
+          <h1 class="titulo-pagina">Lista de inventario</h1>
+          <p class="subtitulo-pagina">
+            Empresa: <strong id="nombre-empresa">...</strong>
+          </p>
+        </div>
+        <img src="/img/logo-solo.fooddata.png" class="menu-marca-logo" alt="FoodData" />
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="sub-main">
+    <p class="nota-inv" id="aviso-modulo" hidden>Esta empresa todavía no tiene activo el módulo de Inventarios. Puedes dejarle la lista lista desde aquí y activarlo después en "Editar".</p>
+
+    <section class="card">
+      <div class="fila-titulo">
+        <h2>Ítems del establecimiento</h2>
+        <button type="button" class="btn-sec" id="btn-plantilla">Cargar plantilla de restaurante</button>
+      </div>
+      <p class="ayuda">La lista con la que arranca la empresa. La plantilla agrega los ítems más comunes de un restaurante (los que ya existen no se repiten). Después el administrador del establecimiento la ajusta desde su módulo.</p>
+      <div class="tabla-scroll"><table class="editar-tabla">
+        <thead><tr><th>Nombre</th><th>Categoría</th><th>Unidad</th><th>Valor por unidad</th><th>Se compra por <em class="meta">(opcional)</em></th><th>Se cuenta</th><th></th></tr></thead>
+        <tbody id="tb-editar"></tbody>
+      </table></div>
+      <div class="fila-botones" style="margin-top:1rem">
+        <button type="button" class="btn-mini" id="btn-agregar-fila">+ Agregar ítem</button>
+        <div class="botones"><span class="msg" id="msg-editar"></span><button type="button" class="btn-pri" id="btn-guardar-lista">Guardar cambios</button></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/util.js"></script>
+  <script src="/js/superadmin-inventario.js"></script>
+</body>
+</html>

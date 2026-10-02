@@ -3,6 +3,7 @@ node_modules/
 google-credentials.json
 datos/excel/*.xlsx
 datos/asistencia/
+datos/inventario/
 public/img/logos/*
 !public/img/logos/.gitkeep
 *.log

@@ -25,6 +25,8 @@ const empleadosRoutes = require('./routes/empleados');
 const asistenciaRoutes = require('./routes/asistencia');
 const documentosRoutes = require('./routes/documentos');
 const backupRoutes = require('./routes/backup');
+const inventarioRoutes = require('./routes/inventario');
+const contarRoutes = require('./routes/contar');
 const { requireModulo } = require('./middleware/sesion');
 const googleSheets = require('./servicios/googleSheets');
 const Registro = require('./models/Registro');
@@ -142,6 +144,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'presentacion.html'));
 });
 
+// el link que abre el celular para contar el inventario: la pagina lee el token de la url
+app.get('/contar/:token', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'contar.html'));
+});
+
 // 1h de cache en el navegador para CSS/JS/imagenes — asi no se vuelven a pedir
 // en cada cambio de pagina dentro de la misma sesion. no mas que eso porque el
 // proyecto se sigue actualizando seguido y no quiero que quede algo viejo cacheado
@@ -159,6 +166,9 @@ app.use('/api/asistencia',requireModulo('asistencia'),asistenciaRoutes);
 // documentos: el superadmin sube; las empresas leen los suyos solo si tienen el modulo "programas"
 app.use('/api/documentos', documentosRoutes);
 app.use('/api/backup', backupRoutes);
+// inventarios es un modulo adicional; /api/contar es el link publico para contar desde otros celulares
+app.use('/api/inventario', requireModulo('inventarios'), inventarioRoutes);
+app.use('/api/contar', contarRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, mensaje: 'Servidor en linea' });

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventarios - FoodData</title>
+  <link rel="icon" href="/img/icon-fooddata-favicon.png" type="image/png" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="stylesheet" href="/css/inventarios.css" />
+</head>
+<body class="sub-body inv">
+  <header class="sub-topbar">
+    <div class="sub-topbar-inner">
+      <button type="button" id="btn-volver" class="btn-secundario btn-volver-sub">← Volver al menú</button>
+
+      <div class="sub-encabezado">
+        <div class="sub-titulo-grupo">
+          <h1 class="titulo-pagina">Inventarios</h1>
+          <p class="subtitulo-pagina">Materia prima, bebidas, menaje, mobiliario e insumos del establecimiento.</p>
+        </div>
+
+        <section class="establecimiento">
+          <div class="establecimiento-logo">
+            <img loading="lazy" decoding="async" id="logo-empresa" class="establecimiento-logo-img" alt="Logo de la empresa" hidden />
+            <span id="logo-placeholder" class="establecimiento-logo-ph">Logo</span>
+          </div>
+          <div class="establecimiento-info">
+            <span class="establecimiento-label">Restaurante</span>
+            <strong id="nombre-empresa" class="establecimiento-nombre">...</strong>
+          </div>
+        </section>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="sub-main">
+      <div class="tabs" role="tablist" aria-label="Secciones de Inventarios">
+        <button type="button" class="tab" role="tab" aria-selected="true" data-tab="ingresos" style="--c:#15803d;--t:#e9f7ee">
+          <span class="tab-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10m0 0-4-4m4 4 4-4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg><span class="tab-badge" id="badge-tab-ingresos"></span></span>
+          <span class="tab-tx"><b>Ingresos</b><small>Todo lo que entra</small></span>
+        </button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-tab="bajas" style="--c:#b91c1c;--t:#fdeeee">
+          <span class="tab-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14V4m0 0L8 8m4-4 4 4"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg><span class="tab-badge" id="badge-tab-bajas"></span></span>
+          <span class="tab-tx"><b>Bajas</b><small>Todo lo que sale</small></span>
+        </button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-tab="existencias" style="--c:#0b7a66;--t:#e6f7f2">
+          <span class="tab-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 12.5l2 2 4-4"/></svg><span class="tab-badge" id="badge-tab-existencias"></span></span>
+          <span class="tab-tx"><b>Inventario general</b><small id="sub-tab-existencias">El conteo y la lista</small></span>
+        </button>
+        <button type="button" class="tab" role="tab" aria-selected="false" data-tab="reportes" style="--c:#0e3a31;--t:#e7eeec">
+          <span class="tab-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16v-5M12 16V7M17 16v-8"/></svg></span>
+          <span class="tab-tx"><b>Reportes <svg class="tab-lock" viewBox="0 0 16 16" aria-label="pide clave"><rect x="3" y="7" width="10" height="7" rx="2"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg></b><small>Por día, mes o rango</small></span>
+        </button>
+      </div>
+
+      <!-- ingresos -->
+      <div class="panel" data-panel="ingresos">
+        <p class="aviso-curso" data-aviso-curso hidden></p>
+        <section class="card">
+          <h2>Registrar ingreso</h2>
+          <p class="ayuda">Cualquier cosa que entre al establecimiento: materia prima, menaje, mobiliario o insumos.</p>
+          <form class="form" id="form-ingreso" autocomplete="off">
+            <label class="campo c2"><span>Fecha</span><input type="date" id="ing-fecha" required></label>
+            <label class="campo c4"><span>Producto</span><input id="ing-producto" list="lista-items" required placeholder="Ej. Pechuga de pollo, Sillas, Detergente"></label>
+            <div class="info" id="ing-info" hidden></div>
+            <div class="nuevo-campos c6" id="ing-nuevo" hidden>
+              <div class="campo" style="width:100%"><span>¿Qué es?</span><div class="cat-botones" id="ing-cats" role="group" aria-label="Categoría"></div></div>
+            </div>
+            <label class="campo c2"><span>Cantidad</span>
+              <div class="cant"><input id="ing-cantidad" type="number" min="0" step="any" required placeholder="0"><select id="ing-unidad" class="unidad" aria-label="Unidad"></select></div>
+            </label>
+            <label class="campo c2"><span>Costo total</span><div class="pesos"><input id="ing-costo" inputmode="numeric" required placeholder="0"></div></label>
+            <label class="campo c2"><span>Proveedor <em>(opcional)</em></span><input id="ing-proveedor" list="proveedores"></label>
+            <label class="campo c3"><span>N.º de factura <em>(opcional)</em></span><input id="ing-factura"></label>
+            <label class="campo c3"><span>Registrado por</span><input id="ing-por" required placeholder="Tu nombre" autocomplete="name"></label>
+            <div class="campo c6 foto-campo"><span>Foto de la factura <em>(opcional)</em></span>
+              <div class="foto-botones">
+                <label class="foto-btn solo-tactil"><input type="file" accept="image/*" capture="environment" id="ing-foto-cam" class="oculto-file">📷 Tomar foto</label>
+                <label class="foto-btn"><input type="file" accept="image/*" id="ing-foto" class="oculto-file">🖼️ <span class="txt-tactil">Elegir de la galería</span><span class="txt-pc">Elegir archivo</span></label>
+              </div>
+              <div class="foto-elegida" hidden><img id="ing-foto-prev" class="foto-prev" hidden alt="Vista previa de la factura"><button type="button" class="btn-mini" data-quitar-foto="ing-foto">Quitar foto</button></div>
+            </div>
+            <div class="acciones"><span class="msg" id="msg-ingreso"></span><button class="btn-pri" type="submit">Guardar ingreso</button></div>
+          </form>
+        </section>
+
+        <section class="card">
+          <div class="fila-titulo"><h2>Últimos ingresos</h2><span class="meta" id="meta-ingresos"></span></div>
+          <div class="tabla-scroll"><table>
+            <thead><tr><th>Fecha</th><th>Producto</th><th class="num">Cantidad</th><th>Proveedor</th><th class="num">Costo</th><th></th></tr></thead>
+            <tbody id="tb-ingresos"></tbody>
+          </table></div>
+          <p class="ver-historial"><button type="button" class="link" data-accion="ver-historial">Ver correcciones y borrados 🔒</button></p>
+        </section>
+      </div>
+
+      <!-- bajas -->
+      <div class="panel" data-panel="bajas" hidden>
+        <p class="aviso-curso" data-aviso-curso hidden></p>
+        <section class="card">
+          <h2>Registrar baja</h2>
+          <p class="ayuda">Cualquier cosa que sale del inventario y ya no se va a usar: algo que se venció, se dañó, se rompió o se perdió.</p>
+          <form class="form" id="form-baja" autocomplete="off">
+            <label class="campo c2"><span>Fecha</span><input type="date" id="baja-fecha" required></label>
+            <label class="campo c4"><span>Producto</span><input id="baja-producto" list="lista-items" required placeholder="Ej. Leche entera, Copas de vino"></label>
+            <div class="info" id="baja-info" hidden></div>
+            <label class="campo c2"><span>Cantidad</span>
+              <div class="cant"><input id="baja-cantidad" type="number" min="0" step="any" required placeholder="0"><input id="baja-unidad" disabled aria-label="Unidad"></div>
+            </label>
+            <label class="campo c2"><span>Costo de la pérdida</span><div class="pesos"><input id="baja-costo" inputmode="numeric" required placeholder="0"></div></label>
+            <label class="campo c2"><span>Registrado por</span><input id="baja-por" required placeholder="Tu nombre" autocomplete="name"></label>
+            <div class="campo c6"><span>Motivo</span><div class="chips" id="motivos" role="group" aria-label="Motivo de la baja"></div></div>
+            <label class="campo c6" id="campo-otro" hidden><span>¿Cuál fue el motivo?</span><input id="baja-otro" placeholder="Ej. Se lo llevó un cliente por error"></label>
+            <label class="campo c6"><span>Observación <em>(opcional)</em></span><input id="baja-obs" placeholder="Ej. Se cayó la bandeja en el servicio de la noche"></label>
+            <div class="campo c6 foto-campo"><span>Foto de lo dañado <em>(opcional)</em></span>
+              <div class="foto-botones">
+                <label class="foto-btn solo-tactil"><input type="file" accept="image/*" capture="environment" id="baja-foto-cam" class="oculto-file">📷 Tomar foto</label>
+                <label class="foto-btn"><input type="file" accept="image/*" id="baja-foto" class="oculto-file">🖼️ <span class="txt-tactil">Elegir de la galería</span><span class="txt-pc">Elegir archivo</span></label>
+              </div>
+              <div class="foto-elegida" hidden><img id="baja-foto-prev" class="foto-prev" hidden alt="Vista previa de la foto"><button type="button" class="btn-mini" data-quitar-foto="baja-foto">Quitar foto</button></div>
+            </div>
+            <div class="acciones"><span class="msg" id="msg-baja"></span><button class="btn-pri" type="submit">Guardar baja</button></div>
+          </form>
+        </section>
+
+        <section class="card">
+          <div class="fila-titulo"><h2>Últimas bajas</h2><span class="meta" id="meta-bajas"></span></div>
+          <div class="tabla-scroll"><table>
+            <thead><tr><th>Fecha</th><th>Producto</th><th class="num">Cantidad</th><th>Motivo</th><th class="num">Costo</th><th></th></tr></thead>
+            <tbody id="tb-bajas"></tbody>
+          </table></div>
+          <p class="ver-historial"><button type="button" class="link" data-accion="ver-historial">Ver correcciones y borrados 🔒</button></p>
+        </section>
+      </div>
+
+      <!-- inventario general -->
+      <div class="panel" data-panel="existencias" hidden>
+        <div class="sugerencia-mes" id="aviso-inv"></div>
+        <section class="card" id="card-inv"></section>
+
+
+        <section class="card" id="card-exist">
+          <div class="fila-titulo">
+            <h2>Lista general</h2>
+            <button type="button" class="btn-sec" id="btn-editar-lista">✏️ Editar lista 🔒</button>
+          </div>
+          <p class="ayuda">Los ítems que se cuentan en el inventario general. Las cantidades y los valores se ven en Reportes.</p>
+          <div class="barra-filtros">
+            <div class="chips" id="filtro-cat" role="group" aria-label="Filtrar por categoría"></div>
+            <input class="buscar" id="buscar" placeholder="Buscar ítem" aria-label="Buscar ítem">
+          </div>
+          <div class="lista-general" id="lista-general"></div>
+        </section>
+
+        <section class="card" id="card-editar" hidden>
+          <div class="fila-titulo"><h2>Editar lista de ítems</h2><span class="admin-tag">🔓 Administrador</span></div>
+          <p class="ayuda">Cambia nombres, categorías, unidades o valores, agrega ítems o borra los que ya no se usan. Un ítem borrado deja de aparecer, pero sus movimientos viejos siguen en los reportes. "Se cuenta" indica si entra en el inventario general.</p>
+          <div class="tabla-scroll"><table class="editar-tabla">
+            <thead><tr><th>Nombre</th><th>Categoría</th><th>Unidad</th><th>Valor por unidad</th><th>Se compra por <em class="meta">(opcional)</em></th><th>Se cuenta</th><th></th></tr></thead>
+            <tbody id="tb-editar"></tbody>
+          </table></div>
+          <div class="unir" id="unir">
+            <b>🔗 Unir ítems repetidos</b>
+            <p>Si el mismo producto quedó dos veces con nombres distintos (por ejemplo "pechuga pollo" y "Pechuga de pollo"), únelos: las compras y bajas del primero pasan al segundo.</p>
+            <div class="unir-fila">
+              <label class="campo"><span>Este ítem</span><select id="unir-de"></select></label>
+              <label class="campo"><span>Se une a</span><select id="unir-a"></select></label>
+              <button type="button" class="btn-sec" id="btn-unir">Unir</button>
+            </div>
+            <span class="msg" id="msg-unir"></span>
+          </div>
+          <div id="editar-pend"></div>
+          <div class="fila-botones" style="margin-top:1rem">
+            <button type="button" class="btn-mini" id="btn-agregar-fila">+ Agregar ítem</button>
+            <div class="botones"><span class="msg" id="msg-editar"></span><button type="button" class="btn-sec" id="btn-cancelar-editar">Cancelar</button><button type="button" class="btn-pri" id="btn-guardar-lista">Guardar cambios</button></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- reportes -->
+      <div class="panel" data-panel="reportes" hidden>
+        <section class="card candado" id="candado">
+          <div class="ic">🔒</div>
+          <h2>Reportes</h2>
+          <p>Aquí se ven las cifras de dinero del establecimiento. Pide la clave de administrador, igual que el reporte de formatos.</p>
+          <button type="button" class="btn-pri" id="btn-desbloquear">Ingresar clave de administrador</button>
+        </section>
+
+        <div class="panel" id="reportes" hidden>
+          <section class="card">
+            <div class="fila-titulo"><h2>Generar reporte</h2><span class="admin-tag" id="rep-admin">🔓 Administrador</span></div>
+            <p class="ayuda">Elige qué quieres ver y de qué periodo.</p>
+            <div class="filtros-rep">
+              <label class="campo"><span>Tipo de reporte</span>
+                <select id="rep-tipo">
+                  <option value="general">General</option>
+                  <option value="ingresos">Solo ingresos</option>
+                  <option value="bajas">Solo bajas</option>
+                  <option value="cierre">Cierre del mes y diferencias</option>
+                  <option value="existencias">Lo que hay hoy</option>
+                  <option value="proveedores">Por proveedor</option>
+                  <option value="cambios">Correcciones y borrados</option>
+                </select>
+              </label>
+              <label class="campo" id="campo-cierre" hidden><span>Cierre</span><select id="rep-cierre"></select></label>
+              <label class="campo" id="campo-periodo"><span>Periodo</span>
+                <select id="rep-periodo">
+                  <option value="hoy">Hoy</option>
+                  <option value="semana">Últimos 7 días</option>
+                  <option value="mes">Este mes</option>
+                  <option value="mesant" selected id="op-mesant">Mes anterior</option>
+                  <option value="rango">Rango de fechas</option>
+                </select>
+              </label>
+              <label class="campo" id="campo-cat"><span>Categoría</span><select id="rep-cat"></select></label>
+              <label class="campo" id="campo-item"><span>Producto <em>(opcional)</em></span><input id="rep-item" list="lista-items" placeholder="Todos"></label>
+              <div class="rango" id="rep-rango" hidden>
+                <label class="campo"><span>Desde</span><input type="date" id="rep-desde"></label>
+                <label class="campo"><span>Hasta</span><input type="date" id="rep-hasta"></label>
+              </div>
+            </div>
+          </section>
+          <section class="card" id="salida"></section>
+        </div>
+      </div>
+    </main>
+
+<div class="modal-fondo" id="modal-mov" hidden>
+  <div class="modal ancho" role="dialog" aria-modal="true" aria-labelledby="mov-titulo">
+    <h2 id="mov-titulo">Corregir</h2>
+    <p id="mov-sub"></p>
+    <div class="form" id="mov-form"></div>
+    <span class="msg" id="mov-msg"></span>
+    <div id="mov-borrar"></div>
+    <div class="fila-botones"><button type="button" class="btn-borrar" id="mov-btn-borrar">🗑 Borrar registro</button>
+      <div class="botones"><button type="button" class="btn-sec" id="mov-cancelar">Cancelar</button><button type="button" class="btn-pri" id="mov-guardar">Guardar corrección</button></div></div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-foto" hidden>
+  <div class="modal ancho" role="dialog" aria-modal="true" aria-labelledby="foto-titulo">
+    <h2 id="foto-titulo">Foto</h2>
+    <img class="foto-grande" id="foto-img" alt="">
+    <div class="fila-botones"><button type="button" class="btn-sec" id="foto-cerrar">Cerrar</button></div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-precios" hidden>
+  <div class="modal ancho" role="dialog" aria-modal="true" aria-labelledby="precios-titulo">
+    <h2 id="precios-titulo">Precios</h2>
+    <p id="precios-sub"></p>
+    <div class="tabla-scroll" id="precios-tabla"></div>
+    <div class="fila-botones"><button type="button" class="btn-sec" id="precios-cerrar">Cerrar</button></div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-exportar" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="exp-titulo">
+    <h2 id="exp-titulo">Descargar Excel</h2>
+    <p>¿Qué quieres incluir?</p>
+    <div class="opcion-export">
+      <label><input type="radio" name="exp-que" value="resumen" checked><span><b>Solo el resumen</b><small>Las cifras principales y las gráficas. Ocupa menos papel.</small></span></label>
+      <label><input type="radio" name="exp-que" value="todo"><span><b>Resumen y detalle</b><small id="exp-detalle-txt">Además, la lista de cada movimiento, uno por uno.</small></span></label>
+    </div>
+    <p class="msg ok" id="exp-msg"></p>
+    <div class="fila-botones"><button type="button" class="btn-sec" id="exp-cancelar">Cancelar</button><button type="button" class="btn-pri" id="exp-ok">Descargar</button></div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-admin" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+    <h2 id="modal-titulo">Clave de administrador</h2>
+    <p id="modal-texto"></p>
+    <form id="form-admin" autocomplete="off">
+      <label class="campo"><span>Contraseña de administrador</span><input type="password" id="admin-password" autocomplete="current-password" required></label>
+      <p class="msg err" id="admin-msg"></p>
+      <div class="fila-botones"><button type="button" class="btn-sec" id="modal-cancelar">Cancelar</button><button type="submit" class="btn-pri" id="modal-ok">Continuar</button></div>
+    </form>
+  </div>
+</div>
+
+<datalist id="lista-items"></datalist>
+<datalist id="proveedores"></datalist>
+
+  <script src="/js/util.js"></script>
+  <script src="/js/inventarios.js"></script>
+</body>
+</html>

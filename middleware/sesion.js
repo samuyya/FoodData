@@ -1,4 +1,4 @@
-const { MODULOS_VALIDOS } = require('../models/Empresa');
+const { MODULOS_BASE } = require('../models/Empresa');
 
 function requireEmpresa(req, res, next) {
   if (!req.session || !req.session.empresa) {
@@ -25,7 +25,7 @@ function requireModulo(modulo) {
     }
     const modulos = (req.session.empresa.modulosActivos && req.session.empresa.modulosActivos.length)
       ? req.session.empresa.modulosActivos
-      : MODULOS_VALIDOS;
+      : MODULOS_BASE;
     if (!modulos.includes(modulo)) {
       return res.status(403).json({ ok: false, error: 'Tu empresa no tiene este módulo habilitado' });
     }

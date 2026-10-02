@@ -2,7 +2,10 @@ const mongoose = require('mongoose');
 const { FORMATOS } = require('../formatos');
 
 const IDS_FORMATOS = FORMATOS.map(f => f.id);
-const MODULOS_VALIDOS = ['formatos', 'asistencia', 'capacitaciones', 'programas'];
+// inventarios es un modulo adicional (se cobra aparte): es valido pero no
+// viene encendido por defecto, el superadmin lo activa a mano
+const MODULOS_BASE = ['formatos', 'asistencia', 'capacitaciones', 'programas'];
+const MODULOS_VALIDOS = [...MODULOS_BASE, 'inventarios'];
 
 const empresaSchema = new mongoose.Schema({
   nombre: { type: String, required: true, trim: true },
@@ -30,7 +33,7 @@ const empresaSchema = new mongoose.Schema({
   // modulos del menu principal habilitados para la empresa (cuales botones ve)
   modulosActivos: {
     type: [String],
-    default: () => MODULOS_VALIDOS.slice(),
+    default: () => MODULOS_BASE.slice(),
     validate: {
       validator: arr => arr.every(m => MODULOS_VALIDOS.includes(m)),
       message: 'Módulo inválido'
@@ -46,8 +49,14 @@ const empresaSchema = new mongoose.Schema({
     viernes:   { type: Number, default: 7 },
     sabado:    { type: Number, default: 7 },
     domingo:   { type: Number, default: 7 }
+  },
+  // metas del food cost (% del costo frente a lo vendido) para el reporte de inventarios
+  metasFoodCost: {
+    comida:  { type: Number, default: 32 },
+    bebidas: { type: Number, default: 25 }
   }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Empresa', empresaSchema);
 module.exports.MODULOS_VALIDOS = MODULOS_VALIDOS;
+module.exports.MODULOS_BASE = MODULOS_BASE;

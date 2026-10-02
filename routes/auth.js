@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const Empresa = require('../models/Empresa');
-const { MODULOS_VALIDOS } = Empresa;
+const { MODULOS_BASE } = Empresa;
 const Superadmin = require('../models/Superadmin');
 const { limiteLogin } = require('../middleware/limites');
 const { ah } = require('../middleware/sesion');
@@ -67,7 +67,7 @@ router.post('/login', limiteLogin, ah(async (req, res) => {
       logo: empresa.logo,
       modulosActivos: (empresa.modulosActivos && empresa.modulosActivos.length > 0)
         ? empresa.modulosActivos
-        : MODULOS_VALIDOS
+        : MODULOS_BASE
     };
     res.json({ ok: true, rol: 'empresa', redirect: '/menu.html', empresa: req.session.empresa });
   });

@@ -1051,6 +1051,17 @@ textarea:focus {
   border-color: #6ee7b7;
 }
 
+/* inventarios en el menu */
+.menu-badge--aviso { background: var(--color-aviso-bg); color: var(--color-aviso); border-color: var(--color-aviso-borde); }
+.menu-boton--nuevo { border-color: var(--color-primario); background: #f3faf8; }
+.chip-nuevo { font-size: .7rem; font-weight: 700; background: var(--color-primario); color: #0e3a31; padding: .15rem .5rem; border-radius: 999px; margin-left: .4rem; vertical-align: middle; }
+.sugerencia-mes:empty { display: none; }
+.sugerencia-mes { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .3rem .9rem; align-items: start; background: var(--color-aviso-bg); border: 1px solid var(--color-aviso-borde); border-radius: 12px; padding: .95rem 1.05rem; margin-bottom: 1.2rem; }
+.sugerencia-mes .ic { font-size: 1.5rem; line-height: 1; grid-row: span 2; }
+.sugerencia-mes b { color: var(--color-aviso); }
+.sugerencia-mes p { margin: .15rem 0 0; font-size: .9rem; color: var(--color-texto-medio); }
+.sugerencia-mes .botones { grid-column: 2; margin-top: .55rem; display: flex; gap: .5rem; flex-wrap: wrap; }
+
 .menu-boton-flecha {
   font-size: 1.35rem;
   font-weight: 700;

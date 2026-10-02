@@ -136,7 +136,33 @@ async function borrarLogo(logoValue) {
   catch (e) { /* si ya no existe, no pasa nada */ }
 }
 
+// fotos de inventario (factura de una compra o lo danado de una baja). privadas
+// igual que las de asistencia: solo se sirven por el endpoint que revisa la empresa
+const CARPETA_INV = path.join(__dirname, '..', 'datos', 'inventario');
+
+async function guardarFotoInventario(empresaId, buffer) {
+  const nombre = `mov-${Date.now()}-${Math.round(Math.random() * 1e6)}.jpg`;
+  if (usarCloudinary) {
+    const publicId = `${empresaId}/inventario/${quitarExtension(nombre)}`;
+    await subirBuffer(buffer, { public_id: publicId, resource_type: 'image', type: 'authenticated' });
+    return publicId;
+  }
+  const dir = path.join(CARPETA_INV, String(empresaId));
+  await fs.promises.mkdir(dir, { recursive: true });
+  await fs.promises.writeFile(path.join(dir, nombre), buffer);
+  return `${empresaId}/${nombre}`;
+}
+
+async function obtenerFotoInventario(referencia) {
+  if (usarCloudinary) return bajarAutenticado(referencia, 'image');
+  const ruta = path.join(CARPETA_INV, referencia);
+  if (!fs.existsSync(ruta)) return null;
+  return fs.promises.readFile(ruta);
+}
+
 module.exports = {
+  guardarFotoInventario,
+  obtenerFotoInventario,
   guardarFotoAsistencia,
   obtenerFotoAsistencia,
   borrarFotoAsistencia,

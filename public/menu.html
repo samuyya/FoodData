@@ -25,6 +25,8 @@
       </div>
     </section>
 
+    <div class="sugerencia-mes" id="aviso-menu"></div>
+
     <h2 class="menu-label">Menú Principal</h2>
 
     <nav class="menu-botones">
@@ -49,6 +51,14 @@
       <button type="button" class="menu-boton" id="btn-programas">
         <span class="menu-boton-icono">🗂️</span>
         <span class="menu-boton-texto">Programas</span>
+        <span class="menu-boton-flecha">›</span>
+      </button>
+      <button type="button" class="menu-boton menu-boton--nuevo" id="btn-inventarios" hidden>
+        <span class="menu-boton-icono">📦</span>
+        <span class="menu-boton-texto">
+          <span>Inventarios <span class="chip-nuevo">Nuevo</span></span>
+          <span id="badge-inv" class="menu-badge menu-badge--aviso" hidden></span>
+        </span>
         <span class="menu-boton-flecha">›</span>
       </button>
     </nav>

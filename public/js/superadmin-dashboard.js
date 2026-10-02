@@ -195,6 +195,7 @@ async function cargarEmpresas() {
     const botones = estaActiva
       ? `<button type="button" class="btn-secundario btn-editar-empresa">Editar</button>
          <button type="button" class="btn-secundario btn-documentos-empresa">📎 Documentos</button>
+         <button type="button" class="btn-secundario btn-inventario-empresa">📦 Inventario</button>
          <button type="button" class="btn-secundario btn-desactivar-empresa">Desactivar</button>`
       : `<button type="button" class="btn-secundario btn-reactivar-empresa">Reactivar</button>
          <button type="button" class="btn-peligro btn-eliminar-empresa-def">Eliminar definitivamente</button>`;
@@ -212,6 +213,9 @@ async function cargarEmpresas() {
       li.querySelector('.btn-editar-empresa').addEventListener('click', () => abrirModalEditar(emp._id));
       li.querySelector('.btn-documentos-empresa').addEventListener('click', () => {
         window.location.href = `/superadmin/documentos.html?empresa=${encodeURIComponent(emp._id)}`;
+      });
+      li.querySelector('.btn-inventario-empresa').addEventListener('click', () => {
+        window.location.href = `/superadmin/inventario.html?empresa=${encodeURIComponent(emp._id)}`;
       });
       li.querySelector('.btn-desactivar-empresa').addEventListener('click', () => desactivarEmpresa(emp));
 

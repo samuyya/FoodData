@@ -26,4 +26,11 @@ const limiteBackup = crearLimite(
   'Demasiados intentos. Espera unos minutos e intenta de nuevo.'
 );
 
-module.exports = { limiteLogin, limiteAdmin, limiteBackup };
+// el codigo del link para contar desde otros celulares. ademas de esto, cada link
+// se bloquea solo a los 5 intentos fallidos (routes/contar.js)
+const limiteContar = crearLimite(
+  20,
+  'Demasiados intentos. Espera unos minutos e intenta de nuevo.'
+);
+
+module.exports = { limiteLogin, limiteAdmin, limiteBackup, limiteContar };

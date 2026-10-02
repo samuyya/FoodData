@@ -78,6 +78,35 @@ async function cargarBadgePendientes() {
   } catch (e) { /* silencio: si falla, el menu sigue funcionando */ }
 }
 
+// inventarios: aviso del inventario general del mes que termino y el badge del boton
+const btnInventarios = document.getElementById('btn-inventarios');
+btnInventarios.addEventListener('click', () => { window.location.href = '/inventarios.html'; });
+
+async function cargarAvisoInventario() {
+  try {
+    const r = await fetch('/api/inventario/resumen-menu');
+    if (!r.ok) return;
+    const d = await r.json();
+    const badge = document.getElementById('badge-inv');
+    if (d.enviado) badge.textContent = 'Inventario esperando aprobación';
+    else if (d.sugerido || d.enCurso) badge.textContent = 'Inventario general sugerido';
+    badge.hidden = !(d.enviado || d.sugerido || d.enCurso);
+
+    const aviso = document.getElementById('aviso-menu');
+    let pospuesto = false;
+    try { pospuesto = d.sugerido && localStorage.getItem('fd_inv_aviso_' + d.sugerido.clave) === '1'; } catch (_) {}
+    if (!d.sugerido || pospuesto) { aviso.innerHTML = ''; return; }
+    aviso.innerHTML = `<span class="ic">📦</span><div><b>Terminó ${d.sugerido.mes}: es buen momento para el inventario general.</b>
+      <p>Se cuenta todo lo que hay: materia prima, bebidas, menaje, mobiliario e insumos. Se puede repartir por partes entre varias personas.</p></div>
+      <div class="botones"><button type="button" class="btn-primario" id="aviso-ir">Ir al inventario general</button><button type="button" class="btn-secundario" id="aviso-no">Ahora no</button></div>`;
+    document.getElementById('aviso-ir').onclick = () => { window.location.href = '/inventarios.html#inventario-general'; };
+    document.getElementById('aviso-no').onclick = () => {
+      try { localStorage.setItem('fd_inv_aviso_' + d.sugerido.clave, '1'); } catch (_) {}
+      aviso.innerHTML = '';
+    };
+  } catch (e) { console.log('no se pudo cargar el aviso de inventario:', e.message); }
+}
+
 async function iniciar() {
   try {
     const rMe = await fetch('/api/auth/me');
@@ -90,6 +119,11 @@ async function iniciar() {
     fetch('/api/admin/limpiar', { method: 'POST' }).catch(() => {});
     if (!Array.isArray(me.empresa.modulosActivos) || me.empresa.modulosActivos.includes('formatos')) {
       cargarBadgePendientes();
+    }
+    // inventarios es adicional: solo aparece si el superadmin lo activo
+    if ((me.empresa.modulosActivos || []).includes('inventarios')) {
+      btnInventarios.hidden = false;
+      cargarAvisoInventario();
     }
   } catch (err) {
     document.body.innerHTML = '<p style="padding:2rem;color:#b91c1c">Error cargando el menú. Recarga la página.</p>';

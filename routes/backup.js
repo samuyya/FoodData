@@ -7,16 +7,7 @@ const { limiteBackup } = require('../middleware/limites');
 
 const router = express.Router();
 
-const MODELOS = [
-  require('../models/Empresa'),
-  require('../models/Administrador'),
-  require('../models/EmpleadoLista'),
-  require('../models/Registro'),
-  require('../models/Asistencia'),
-  require('../models/Documento'),
-  require('../models/Superadmin'),
-  require('../models/SaldoHorasExtra')
-];
+const MODELOS = require('../models/todos');
 
 function tokenValido(header, esperado) {
   if (!header || !header.startsWith('Bearer ')) return false;

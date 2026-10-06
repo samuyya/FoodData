@@ -16,16 +16,7 @@ const zlib = require('zlib');
 const mongoose = require('mongoose');
 const { conectarDB } = require('../db');
 
-const MODELOS = [
-  require('../models/Empresa'),
-  require('../models/Administrador'),
-  require('../models/EmpleadoLista'),
-  require('../models/Registro'),
-  require('../models/Asistencia'),
-  require('../models/Documento'),
-  require('../models/Superadmin'),
-  require('../models/SaldoHorasExtra')
-];
+const MODELOS = require('../models/todos');
 
 const CARPETA_BACKUPS = path.join(__dirname, '..', 'backups');
 const RETENCION = 5; // cuantos backups viejos conservar

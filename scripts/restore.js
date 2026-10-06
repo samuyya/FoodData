@@ -13,15 +13,7 @@ const zlib = require('zlib');
 const mongoose = require('mongoose');
 const { conectarDB } = require('../db');
 
-const MODELOS = [
-  require('../models/Empresa'),
-  require('../models/Administrador'),
-  require('../models/EmpleadoLista'),
-  require('../models/Registro'),
-  require('../models/Asistencia'),
-  require('../models/Documento'),
-  require('../models/Superadmin')
-];
+const MODELOS = require('../models/todos');
 
 const CARPETA_BACKUPS = path.join(__dirname, '..', 'backups');
 
@@ -35,14 +27,17 @@ async function copiarCarpeta(origen, destino) {
 // el backup guarda ObjectId/Date como texto plano (asi quedan al pasar por JSON).
 // los devuelvo a su tipo real segun el schema del modelo antes de insertar —
 // si no, insertMany los guardaria como string y romperia queries futuras.
-function restaurarTipos(modelo, doc) {
-  for (const [campo, ruta] of Object.entries(modelo.schema.paths)) {
+function restaurarTipos(schema, doc) {
+  for (const [campo, ruta] of Object.entries(schema.paths)) {
     const valor = doc[campo];
     if (valor == null) continue;
     if (ruta.instance === 'ObjectId') {
       doc[campo] = new mongoose.Types.ObjectId(valor);
     } else if (ruta.instance === 'Date') {
       doc[campo] = new Date(valor);
+    } else if (ruta.schema) {
+      // subdocumentos (ej. acceso en el conteo) y listas de subdocumentos (ej. cambios)
+      [].concat(valor).forEach(v => restaurarTipos(ruta.schema, v));
     }
   }
   return doc;
@@ -83,7 +78,7 @@ async function main() {
       // si un documento viejo ya no pasa las validaciones del schema de HOY
       await modelo.collection.deleteMany({});
       if (docs.length > 0) {
-        await modelo.collection.insertMany(docs.map(d => restaurarTipos(modelo, d)));
+        await modelo.collection.insertMany(docs.map(d => restaurarTipos(modelo.schema, d)));
       }
     }
   }

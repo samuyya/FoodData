@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" />
-  <link rel="stylesheet" href="/css/presentacion.css" />
+  <link rel="stylesheet" href="/css/presentacion.css?v=2" />
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -67,7 +67,7 @@
         <a class="mod-link" href="#asistencia"><i><svg width="22" height="22"><use href="#i-camara"/></svg></i><span>Asistencia<small>Entradas y salidas con foto</small></span><svg class="mod-flecha" width="18" height="18"><use href="#i-flecha"/></svg></a>
         <a class="mod-link" href="#capacitaciones"><i><svg width="22" height="22"><use href="#i-libro"/></svg></i><span>Capacitaciones<small>Formación continua del personal</small></span><svg class="mod-flecha" width="18" height="18"><use href="#i-flecha"/></svg></a>
         <a class="mod-link" href="#programas"><i><svg width="22" height="22"><use href="#i-carpeta"/></svg></i><span>Programas<small>Plan de saneamiento básico</small></span><svg class="mod-flecha" width="18" height="18"><use href="#i-flecha"/></svg></a>
-        <a class="mod-link" href="#inventarios"><i><svg width="22" height="22"><use href="#i-caja"/></svg></i><span>Inventarios<small>Ingresos y pérdidas del mes</small></span><svg class="mod-flecha" width="18" height="18"><use href="#i-flecha"/></svg></a>
+        <a class="mod-link" href="#inventarios"><i><svg width="22" height="22"><use href="#i-caja"/></svg></i><span>Inventarios<small>Lo que entra, lo que sale y el gasto del mes</small></span><svg class="mod-flecha" width="18" height="18"><use href="#i-flecha"/></svg></a>
       </nav>
     </div>
   </section>
@@ -266,29 +266,31 @@
       <div class="modulo-texto">
         <span class="ceja"><svg width="44" height="16"><use href="#i-pista"/></svg>Inventarios</span>
         <h2>Monitoreo de inventarios.</h2>
-        <p class="modulo-bajada">Un módulo adicional pensado para el dueño. Registra a diario las compras de materia prima junto con las pérdidas, para conocer al cierre de cada mes cuánto se invirtió y cuánto se perdió.</p>
+        <p class="modulo-bajada">Un módulo pensado para el dueño. Registra lo que entra y lo que sale del establecimiento, y al cierre de cada mes muestra cuánto se gastó de verdad y qué hace falta.</p>
         <ul class="puntos">
-          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Registro de ingresos</strong><span>Cada compra de materia prima queda registrada con su costo el mismo día en que llega.</span></div></li>
-          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Control de pérdidas</strong><span>Cada baja se documenta con su motivo (vencimiento, daño o mal almacenamiento) y su costo.</span></div></li>
-          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Resumen mensual</strong><span>Total comprado y total perdido por carpeta, junto con el conteo de mobiliario y menaje.</span></div></li>
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Registro de ingresos</strong><span>Todo lo que entra al establecimiento queda registrado el mismo día con su costo: materia prima, bebidas, empaques, menaje, mobiliario e insumos. Se puede adjuntar la foto de la factura, y el sistema avisa cuando un producto llega más caro o más barato que en la última compra.</span></div></li>
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Control de pérdidas</strong><span>Cada baja se documenta con su motivo (vencimiento, daño, rotura o mal almacenamiento), su costo y una foto opcional. Si algo se corrige o se borra, queda registrado quién lo hizo y por qué.</span></div></li>
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Resumen mensual</strong><span>Al cerrar cada mes con el inventario general, el sistema muestra cuánto dinero se gastó en materia prima, bebidas y empaques, comparado con el mes anterior. También indica si falta menaje o mobiliario (por ejemplo, copas o sillas) y, si se registran las ventas, qué parte de lo vendido se fue en costo de producto (food cost).</span></div></li>
+          <li><span class="ok"><svg width="13" height="13"><use href="#i-check"/></svg></span><div><strong>Inventario general (compartido)</strong><span>El inventario general puede dividirse según las necesidades del restaurante y gestionarse desde cualquier dispositivo móvil mediante un enlace y un código de acceso exclusivo, otorgado y administrado únicamente por el responsable autorizado, quien también se encarga de su revisión y aprobación.</span></div></li>
         </ul>
         <p class="nota-chica">Es una referencia para el dueño, no contabilidad oficial.</p>
       </div>
       <div class="ventana" aria-hidden="true">
-        <div class="ventana-cabeza"><small>Cocina · Septiembre</small><strong>Inventario del mes</strong></div>
+        <div class="ventana-cabeza"><small>Cierre de septiembre · inventario del 1 oct</small><strong>Cuánto se gastó</strong></div>
         <div class="totales totales-plata">
-          <div><small>Comprado</small><b>$ 4.820.000</b></div>
-          <div><small>Perdido</small><b class="perdido">$ 186.400</b></div>
+          <div><small>Gasto del mes</small><b>$ 6.280.000</b></div>
+          <div><small>Perdido en bajas</small><b class="perdido">$ 186.400</b></div>
         </div>
         <table class="marcas bajas">
-          <thead><tr><th>Baja</th><th>Motivo</th><th>Costo</th></tr></thead>
+          <thead><tr><th>Categoría</th><th>Gasto</th><th>Frente a agosto</th></tr></thead>
           <tbody>
-            <tr><td>Leche entera 2 L</td><td class="motivo">Vencida</td><td>$ 9.800</td></tr>
-            <tr><td>Tomate chonto 3 kg</td><td class="motivo">Dañado</td><td>$ 10.500</td></tr>
-            <tr><td>Pechuga 1,5 kg</td><td class="motivo">Cadena de frío</td><td>$ 27.000</td></tr>
+            <tr><td>Materia prima</td><td>$ 4.120.000</td><td class="baja-ok">▼ 6 %</td></tr>
+            <tr><td>Bebidas</td><td>$ 1.730.000</td><td class="sube">▲ 5 %</td></tr>
+            <tr><td>Empaques</td><td>$ 430.000</td><td class="sube">▲ 2 %</td></tr>
           </tbody>
         </table>
-        <div class="menaje"><svg width="16" height="16"><use href="#i-local"/></svg>Conteo de menaje: faltan 4 copas y 2 cucharones frente a agosto.</div>
+        <div class="fc-linea"><span>Food cost de comida</span><b>29,1 %</b><span class="pill pill-ok">Dentro de la meta</span></div>
+        <div class="menaje"><svg width="16" height="16"><use href="#i-local"/></svg>Menaje: faltan 4 copas frente a lo que debería haber.</div>
       </div>
     </div>
   </section>
@@ -312,7 +314,7 @@
         <span class="grupo-titulo">Según lo que necesites <span class="pista-toque"><svg width="16" height="16"><use href="#i-toque"/></svg>Toca los interruptores para activar o quitar</span></span>
         <div class="mod"><div class="mod-cabeza"><strong>Asistencia</strong><button class="switch" type="button" role="switch" aria-checked="true" aria-label="Asistencia" data-mod="Asistencia"><i></i></button></div><p>Entradas y salidas con foto.</p></div>
         <div class="mod"><div class="mod-cabeza"><strong>Capacitaciones</strong><button class="switch" type="button" role="switch" aria-checked="true" aria-label="Capacitaciones" data-mod="Capacitaciones"><i></i></button></div><p>El personal se capacita a su ritmo.</p></div>
-        <div class="mod"><div class="mod-cabeza"><strong>Inventarios</strong><button class="switch" type="button" role="switch" aria-checked="true" aria-label="Inventarios" data-mod="Inventarios"><i></i></button></div><p>Compras y pérdidas del mes.</p></div>
+        <div class="mod"><div class="mod-cabeza"><strong>Inventarios</strong><button class="switch" type="button" role="switch" aria-checked="true" aria-label="Inventarios" data-mod="Inventarios"><i></i></button></div><p>Compras, pérdidas y gasto real del mes.</p></div>
         </div>
       </div>
       <p class="medida-resumen" aria-live="polite">Tu FoodData: <b id="resumen-mods">Formatos, Programas, Asistencia, Capacitaciones e Inventarios.</b></p>

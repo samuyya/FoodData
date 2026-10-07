@@ -115,7 +115,7 @@ describe('modulo de inventarios', () => {
 
     const cierre = await agent.get('/api/inventario/reporte?tipo=cierre');
     expect(cierre.body.id).toBe(ok.body.id);
-    expect(cierre.body.consumo.map(x => x.cat)).toEqual(['Materia prima', 'Bebidas', 'Insumos']);
+    expect(cierre.body.consumo.map(x => x.cat)).toEqual(['Materia prima', 'Bebidas', 'Empaques', 'Insumos']);
   });
 
   test('link para otros celulares: codigo, nombre y contar', async () => {
@@ -163,6 +163,58 @@ describe('modulo de inventarios', () => {
     const r = await cel.post(`/api/contar/${token}/entrar`).send({ codigo });
     expect(r.status).toBe(403);
     expect(r.body.motivo).toBe('bloqueado');
+  });
+
+  test('las ventas solo las escribe el administrador y se reemplazan por dia', async () => {
+    const { agent } = await empresaConAdmin();
+    const sin = await agent.post('/api/inventario/ventas').send({ fecha: '2026-02-05', comida: 100000 });
+    expect(sin.status).toBe(403);
+    await entrarAdmin(agent);
+    expect((await agent.post('/api/inventario/ventas').send({ fecha: '2026-02-05', comida: 100000 })).status).toBe(200);
+    expect((await agent.post('/api/inventario/ventas').send({ fecha: '2026-02-05', comida: 250000, dom: 50000 })).status).toBe(200);
+    expect((await agent.post('/api/inventario/ventas').send({ fecha: '2999-01-01', comida: 1 })).status).toBe(400);
+    const r = await agent.get('/api/inventario/reporte?tipo=foodcost');
+    expect(r.body.ultimas).toEqual([{ fecha: '2026-02-05', comida: 250000, bebidas: 0, dom: 50000 }]);
+  });
+
+  test('food cost: el primer cierre es punto de partida y el segundo usa costo real y ventas', async () => {
+    const { agent, empresa } = await empresaConAdmin();
+    const arroz = await ItemInventario.create({ empresa_id: empresa._id, nombre: 'Arroz', cat: 'Materia prima', u: 'kg', cuenta: true, precio: 4000, precioBase: 4000 });
+    const cerveza = await ItemInventario.create({ empresa_id: empresa._id, nombre: 'Cerveza', cat: 'Bebidas', u: 'und', cuenta: true, precio: 3000, precioBase: 3000 });
+    await entrarAdmin(agent);
+    const contar = async (a, c) => {
+      await agent.post('/api/inventario/conteo/iniciar');
+      await agent.post('/api/inventario/conteo/sumar').send({ itemId: String(arroz._id), valor: a });
+      await agent.post('/api/inventario/conteo/sumar').send({ itemId: String(cerveza._id), valor: c });
+      await agent.post('/api/inventario/conteo/enviar');
+      return (await agent.post('/api/inventario/conteo/aprobar')).body.id;
+    };
+    const primero = await contar(10, 24);
+    // el primer conteo se corre al 31 de enero para tener un periodo de verdad
+    const ConteoInventario = require('../models/ConteoInventario');
+    await ConteoInventario.updateOne({ _id: primero }, { $set: { fechaAprobado: '2026-01-31' } });
+    await ItemInventario.updateMany({ empresa_id: empresa._id }, { $set: { conteoFecha: '2026-01-31' } });
+
+    await agent.post('/api/inventario/movimientos').field({ tipo: 'ing', fecha: '2026-02-10', producto: 'Arroz', cantidad: '20', costo: '100000', por: 'Laura' });
+    await agent.post('/api/inventario/movimientos').field({ tipo: 'ing', fecha: '2026-02-10', producto: 'Cerveza', cantidad: '48', costo: '144000', por: 'Laura' });
+    await agent.post('/api/inventario/ventas').send({ fecha: '2026-02-05', comida: 300000, bebidas: 500000, dom: 100000 });
+    const segundo = await contar(5, 12);
+
+    const fc = (await agent.get('/api/inventario/reporte?tipo=foodcost')).body;
+    expect(fc.sel.id).toBe(segundo);
+    // arroz: 10 x 4.000 + 100.000 - 5 x 5.000 ; cerveza: 24 x 3.000 + 144.000 - 12 x 3.000
+    expect(fc.sel.comida).toEqual({ costo: 115000, venta: 400000 });
+    expect(fc.sel.bebidas).toEqual({ costo: 180000, venta: 500000 });
+    expect(fc.sel.semanas.length).toBeGreaterThan(0);
+    const partida = (await agent.get(`/api/inventario/reporte?tipo=foodcost&cierre=${primero}`)).body;
+    expect(partida.sel.partida).toBe(true);
+
+    // total al cierre en vez de ventas diarias
+    await agent.put('/api/inventario/foodcost/ajustes').send({ modo: 'total' });
+    await agent.put(`/api/inventario/cierres/${segundo}/ventas`).send({ comida: 1000000, bebidas: 600000, dom: 150000 });
+    const total = (await agent.get('/api/inventario/reporte?tipo=foodcost')).body;
+    expect(total.sel.comida.venta).toBe(1150000);
+    expect(total.sel.semanas).toBeNull();
   });
 
   test('el superadmin carga la plantilla de restaurante', async () => {

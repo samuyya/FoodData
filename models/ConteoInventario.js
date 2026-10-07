@@ -29,9 +29,11 @@ const conteoSchema = new mongoose.Schema({
   completo: { type: Boolean, default: false },
   fechaAprobado: { type: String, default: null },
   aprobadoPor: { type: String, default: '' },
+  // total de ventas del periodo, para quien no registra las ventas a diario
   ventas: {
     comida: { type: Number, default: 0 },
-    bebidas: { type: Number, default: 0 }
+    bebidas: { type: Number, default: 0 },
+    dom: { type: Number, default: 0 }
   }
 }, { timestamps: true });
 

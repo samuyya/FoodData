@@ -8,7 +8,7 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 const MESES_LARGOS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 const fechaCorta = f => { if (!f) return '—'; const [, m, d] = f.split('-'); return `${+d} ${MESES[m - 1]}` }
-const ICONO = { 'Materia prima': '🥩', 'Bebidas': '🍹', 'Menaje': '🍽️', 'Mobiliario': '🪑', 'Insumos': '🧴', 'Otros gastos': '🔧' }
+const ICONO = { 'Materia prima': '🥩', 'Bebidas': '🍹', 'Empaques': '📦', 'Menaje': '🍽️', 'Mobiliario': '🪑', 'Insumos': '🧴', 'Otros gastos': '🔧' }
 const NOMBRE_UNIDAD = { kg: 'Kilogramo', g: 'Gramo', lb: 'Libra', L: 'Litro', ml: 'Mililitro', und: 'Unidad', paquete: 'Paquete', caja: 'Caja' }
 
 let E = null                 // lo que manda el servidor
@@ -391,10 +391,17 @@ function pintarLista() {
 
 // editar lista (solo administrador)
 function abrirEditar() {
-  borrador = activos().map(i => ({ id: i.id, nombre: i.nombre, cat: i.cat, u: i.u, precio: i.precio, presNombre: i.pres ? i.pres.nombre : '', presCant: i.pres ? i.pres.cant : '', cuenta: i.cuenta }))
+  borrador = activos().map(i => ({ id: i.id, nombre: i.nombre, cat: i.cat, u: i.u, precio: i.precio, presNombre: i.pres ? i.pres.nombre : '', presCant: i.pres ? i.pres.cant : '', cuenta: i.cuenta, costoDe: i.costoDe }))
   $('card-editar').hidden = false
   pintarEditar()
   $('card-editar').scrollIntoView({ block: 'start' })
+}
+// materia prima y bebidas eligen si cuentan como comida o bebidas en el food cost (ej. vino para cocinar)
+function celdaCostoDe(it, k) {
+  if (it.cat === 'Materia prima' || it.cat === 'Bebidas') {
+    return `<select data-ed="${k}:costoDe" aria-label="Cuenta en el food cost como">${opciones(['Comida', 'Bebidas'], it.costoDe || (it.cat === 'Bebidas' ? 'Bebidas' : 'Comida'))}</select>`
+  }
+  return `<span class="costo-de">${it.cat === 'Empaques' ? 'Comida, si el ajuste los suma' : 'No entra'}</span>`
 }
 function pintarEditar() {
   const ops = activos().map(i => `<option value="${i.id}">${esc(i.nombre)} (${i.u})</option>`).join('')
@@ -410,6 +417,7 @@ function pintarEditar() {
     <td><div class="pesos"><input inputmode="numeric" value="${it.precio ? Math.round(it.precio).toLocaleString('es-CO') : ''}" data-ed="${k}:precio" aria-label="Valor por unidad"></div></td>
     <td><div class="presentacion"><input placeholder="Ej. Caja" data-ed="${k}:presNombre" value="${esc(it.presNombre)}" style="width:84px" aria-label="Presentación de compra"><span class="meta">de</span><input type="number" min="2" placeholder="24" data-ed="${k}:presCant" value="${esc(it.presCant)}" style="width:62px" aria-label="Cuántas unidades trae"></div></td>
     <td style="text-align:center"><input type="checkbox" ${it.cuenta ? 'checked' : ''} data-ed="${k}:cuenta" aria-label="Se cuenta en el inventario general" style="width:18px;height:18px;accent-color:var(--primario)"></td>
+    <td>${celdaCostoDe(it, k)}</td>
     <td>${it.borrar === 'confirmar' ? `<span class="confirmar-borrar">¿Borrar? <button type="button" class="btn-mini" data-borrar-si="${k}">Sí</button><button type="button" class="btn-mini" data-borrar-no="${k}">No</button></span>`
       : it.borrar ? `<button type="button" class="btn-mini" data-borrar-no="${k}">Deshacer</button>`
       : `<button type="button" class="btn-borrar" data-borrar="${k}">🗑 Borrar</button>`}</td></tr>`).join('')
@@ -418,7 +426,7 @@ function pintarEditar() {
 
 function pintarAvisos() {
   const cuerpo = E.sugerido ? `<span class="ic">📦</span><div><b>Terminó ${esc(E.sugerido.mes)}: es buen momento para el inventario general.</b>` +
-    '<p>Se cuenta todo lo que hay: materia prima, bebidas, menaje, mobiliario e insumos. Se puede repartir por partes entre varias personas.</p></div>' : ''
+    '<p>Se cuenta todo lo que hay: materia prima, bebidas, empaques, menaje, mobiliario e insumos. Se puede repartir por partes entre varias personas.</p></div>' : ''
   $('aviso-inv').innerHTML = E.sugerido && !E.conteo && !pospuesto(E.sugerido.clave) ? cuerpo : ''
   document.querySelectorAll('[data-aviso-curso]').forEach(p => {
     p.hidden = !E.conteo
@@ -434,6 +442,11 @@ function pintarAvisos() {
   $('badge-tab-existencias').title = estado
   $('sub-tab-existencias').textContent = estado || 'El conteo y la lista'
   $('sub-tab-existencias').classList.toggle('estado-tab', !!estado)
+  const faltan = E.faltanVentas || 0
+  $('badge-tab-reportes').textContent = faltan || ''
+  $('badge-tab-reportes').title = faltan ? 'Días de ventas sin registrar' : ''
+  $('sub-tab-reportes').textContent = faltan ? `Falta${faltan === 1 ? '' : 'n'} ${faltan} día${faltan === 1 ? '' : 's'} de ventas` : 'Por día, mes o rango'
+  $('sub-tab-reportes').classList.toggle('estado-tab', !!faltan)
 }
 
 function pintarListas() {
@@ -453,7 +466,7 @@ function rangoActual() {
   const p = $('rep-periodo').value, hoy = E.hoy
   const [a, m] = hoy.split('-').map(Number)
   const pad = n => String(n).padStart(2, '0')
-  $('rep-rango').hidden = p !== 'rango' || ['cierre', 'existencias', 'cambios'].includes($('rep-tipo').value)
+  $('rep-rango').hidden = p !== 'rango' || ['cierre', 'existencias', 'cambios', 'foodcost'].includes($('rep-tipo').value)
   if (p === 'hoy') return [hoy, hoy, `Hoy, ${fechaCorta(hoy)} de ${a}`]
   if (p === 'semana') { const d = new Date(a, m - 1, +hoy.slice(8) - 6); const ini = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; return [ini, hoy, `${fechaCorta(ini)} al ${fechaCorta(hoy)} de ${a}`] }
   if (p === 'mes') return [`${a}-${pad(m)}-01`, hoy, `${MESES_LARGOS[m - 1]} de ${a} (en curso)`.replace(/^./, s => s.toUpperCase())]
@@ -490,10 +503,6 @@ function htmlCierre(d) {
     <p class="info nuevo" style="margin-top:1rem"><span>Este reporte aparece cuando el administrador apruebe un inventario general.</span><button type="button" data-accion="ir-inventario">Ir al inventario general</button></p>`
   const porCat = c => d.consumo.find(x => x.cat === c)
   const prev = d.previo, mes = d.mesAnterior
-  const comida = porCat('Materia prima').real, bebidas = porCat('Bebidas').real
-  const fila = (nombre, costo, venta, meta) => venta
-    ? `<div class="kpi"><small>${nombre}</small><b>${(costo / venta * 100).toFixed(1).replace('.', ',')} %</b><span>${plata(costo)} de ${plata(venta)} vendidos · meta ${meta} %</span><br>${semaforo(costo / venta * 100, meta)}</div>`
-    : `<div class="kpi"><small>${nombre}</small><b>—</b><span>Escribe las ventas para calcularlo</span></div>`
   return `<div class="encab-rep"><div><h2>${esc(d.titulo)}</h2><span class="meta">${esc(d.subtitulo)}</span></div>${BOTONES}</div>
     <div class="kpis" style="margin-top:1rem">
       <div class="kpi"><small>Gasto del mes</small><b>${plata(d.gasto)}</b>${prev ? variacion(d.gasto, prev.gasto, mes) : ''}</div>
@@ -501,15 +510,7 @@ function htmlCierre(d) {
       <div class="kpi"><small>Bebidas</small><b>${plata(porCat('Bebidas').gasto)}</b>${prev ? variacion(porCat('Bebidas').gasto, prev.porCat['Bebidas'], mes) : ''}</div>
       <div class="kpi perdida"><small>Faltante en menaje y mobiliario</small><b>${plata(d.faltante)}</b>${prev ? variacion(d.faltante, prev.faltante, mes) : ''}</div>
     </div>
-    <h3 class="sub-tabla">Food cost <span class="meta">cuánto de lo vendido se fue en costo de producto</span></h3>
-    <div class="fc-form">
-      <label class="campo"><span>Ventas de comida</span><div class="pesos"><input inputmode="numeric" data-fc="comida" value="${d.ventas.comida ? d.ventas.comida.toLocaleString('es-CO') : ''}" placeholder="0"></div></label>
-      <label class="campo"><span>Ventas de bebidas</span><div class="pesos"><input inputmode="numeric" data-fc="bebidas" value="${d.ventas.bebidas ? d.ventas.bebidas.toLocaleString('es-CO') : ''}" placeholder="0"></div></label>
-      <label class="campo"><span>Meta comida (%)</span><input type="number" min="1" max="100" data-meta="comida" value="${d.metas.comida}"></label>
-      <label class="campo"><span>Meta bebidas (%)</span><input type="number" min="1" max="100" data-meta="bebidas" value="${d.metas.bebidas}"></label>
-    </div>
-    <p class="nota">Las ventas van sin impuesto al consumo y sin propinas. El costo incluye las pérdidas del mes (bajas), porque también salieron de la plata.</p>
-    <div class="kpis" style="margin-top:.6rem">${fila('Costo de comida', comida, d.ventas.comida, d.metas.comida)}${fila('Costo de bebidas', bebidas, d.ventas.bebidas, d.metas.bebidas)}</div>
+    <p class="info" style="margin-top:1rem"><span>El food cost de este cierre (cuánto de lo vendido se fue en costo) está en su propio reporte.</span><button type="button" data-accion="ver-fc">Ver food cost</button></p>
     <h3 class="sub-tabla">Cuánto se gastó <span class="meta">en pesos, valores exactos</span></h3>
     <div class="tabla-scroll"><table><thead><tr><th></th><th class="num">Al cierre anterior</th><th class="num">+ Compras</th><th class="num">− Bajas</th><th class="num">− Al cierre</th><th class="num">= Gasto del mes</th></tr></thead><tbody>
     ${d.consumo.map(x => `<tr><td>${pillCat(x.cat)}</td><td class="num">${plata(x.ini)}</td><td class="num">${plata(x.com)}</td><td class="num">${plata(x.baj)}</td><td class="num">${plata(x.fin)}</td><td class="num"><b>${plata(x.gasto)}</b></td></tr>`).join('')}
@@ -522,6 +523,132 @@ function htmlCierre(d) {
         <td class="num"><span class="dif ${x.dif < 0 ? 'falta' : 'sobra'}">${x.dif < 0 ? 'Faltan ' + num(-x.dif) : 'Sobran ' + num(x.dif)}</span></td><td class="num">${plata(x.valor)}</td></tr>`).join('')}
       </tbody></table></div>` : '<p class="nota">Todo cuadró: no falta ni sobra nada.</p>'}</div>
     <p class="nota" style="margin-top:1rem">Es una referencia para el dueño, no contabilidad oficial.</p>`
+}
+
+// food cost: cuanto de lo vendido se fue en costo de producto. las ventas solo las escribe el administrador
+let fcSel = null
+let fcAjAbierto = false
+const fechaLarga = f => { const [, m, d] = f.split('-'); return `${+d} de ${MESES_LARGOS[m - 1]}` }
+const pct = n => n.toFixed(1).replace('.', ',') + ' %'
+const enPesos = v => v ? Math.round(v).toLocaleString('es-CO') : ''
+
+function camposVentas(v, conFecha, fecha) {
+  return `<form class="fc-form" id="form-ventas" autocomplete="off">
+      ${conFecha ? `<label class="campo"><span>Día</span><input type="date" id="v-fecha" max="${E.hoy}" value="${fecha}"></label>` : ''}
+      <label class="campo"><span>Comida en el local</span><div class="pesos"><input inputmode="numeric" id="v-comida" placeholder="0" value="${enPesos(v && v.comida)}"></div></label>
+      <label class="campo"><span>Bebidas en el local</span><div class="pesos"><input inputmode="numeric" id="v-bebidas" placeholder="0" value="${enPesos(v && v.bebidas)}"></div></label>
+      <label class="campo"><span>Domicilios por apps</span><div class="pesos"><input inputmode="numeric" id="v-dom" placeholder="0" value="${enPesos(v && v.dom)}"></div></label>
+      ${conFecha ? '' : '<span></span>'}
+      <p class="aviso-dom">Domicilios: ganancias netas, sin contar comisiones ni gastos de las apps. Se suman a las ventas de comida.</p>
+      <div class="acciones"><span class="msg" id="msg-ventas"></span><button class="btn-pri" type="submit">${conFecha ? 'Guardar ventas del día' : 'Guardar total'}</button></div>
+    </form>
+    <p class="nota">Todo sin impuesto al consumo y sin propinas.${conFecha ? ' Si ese día ya tenía ventas, se reemplazan. Si el local no abrió, guárdalo en cero para que no quede pendiente.' : ''}</p>`
+}
+
+function bloqueVentas(d) {
+  const aj = d.ajustes
+  const resumen = `Ventas: ${aj.modo === 'diario' ? 'a diario' : 'un total al cierre'} · Empaques: ${aj.empaques ? 'sí se suman' : 'no se suman'} · Metas ${d.metas.comida} % y ${d.metas.bebidas} %`
+  const ajustes = `<details class="fc-ajustes" id="fc-ajustes"${fcAjAbierto ? ' open' : ''}><summary>⚙️ Ajustes del food cost <span class="meta">${resumen}</span></summary>
+    <div class="cuerpo">
+      <div class="ajuste"><b>¿Cómo registras las ventas?</b>
+        <div class="segmento"><button type="button" data-fcmodo="diario" aria-pressed="${aj.modo === 'diario'}">A diario</button><button type="button" data-fcmodo="total" aria-pressed="${aj.modo === 'total'}">Un total al cierre</button></div>
+        <small>A diario: como el cuadre de caja de cada noche, y además muestra un estimado por semana. Un total al cierre: una sola vez, cuando se aprueba el inventario general.</small></div>
+      <div class="ajuste"><b>¿Sumar los empaques de domicilio al costo de la comida?</b>
+        <div class="segmento"><button type="button" data-fcemp="si" aria-pressed="${aj.empaques}">Sí</button><button type="button" data-fcemp="no" aria-pressed="${!aj.empaques}">No</button></div>
+        <small>Sí: el food cost incluye lo que gastas en contenedores, bolsas y desechables. No: solo cuenta los ingredientes.</small></div>
+      <div class="ajuste"><b>Metas</b><div class="metas">
+        <label class="campo"><span>Comida (%)</span><input type="number" min="1" max="100" id="fc-meta-comida" data-meta="metaComida" value="${d.metas.comida}"></label>
+        <label class="campo"><span>Bebidas (%)</span><input type="number" min="1" max="100" id="fc-meta-bebidas" data-meta="metaBebidas" value="${d.metas.bebidas}"></label></div></div>
+    </div></details>`
+  let cuerpo
+  if (aj.modo === 'diario') {
+    let progreso
+    if (!d.periodoDesde) progreso = '<p class="nota">El food cost empieza después del primer inventario general aprobado, que es el punto de partida. Las ventas que registres desde ese día son las que cuentan.</p>'
+    else if (d.diasPeriodo) progreso = `<div class="progreso-ventas"><b style="font-size:.9rem">Desde el ${fechaLarga(d.periodoDesde)} hasta ayer: ${d.registrados} de ${d.diasPeriodo} días registrados</b>
+        <span class="barra verde"><i style="width:${(d.registrados / d.diasPeriodo * 100).toFixed(1)}%"></i></span></div>`
+    else progreso = `<p class="nota">Desde el ${fechaLarga(d.periodoDesde)}, cuando se aprobó el inventario general. Hoy se registra al cerrar caja.</p>`
+    cuerpo = `${progreso}
+      ${d.faltan.length ? `<div class="dias-faltan"><span>Faltan:</span>${d.faltan.map(f => `<button type="button" data-dia="${f}">${fechaCorta(f)}</button>`).join('')}<span class="meta">Toca un día para llenarlo.</span></div>` : ''}
+      ${camposVentas(null, true, d.faltan[0] || d.hoy)}
+      ${d.ultimas.length ? `<div class="tabla-scroll"><table><thead><tr><th>Día</th><th class="num">Comida</th><th class="num">Bebidas</th><th class="num">Domicilios netos</th><th class="num">Total</th></tr></thead><tbody>
+        ${d.ultimas.map(v => `<tr><td>${fechaCorta(v.fecha)}</td><td class="num">${plata(v.comida)}</td><td class="num">${plata(v.bebidas)}</td><td class="num">${plata(v.dom)}</td><td class="num"><b>${plata(v.comida + v.bebidas + v.dom)}</b></td></tr>`).join('')}
+      </tbody></table></div>` : ''}`
+  } else if (d.sel && !d.sel.partida) {
+    cuerpo = `<p style="margin:0"><b>Ventas del ${fechaLarga(d.sel.desde)} al ${fechaLarga(d.sel.hasta)}</b> <span class="meta">(el periodo del inventario general de ${esc(d.sel.mes)}; se cambia en "Cierre", abajo)</span></p>${camposVentas(d.sel.ventas, false)}`
+  } else {
+    cuerpo = '<p class="nota">El total de ventas se escribe para cada inventario general aprobado, desde el segundo: el primero es el punto de partida.</p>'
+  }
+  return `<section class="fc-bloque"><div class="fila-titulo" style="margin:0"><h3>Ventas</h3><span class="admin-tag">🔓 Solo el administrador</span></div>${ajustes}${cuerpo}</section>`
+}
+
+// grafica de los ultimos meses: % de comida y de bebidas con su meta
+function grafica(hist, metas) {
+  const W = 560, H = 210, iz = 40, de = 16, ar = 16, ab = 30
+  const vals = hist.flatMap(h => [h.comida, h.bebidas]).filter(v => v !== null).concat([metas.comida, metas.bebidas])
+  const min = Math.max(0, Math.floor((Math.min(...vals) - 4) / 5) * 5), max = Math.ceil((Math.max(...vals) + 4) / 5) * 5
+  const x = i => iz + (hist.length === 1 ? (W - iz - de) / 2 : i * (W - iz - de) / (hist.length - 1))
+  const y = v => ar + (max - v) / (max - min) * (H - ar - ab)
+  const ticks = []
+  for (let t = min; t <= max; t += 5) ticks.push(t)
+  const linea = (k, color) => {
+    const pts = hist.map((h, i) => [i, h[k]]).filter(p => p[1] !== null)
+    return `<polyline fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" points="${pts.map(([i, v]) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')}"/>` +
+      pts.map(([i, v], n) => `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${n === pts.length - 1 ? 5 : 3.5}" fill="${color}"/><text x="${x(i).toFixed(1)}" y="${(y(v) - 9).toFixed(1)}" text-anchor="middle" style="fill:${color};font-weight:700">${v.toFixed(1).replace('.', ',')}</text>`).join('')
+  }
+  const meta = (v, color) => `<line x1="${iz}" x2="${W - de}" y1="${y(v)}" y2="${y(v)}" stroke="${color}" stroke-width="1.5" stroke-dasharray="5 4" opacity=".55"/>`
+  return `<svg class="grafica" viewBox="0 0 ${W} ${H}" role="img" aria-label="Food cost de los últimos meses">
+    ${ticks.map(t => `<line class="eje" x1="${iz}" x2="${W - de}" y1="${y(t)}" y2="${y(t)}"/><text x="${iz - 8}" y="${y(t) + 4}" text-anchor="end">${t} %</text>`).join('')}
+    ${hist.map((h, i) => `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="middle">${esc(h.mes)}</text>`).join('')}
+    ${meta(metas.comida, '#0b7a66')}${meta(metas.bebidas, '#b0305c')}
+    ${linea('comida', '#0b7a66')}${linea('bebidas', '#b0305c')}
+  </svg>
+  <div class="leyenda"><span><i style="background:#0b7a66"></i>Comida</span><span><i style="background:#b0305c"></i>Bebidas</span><span><i class="punteada"></i>Meta</span></div>`
+}
+
+function bloqueResultado(d) {
+  const selector = d.cierres.length ? `<label class="campo" style="width:250px;max-width:100%"><span>Cierre</span><select id="fc-cierre">${d.cierres.map(c => `<option value="${c.id}"${d.sel && c.id === d.sel.id ? ' selected' : ''}>${esc(c.etiqueta)}</option>`).join('')}</select></label>` : ''
+  const x = d.sel
+  let cuerpo
+  if (!x) {
+    cuerpo = `<p class="info nuevo" style="margin:0"><span>El food cost sale de los inventarios generales aprobados: necesita saber cuánto quedó al cierre. Todavía no hay ninguno.</span><button type="button" data-accion="ir-inventario">Ir al inventario general</button></p>`
+  } else if (x.partida) {
+    cuerpo = `<div class="partida"><b>El inventario de ${esc(x.mes)} fue el primero: es el punto de partida.</b><p>Todavía no había un conteo anterior para saber cuánto se gastó, así que el food cost empieza a calcularse desde el siguiente cierre.</p></div>`
+  } else {
+    const kpi = (nombre, c, meta) => c.venta
+      ? `<div class="kpi"><small>${nombre}</small><b>${pct(c.costo / c.venta * 100)}</b><span>${plata(c.costo)} de costo · ${plata(c.venta)} vendidos · meta ${meta} %</span><br>${semaforo(c.costo / c.venta * 100, meta)}</div>`
+      : `<div class="kpi"><small>${nombre}</small><b>—</b><span>Faltan las ventas del periodo</span></div>`
+    const notas = []
+    if (x.faltan.length) notas.push(`<b>Falta${x.faltan.length === 1 ? '' : 'n'} ${x.faltan.length} día${x.faltan.length === 1 ? '' : 's'} de ventas (${x.faltan.slice(0, 8).map(fechaCorta).join(', ')}${x.faltan.length > 8 ? '…' : ''}).</b> Hasta que se registren, el food cost sale más alto de lo real.`)
+    if (!x.comida.venta && !x.bebidas.venta) notas.push(d.ajustes.modo === 'total' ? '<b>Falta escribir el total de ventas de este periodo</b> arriba, en Ventas.' : '<b>No hay ventas registradas en este periodo.</b>')
+    if (x.noContados.length) notas.push(`Estos ítems no se contaron en el inventario, así que todo lo que se compró de ellos cuenta como gastado: ${x.noContados.map(esc).join(', ')}.`)
+    const semanas = x.semanas ? `<h3 class="sub-tabla">Estimado por semana <span class="aprox">Aproximado</span></h3>
+      <p class="nota" style="margin-bottom:.5rem">Compras de comida de la semana ÷ ventas de comida de la semana. Sirve para ver a tiempo si algo se dispara; el número real es el del cierre.</p>
+      <div class="tabla-scroll"><table><thead><tr><th>Semana</th><th class="num">Comida</th><th></th></tr></thead><tbody>
+      ${x.semanas.map(w => `<tr><td>${w.nombre}</td><td class="num"><b>${w.pct === null ? '—' : pct(w.pct)}</b></td><td>${w.pct === null ? '<span class="meta">Sin ventas registradas</span>' : semaforo(w.pct, d.metas.comida)}${w.faltan ? ` <span class="meta">· falta${w.faltan === 1 ? '' : 'n'} ${w.faltan} día${w.faltan === 1 ? '' : 's'}</span>` : ''}</td></tr>`).join('')}
+      </tbody></table></div>`
+      : '<h3 class="sub-tabla">Estimado por semana</h3><p class="nota">Solo está disponible cuando las ventas se registran a diario (se cambia en Ajustes).</p>'
+    cuerpo = `<p class="meta" style="margin:0">Del ${fechaLarga(x.desde)} al ${fechaLarga(x.hasta)}</p>
+      <div class="fc-kpis">${kpi('Costo de comida', x.comida, d.metas.comida)}${kpi('Costo de bebidas', x.bebidas, d.metas.bebidas)}</div>
+      ${notas.map(n => `<p class="info nuevo" style="margin:0"><span>${n}</span></p>`).join('')}
+      ${d.historia.length ? `<h3 class="sub-tabla">Últimos meses</h3>${grafica(d.historia, d.metas)}` : ''}
+      ${semanas}
+      <div class="detalle-rep"><h3 class="sub-tabla">Lo que más pesó en el costo de comida <span class="meta">${esc(x.mes)}</span></h3><div class="barras">${barras(x.top, true)}</div></div>
+      <p class="nota" style="margin-top:.4rem">El costo es real: lo que había al cierre anterior + lo que se compró − lo que quedó. Incluye las pérdidas (bajas) y la comida del personal. ${d.ajustes.empaques ? 'Los empaques de domicilio suman al costo de comida.' : 'Los empaques de domicilio no entran.'}</p>`
+  }
+  return `<section class="fc-bloque"><div class="fila-titulo" style="margin:0;align-items:end"><h3>Resultado</h3>${selector}</div>${cuerpo}</section>`
+}
+
+function htmlFoodCost(d) {
+  return `<div class="encab-rep"><div><h2>Food cost y ventas</h2><span class="meta">Cuánto de lo vendido se fue en costo de producto</span></div>${BOTONES}</div>
+    <div style="display:grid;gap:1rem;margin-top:1rem">${bloqueVentas(d)}${bloqueResultado(d)}</div>
+    <p class="nota" style="margin-top:1rem">Es una referencia para el dueño, no contabilidad oficial.</p>`
+}
+
+async function guardarAjustesFC(body) {
+  const r = await conClave('Los ajustes del food cost son solo para el administrador.', () => api('/api/inventario/foodcost/ajustes', { method: 'PUT', body }))
+  if (!r.res.ok) return alert(r.d.error || 'No se pudo guardar el ajuste, intenta de nuevo.')
+  await pintarReporte()
+  await refrescar()
 }
 
 function textoCambio(antes, despues, u) {
@@ -537,11 +664,11 @@ function textoCambio(antes, despues, u) {
 async function pintarReporte() {
   const tipo = $('rep-tipo').value
   const [desde, hasta, titulo] = rangoActual()
-  $('campo-periodo').hidden = ['cierre', 'existencias', 'cambios'].includes(tipo)
-  $('campo-cat').hidden = $('campo-item').hidden = tipo === 'cierre' || tipo === 'cambios'
+  $('campo-periodo').hidden = ['cierre', 'existencias', 'cambios', 'foodcost'].includes(tipo)
+  $('campo-cat').hidden = $('campo-item').hidden = ['cierre', 'cambios', 'foodcost'].includes(tipo)
   $('campo-cierre').hidden = tipo !== 'cierre'
   const cat = $('rep-cat').value || 'Todas', q = $('rep-item').value.trim()
-  const params = new URLSearchParams({ tipo, desde, hasta, cat, q, cierre: $('rep-cierre').value || '' })
+  const params = new URLSearchParams({ tipo, desde, hasta, cat, q, cierre: (tipo === 'foodcost' ? fcSel : $('rep-cierre').value) || '' })
   $('salida').innerHTML = '<p class="cargando">Armando el reporte…</p>'
   const r = await conClave('Los reportes muestran el dinero de todo el establecimiento.', () => api('/api/inventario/reporte?' + params))
   if (!r || !r.res.ok) { $('salida').innerHTML = `<p class="vacio">${esc((r && r.d.error) || 'No se pudo armar el reporte, intenta de nuevo.')}</p>`; return }
@@ -554,6 +681,11 @@ async function pintarReporte() {
     const sel = $('rep-cierre')
     sel.innerHTML = d.cierres.length ? d.cierres.map(c => `<option value="${c.id}"${c.id === d.id ? ' selected' : ''}>${esc(c.etiqueta)}</option>`).join('') : '<option value="">Todavía no hay cierres</option>'
     s.innerHTML = htmlCierre(d)
+    return
+  }
+  if (tipo === 'foodcost') {
+    fcSel = d.sel ? d.sel.id : null
+    s.innerHTML = htmlFoodCost(d)
     return
   }
   if (tipo === 'existencias') {
@@ -752,7 +884,7 @@ document.addEventListener('click', async e => {
   if (d.borrarNo !== undefined) { delete borrador[+d.borrarNo].borrar; pintarEditar() }
   if (t.id === 'btn-cancelar-editar') { borrador = null; $('card-editar').hidden = true; pintarLista() }
   if (t.id === 'btn-guardar-lista') {
-    const cambios = borrador.map(b => ({ id: b.id, nombre: b.nombre, cat: b.cat, u: b.u, precio: b.precio, presNombre: b.presNombre, presCant: b.presCant, cuenta: b.cuenta, borrar: b.borrar === true }))
+    const cambios = borrador.map(b => ({ id: b.id, nombre: b.nombre, cat: b.cat, u: b.u, precio: b.precio, presNombre: b.presNombre, presCant: b.presCant, cuenta: b.cuenta, costoDe: b.costoDe, borrar: b.borrar === true }))
     const r = await conClave('Editar la lista de ítems es solo para el administrador.', () => api('/api/inventario/items', { method: 'PUT', body: { cambios } }))
     if (!r.res.ok) return aviso('msg-editar', r.d.error || 'Algo salió mal, intenta de nuevo.', false)
     borrador = null; $('card-editar').hidden = true
@@ -810,6 +942,10 @@ document.addEventListener('click', async e => {
   }
   if (d.accion === 'ver-cierre') abrirReportes('cierre', recienAprobado && recienAprobado.id)
   if (d.accion === 'ir-inventario') irA('existencias')
+  if (d.fcmodo) guardarAjustesFC({ modo: d.fcmodo })
+  if (d.fcemp) guardarAjustesFC({ empaques: d.fcemp === 'si' })
+  if (d.dia) { $('v-fecha').value = d.dia; $('v-comida').focus() }
+  if (d.accion === 'ver-fc') { fcSel = null; $('rep-tipo').value = 'foodcost'; pintarReporte() }
 
   // acceso para otros celulares
   if (d.accion === 'crear-acceso') pedirAdmin('Abrir el inventario a otros celulares es solo para el administrador.', async () => { await conClave('Abrir el inventario a otros celulares es solo para el administrador.', () => accionConteo('/api/inventario/conteo/acceso')) })
@@ -829,7 +965,7 @@ document.addEventListener('click', async e => {
     $('exp-titulo').textContent = excel ? 'Descargar Excel' : 'Imprimir'
     $('exp-ok').textContent = excel ? 'Descargar' : 'Imprimir'
     const tipo = $('rep-tipo').value
-    $('exp-detalle-txt').textContent = tipo === 'cambios' ? 'Además, el antes y el después de cada cambio.' : tipo === 'proveedores' ? 'Además, cada compra de cada proveedor.' : tipo === 'cierre' ? 'Además, la tabla de cada ítem de menaje y mobiliario con diferencia.'
+    $('exp-detalle-txt').textContent = tipo === 'cambios' ? 'Además, el antes y el después de cada cambio.' : tipo === 'proveedores' ? 'Además, cada compra de cada proveedor.' : tipo === 'cierre' ? 'Además, la tabla de cada ítem de menaje y mobiliario con diferencia.' : tipo === 'foodcost' ? 'Además, las ventas de cada día del periodo.'
       : tipo === 'existencias' ? 'Además, la tabla con cada ítem, su cantidad y su valor.' : 'Además, la lista de cada movimiento, uno por uno.'
     $('exp-msg').textContent = ''
     $('modal-exportar').hidden = false
@@ -865,14 +1001,8 @@ document.addEventListener('change', async e => {
   if (t.dataset.ed) { const [k, campo] = t.dataset.ed.split(':'); borrador[+k][campo] = campo === 'cuenta' ? t.checked : campo === 'precio' ? leerPlata(t.value) : t.value }
   if (['rep-periodo', 'rep-tipo', 'rep-cat', 'rep-cierre', 'rep-desde', 'rep-hasta'].includes(t.id)) pintarReporte()
   if (t.id === 'ing-unidad') infoIngreso()
-  // food cost: ventas del cierre y metas
-  if (t.dataset.fc || t.dataset.meta) {
-    const ventas = { comida: leerPlata((document.querySelector('[data-fc="comida"]') || {}).value), bebidas: leerPlata((document.querySelector('[data-fc="bebidas"]') || {}).value) }
-    const metas = { comida: +document.querySelector('[data-meta="comida"]').value, bebidas: +document.querySelector('[data-meta="bebidas"]').value }
-    if (t.dataset.fc) await api(`/api/inventario/cierres/${reporte.d.id}/ventas`, { method: 'PUT', body: ventas })
-    else await api('/api/inventario/metas', { method: 'PUT', body: metas })
-    pintarReporte()
-  }
+  if (t.dataset.meta) guardarAjustesFC({ [t.dataset.meta]: +t.value })
+  if (t.id === 'fc-cierre') { fcSel = t.value; pintarReporte() }
 })
 document.addEventListener('keydown', e => {
   const t = e.target
@@ -883,6 +1013,30 @@ document.addEventListener('keydown', e => {
 })
 document.addEventListener('focusout', e => { if (e.target.dataset && e.target.dataset.editarParcial && editandoParcial) guardarParcial(e.target) })
 window.addEventListener('afterprint', () => document.body.classList.remove('solo-resumen'))
+document.addEventListener('toggle', e => { if (e.target.id === 'fc-ajustes') fcAjAbierto = e.target.open }, true)
+
+// ventas del food cost: las del dia, o el total del cierre elegido
+document.addEventListener('submit', async e => {
+  if (e.target.id !== 'form-ventas') return
+  e.preventDefault()
+  const v = { comida: leerPlata($('v-comida').value), bebidas: leerPlata($('v-bebidas').value), dom: leerPlata($('v-dom').value) }
+  const boton = e.target.querySelector('[type="submit"]')
+  boton.disabled = true
+  let r, txt
+  if ($('v-fecha')) {
+    const fecha = $('v-fecha').value
+    r = await conClave('Las ventas son solo para el administrador.', () => api('/api/inventario/ventas', { method: 'POST', body: { fecha, ...v } }))
+    txt = `Ventas del ${fecha ? fechaLarga(fecha) : 'día'} guardadas.`
+  } else {
+    r = await conClave('Las ventas son solo para el administrador.', () => api(`/api/inventario/cierres/${reporte.d.sel.id}/ventas`, { method: 'PUT', body: v }))
+    txt = 'Total guardado.'
+  }
+  boton.disabled = false
+  if (!r.res.ok) return aviso('msg-ventas', r.d.error || 'Algo salió mal, intenta de nuevo.', false)
+  await pintarReporte()
+  await refrescar()
+  aviso('msg-ventas', txt)
+})
 
 // guardar ingreso y baja
 $('form-ingreso').addEventListener('submit', async e => {

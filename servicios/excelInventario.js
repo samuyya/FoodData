@@ -57,18 +57,38 @@ async function excelReporte(d, { detalle, empresa, titulo: sub }) {
       { titulo: 'Categoría', ancho: 18 }, { titulo: 'Al cierre anterior', plata: true }, { titulo: '+ Compras', plata: true },
       { titulo: '− Bajas', plata: true }, { titulo: '− Al cierre', plata: true }, { titulo: '= Gasto del mes', plata: true }
     ], d.consumo.map(x => [x.cat, x.ini, x.com, x.baj, x.fin, x.gasto]));
-    const comida = d.consumo.find(x => x.cat === 'Materia prima').real, bebidas = d.consumo.find(x => x.cat === 'Bebidas').real;
-    const filasFc = [];
-    if (d.ventas.comida) filasFc.push(['Costo de comida', comida, d.ventas.comida, comida / d.ventas.comida, d.metas.comida / 100]);
-    if (d.ventas.bebidas) filasFc.push(['Costo de bebidas', bebidas, d.ventas.bebidas, bebidas / d.ventas.bebidas, d.metas.bebidas / 100]);
-    if (filasFc.length) {
-      const ini = fila;
-      fila = tabla(hoja, fila, [{ titulo: 'Food cost' }, { titulo: 'Costo', plata: true }, { titulo: 'Ventas', plata: true }, { titulo: '%' }, { titulo: 'Meta' }], filasFc);
-      for (let r = ini + 1; r < fila - 1; r++) { hoja.getCell(r, 4).numFmt = '0.0%'; hoja.getCell(r, 5).numFmt = '0%'; }
-    }
     if (detalle && d.diferencias.length) {
       tabla(hoja, fila, [{ titulo: 'Ítem', ancho: 28 }, { titulo: 'Categoría' }, { titulo: 'Debería haber' }, { titulo: 'Se contó' }, { titulo: 'Diferencia' }, { titulo: 'Valor', plata: true }],
         d.diferencias.map(x => [x.nombre, x.cat, x.deberia, x.contado, x.dif, x.valor]));
+    }
+    return wb;
+  }
+
+  if (d.tipo === 'foodcost') {
+    const s = d.sel;
+    if (!s || s.partida) {
+      titulo(hoja, 'Food cost', s ? 'Este fue el primer inventario general: es el punto de partida, todavía no hay food cost.' : 'Todavía no hay un inventario general aprobado.', 5);
+      return wb;
+    }
+    titulo(hoja, `Food cost de ${s.mes}`, `${empresa} · ventas y costo del ${s.desde.split('-').reverse().join('/')} al ${s.hasta.split('-').reverse().join('/')}`, 5);
+    const ini = 4;
+    let fila = tabla(hoja, ini, [{ titulo: '', ancho: 22 }, { titulo: 'Costo', plata: true }, { titulo: 'Ventas', plata: true }, { titulo: 'Food cost' }, { titulo: 'Meta' }], [
+      ['Comida', s.comida.costo, s.comida.venta, s.comida.venta ? s.comida.costo / s.comida.venta : null, d.metas.comida / 100],
+      ['Bebidas', s.bebidas.costo, s.bebidas.venta, s.bebidas.venta ? s.bebidas.costo / s.bebidas.venta : null, d.metas.bebidas / 100]
+    ]);
+    for (let r = ini + 1; r <= ini + 2; r++) { hoja.getCell(r, 4).numFmt = '0.0%'; hoja.getCell(r, 5).numFmt = '0%'; }
+    fila = tabla(hoja, fila, [{ titulo: 'Ventas del periodo' }, { titulo: 'Valor', plata: true }], [
+      ['Comida en el local', s.ventas.comida], ['Bebidas en el local', s.ventas.bebidas], ['Domicilios netos (van con comida)', s.ventas.dom]
+    ]);
+    if (s.semanas) {
+      const iniS = fila;
+      fila = tabla(hoja, fila, [{ titulo: 'Semana (aproximado)' }, { titulo: 'Comida' }, { titulo: 'Días sin ventas' }], s.semanas.map(w => [w.nombre, w.pct === null ? null : w.pct / 100, w.faltan]));
+      for (let r = iniS + 1; r < fila - 1; r++) hoja.getCell(r, 2).numFmt = '0.0%';
+    }
+    fila = tabla(hoja, fila, [{ titulo: 'Lo que más pesó en comida' }, { titulo: 'Costo', plata: true }], s.top);
+    if (detalle && s.porDia.length) {
+      tabla(hoja, fila, [{ titulo: 'Día' }, { titulo: 'Comida', plata: true }, { titulo: 'Bebidas', plata: true }, { titulo: 'Domicilios netos', plata: true }, { titulo: 'Total', plata: true }],
+        s.porDia.map(v => [v.fecha, v.comida, v.bebidas, v.dom, v.comida + v.bebidas + v.dom]));
     }
     return wb;
   }

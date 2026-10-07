@@ -7,6 +7,7 @@ const qrcode = require('qrcode-generator');
 const ItemInventario = require('../models/ItemInventario');
 const MovInventario = require('../models/MovInventario');
 const ConteoInventario = require('../models/ConteoInventario');
+const VentaDia = require('../models/VentaDia');
 const Empresa = require('../models/Empresa');
 const { ah } = require('../middleware/sesion');
 const { adminInventarioActivo } = require('./admin');
@@ -23,7 +24,8 @@ const MOTIVOS = {
   'Insumos': ['Vencido', 'Dañado', 'Otro'],
   'Menaje': ['Roto', 'Desgaste', 'Extraviado', 'Robo', 'Otro'],
   'Mobiliario': ['Roto', 'Desgaste', 'Extraviado', 'Robo', 'Otro'],
-  'Otros gastos': ['Dañado', 'Extraviado', 'Otro']
+  'Otros gastos': ['Dañado', 'Extraviado', 'Otro'],
+  'Empaques': ['Dañado', 'Mojado', 'Extraviado', 'Otro']
 };
 
 const upload = multer({
@@ -52,6 +54,9 @@ function empresaDe(req) {
   return null;
 }
 const esAdmin = req => !!(req.session.superadmin || adminInventarioActivo(req));
+// con .lean() mongoose no pone los defaults, asi que van aqui (empresas de antes del food cost)
+const metasDe = e => ({ comida: 32, bebidas: 25, ...((e && e.metasFoodCost) || {}) });
+const ajustesFC = e => ({ modo: (e && e.foodCost && e.foodCost.modo) || 'diario', empaques: !(e && e.foodCost && e.foodCost.empaques === false) });
 
 function soloEmpresa(req, res, next) {
   if (!empresaDe(req)) return res.status(401).json({ ok: false, error: 'No autenticado' });
@@ -67,7 +72,7 @@ function itemPublico(it, movsItem) {
   const ult = movsItem.filter(m => m.tipo === 'ing').slice(-1)[0];
   return {
     id: String(it._id), nombre: it.nombre, cat: it.cat, u: it.u, precio: it.precio, precioBase: it.precioBase,
-    pres: it.pres, cuenta: it.cuenta, conteo: it.conteo, conteoFecha: it.conteoFecha, contadoPor: it.contadoPor,
+    pres: it.pres, cuenta: it.cuenta, costoDe: it.costoDe || null, conteo: it.conteo, conteoFecha: it.conteoFecha, contadoPor: it.contadoPor,
     // sin un conteo aprobado todavia no hay con que comparar
     deberia: cons || !it.conteoFecha ? null : inv.existencia(it, movsItem),
     ultimaCompra: ult ? { precio: Math.round(ult.costo / ult.cant), fecha: ult.fecha } : null
@@ -106,9 +111,10 @@ router.get('/estado', soloEmpresa, ah(async (req, res) => {
   const admin = esAdmin(req);
   const [datos, conteo, aprobados, empresa] = await Promise.all([
     inv.cargar(empresaId), conteoActual(empresaId), inv.cierresAprobados(empresaId),
-    Empresa.findById(empresaId).select('metasFoodCost').lean()
+    Empresa.findById(empresaId).select('metasFoodCost foodCost').lean()
   ]);
   const hoy = inv.hoyStr();
+  const faltanVentas = await inv.ventasFaltan(empresaId, ajustesFC(empresa));
   const items = datos.items.filter(i => i.activo).map(i => itemPublico(i, datos.porItem.get(String(i._id)) || []));
   const itemsMap = new Map(datos.items.map(i => [String(i._id), i]));
   // al reves primero: entre los del mismo dia queda arriba el ultimo que se registro
@@ -128,7 +134,7 @@ router.get('/estado', soloEmpresa, ah(async (req, res) => {
     conteo: conteoPublico(conteo, admin),
     ultimoAprobado: ultimo ? { id: String(ultimo._id), fecha: ultimo.fechaAprobado, mes: inv.nombreMes(ultimo.mesCierre), mesCierre: ultimo.mesCierre } : null,
     sugerido: !hecho && !conteo ? { mes: inv.nombreMes(mesSugerido), clave: mesSugerido } : null,
-    metas: (empresa && empresa.metasFoodCost) || { comida: 32, bebidas: 25 }
+    faltanVentas
   });
 }));
 
@@ -268,6 +274,11 @@ router.put('/items', soloEmpresa, soloAdmin, ah(async (req, res) => {
   for (const c of vivos) {
     if (!CATEGORIAS.includes(c.cat) || !UNIDADES.includes(c.u)) return res.status(400).json({ ok: false, error: `Revisa la categoría y la unidad de "${texto(c.nombre)}".` });
   }
+  // solo materia prima y bebidas pueden cambiar de lado en el food cost; si queda igual a su categoria, null
+  const costoDe = c => {
+    if (!['Materia prima', 'Bebidas'].includes(c.cat) || !['Comida', 'Bebidas'].includes(c.costoDe)) return null;
+    return (c.cat === 'Bebidas') === (c.costoDe === 'Bebidas') ? null : c.costoDe;
+  };
   const pres = c => {
     const n = texto(c.presNombre, 20), k = Math.round(numero(c.presCant));
     return n && k > 1 ? { nombre: n, cant: k } : null;
@@ -276,7 +287,7 @@ router.put('/items', soloEmpresa, soloAdmin, ah(async (req, res) => {
     if (!c.id) {
       if (c.borrar) continue;
       const precio = Math.round(numero(c.precio)) || 0;
-      await ItemInventario.create({ empresa_id: empresaId, nombre: texto(c.nombre, 80), cat: c.cat, u: c.u, precio, precioBase: precio, pres: pres(c), cuenta: c.cuenta === false ? false : true });
+      await ItemInventario.create({ empresa_id: empresaId, nombre: texto(c.nombre, 80), cat: c.cat, u: c.u, precio, precioBase: precio, pres: pres(c), cuenta: c.cuenta === false ? false : true, costoDe: costoDe(c) });
       continue;
     }
     if (!mongoose.isValidObjectId(c.id)) continue;
@@ -284,6 +295,8 @@ router.put('/items', soloEmpresa, soloAdmin, ah(async (req, res) => {
     if (!it) continue;
     if (c.borrar) { it.activo = false; await it.save(); continue; }
     it.nombre = texto(c.nombre, 80); it.cat = c.cat; it.u = c.u; it.pres = pres(c);
+    // la pagina del superadmin no manda este campo: si no viene, se deja como estaba
+    if ('costoDe' in c) it.costoDe = costoDe(c);
     const precio = Math.round(numero(c.precio));
     if (precio >= 0 && precio !== it.precio) { it.precio = precio; if (!it.precioBase) it.precioBase = precio; }
     if (c.cuenta === true || c.cuenta === false) it.cuenta = c.cuenta;
@@ -341,7 +354,8 @@ const PLANTILLA = [
   ['Gaseosa', 'Bebidas', 'und'], ['Cerveza', 'Bebidas', 'und'], ['Agua en botella', 'Bebidas', 'und'],
   ['Platos', 'Menaje', 'und'], ['Vasos', 'Menaje', 'und'], ['Juegos de cubiertos', 'Menaje', 'und'], ['Ollas', 'Menaje', 'und'], ['Sartenes', 'Menaje', 'und'],
   ['Mesas', 'Mobiliario', 'und'], ['Sillas', 'Mobiliario', 'und'],
-  ['Detergente', 'Insumos', 'L'], ['Servilletas', 'Insumos', 'paquete'], ['Bolsas de basura', 'Insumos', 'paquete']
+  ['Detergente', 'Insumos', 'L'], ['Servilletas', 'Insumos', 'paquete'], ['Bolsas de basura', 'Insumos', 'paquete'],
+  ['Contenedores para domicilio', 'Empaques', 'paquete'], ['Bolsas para domicilio', 'Empaques', 'paquete']
 ];
 router.post('/items/plantilla', ah(async (req, res) => {
   if (!req.session.superadmin) return res.status(403).json({ ok: false, error: 'Solo el superadmin carga la plantilla.' });
@@ -508,28 +522,46 @@ router.get('/conteo/acceso/qr.svg', soloEmpresa, soloAdmin, ah(async (req, res) 
 
 // reportes y food cost (administrador)
 router.get('/reporte', soloEmpresa, soloAdmin, ah(async (req, res) => {
-  const empresa = await Empresa.findById(empresaDe(req)).select('metasFoodCost').lean();
-  const datos = await inv.armarReporte(empresaDe(req), req.query.tipo || 'general', req.query, (empresa && empresa.metasFoodCost) || { comida: 32, bebidas: 25 });
+  const empresa = await Empresa.findById(empresaDe(req)).select('metasFoodCost foodCost').lean();
+  const datos = await inv.armarReporte(empresaDe(req), req.query.tipo || 'general', req.query, metasDe(empresa), ajustesFC(empresa));
   res.json({ ok: true, ...datos });
 }));
 router.get('/reporte/excel', soloEmpresa, soloAdmin, ah(async (req, res) => {
-  const empresa = await Empresa.findById(empresaDe(req)).select('nombre metasFoodCost').lean();
-  const datos = await inv.armarReporte(empresaDe(req), req.query.tipo || 'general', req.query, (empresa && empresa.metasFoodCost) || { comida: 32, bebidas: 25 });
+  const empresa = await Empresa.findById(empresaDe(req)).select('nombre metasFoodCost foodCost').lean();
+  const datos = await inv.armarReporte(empresaDe(req), req.query.tipo || 'general', req.query, metasDe(empresa), ajustesFC(empresa));
   const wb = await excelReporte(datos, { detalle: req.query.detalle === '1', empresa: empresa ? empresa.nombre : '', titulo: texto(req.query.titulo, 120) });
   res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.set('Content-Disposition', `attachment; filename="Inventario - ${datos.tipo}.xlsx"`);
   await wb.xlsx.write(res);
   res.end();
 }));
-router.put('/cierres/:id/ventas', soloEmpresa, soloAdmin, ah(async (req, res) => {
-  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ ok: false, error: 'No se encontró el cierre.' });
-  const comida = Math.max(0, Math.round(numero(req.body.comida)) || 0), bebidas = Math.max(0, Math.round(numero(req.body.bebidas)) || 0);
-  await ConteoInventario.updateOne({ _id: req.params.id, empresa_id: empresaDe(req), estado: 'aprobado' }, { $set: { ventas: { comida, bebidas } } });
+// ventas: solo el administrador. sin impuesto al consumo ni propinas; domicilios netos
+const pesos = v => Math.max(0, Math.round(numero(v)) || 0);
+const ventasDe = b => ({ comida: pesos(b.comida), bebidas: pesos(b.bebidas), dom: pesos(b.dom) });
+
+// ventas de un dia (modo diario). si ese dia ya tenia, se reemplazan
+router.post('/ventas', soloEmpresa, soloAdmin, ah(async (req, res) => {
+  const fecha = req.body.fecha;
+  if (!esFecha(fecha)) return res.status(400).json({ ok: false, error: 'Elige el día.' });
+  if (fecha > inv.hoyStr()) return res.status(400).json({ ok: false, error: 'No se pueden registrar ventas de un día que todavía no ha pasado.' });
+  const v = ventasDe(req.body);
+  await VentaDia.updateOne({ empresa_id: empresaDe(req), fecha }, { $set: { ...v, fuente: 'manual', por: adminInventarioActivo(req) || 'Superadmin' } }, { upsert: true });
   res.json({ ok: true });
 }));
-router.put('/metas', soloEmpresa, soloAdmin, ah(async (req, res) => {
-  const comida = Math.min(100, Math.max(1, numero(req.body.comida) || 32)), bebidas = Math.min(100, Math.max(1, numero(req.body.bebidas) || 25));
-  await Empresa.updateOne({ _id: empresaDe(req) }, { $set: { metasFoodCost: { comida, bebidas } } });
+// total de ventas de un cierre (modo total al cierre)
+router.put('/cierres/:id/ventas', soloEmpresa, soloAdmin, ah(async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ ok: false, error: 'No se encontró el cierre.' });
+  await ConteoInventario.updateOne({ _id: req.params.id, empresa_id: empresaDe(req), estado: 'aprobado' }, { $set: { ventas: ventasDe(req.body) } });
+  res.json({ ok: true });
+}));
+router.put('/foodcost/ajustes', soloEmpresa, soloAdmin, ah(async (req, res) => {
+  const b = req.body;
+  const cambios = {};
+  if (b.modo === 'diario' || b.modo === 'total') cambios['foodCost.modo'] = b.modo;
+  if (typeof b.empaques === 'boolean') cambios['foodCost.empaques'] = b.empaques;
+  if (b.metaComida !== undefined) cambios['metasFoodCost.comida'] = Math.min(100, Math.max(1, numero(b.metaComida) || 32));
+  if (b.metaBebidas !== undefined) cambios['metasFoodCost.bebidas'] = Math.min(100, Math.max(1, numero(b.metaBebidas) || 25));
+  await Empresa.updateOne({ _id: empresaDe(req) }, { $set: cambios });
   res.json({ ok: true });
 }));
 

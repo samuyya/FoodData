@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const CATEGORIAS = ['Materia prima', 'Bebidas', 'Menaje', 'Mobiliario', 'Insumos', 'Otros gastos'];
+const CATEGORIAS = ['Materia prima', 'Bebidas', 'Empaques', 'Menaje', 'Mobiliario', 'Insumos', 'Otros gastos'];
 const UNIDADES = ['kg', 'g', 'lb', 'L', 'ml', 'und', 'paquete', 'caja'];
 
 const itemSchema = new mongoose.Schema({
@@ -24,7 +24,10 @@ const itemSchema = new mongoose.Schema({
   // ultimo conteo aprobado
   conteo: { type: Number, default: 0 },
   conteoFecha: { type: String, default: null },
-  contadoPor: { type: String, default: '' }
+  contadoPor: { type: String, default: '' },
+  // a que lado del food cost va (solo materia prima y bebidas). null = segun la categoria.
+  // ej. el vino para cocinar es bebida pero cuenta como comida
+  costoDe: { type: String, enum: ['Comida', 'Bebidas', null], default: null }
 }, { timestamps: true });
 
 module.exports = mongoose.model('ItemInventario', itemSchema);

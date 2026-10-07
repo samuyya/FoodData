@@ -97,7 +97,7 @@ async function cargarAvisoInventario() {
     try { pospuesto = d.sugerido && localStorage.getItem('fd_inv_aviso_' + d.sugerido.clave) === '1'; } catch (_) {}
     if (!d.sugerido || pospuesto) { aviso.innerHTML = ''; return; }
     aviso.innerHTML = `<span class="ic">📦</span><div><b>Terminó ${d.sugerido.mes}: es buen momento para el inventario general.</b>
-      <p>Se cuenta todo lo que hay: materia prima, bebidas, menaje, mobiliario e insumos. Se puede repartir por partes entre varias personas.</p></div>
+      <p>Se cuenta todo lo que hay: materia prima, bebidas, empaques, menaje, mobiliario e insumos. Se puede repartir por partes entre varias personas.</p></div>
       <div class="botones"><button type="button" class="btn-primario" id="aviso-ir">Ir al inventario general</button><button type="button" class="btn-secundario" id="aviso-no">Ahora no</button></div>`;
     document.getElementById('aviso-ir').onclick = () => { window.location.href = '/inventarios.html#inventario-general'; };
     document.getElementById('aviso-no').onclick = () => {

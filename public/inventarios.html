@@ -6,7 +6,7 @@
   <title>Inventarios - FoodData</title>
   <link rel="icon" href="/img/icon-fooddata-favicon.png" type="image/png" />
   <link rel="stylesheet" href="/css/styles.css" />
-  <link rel="stylesheet" href="/css/inventarios.css" />
+  <link rel="stylesheet" href="/css/inventarios.css?v=2" />
 </head>
 <body class="sub-body inv">
   <header class="sub-topbar">
@@ -16,7 +16,7 @@
       <div class="sub-encabezado">
         <div class="sub-titulo-grupo">
           <h1 class="titulo-pagina">Inventarios</h1>
-          <p class="subtitulo-pagina">Materia prima, bebidas, menaje, mobiliario e insumos del establecimiento.</p>
+          <p class="subtitulo-pagina">Materia prima, bebidas, empaques, menaje, mobiliario e insumos del establecimiento.</p>
         </div>
 
         <section class="establecimiento">
@@ -48,8 +48,8 @@
           <span class="tab-tx"><b>Inventario general</b><small id="sub-tab-existencias">El conteo y la lista</small></span>
         </button>
         <button type="button" class="tab" role="tab" aria-selected="false" data-tab="reportes" style="--c:#0e3a31;--t:#e7eeec">
-          <span class="tab-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16v-5M12 16V7M17 16v-8"/></svg></span>
-          <span class="tab-tx"><b>Reportes <svg class="tab-lock" viewBox="0 0 16 16" aria-label="pide clave"><rect x="3" y="7" width="10" height="7" rx="2"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg></b><small>Por día, mes o rango</small></span>
+          <span class="tab-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16v-5M12 16V7M17 16v-8"/></svg><span class="tab-badge alerta" id="badge-tab-reportes"></span></span>
+          <span class="tab-tx"><b>Reportes <svg class="tab-lock" viewBox="0 0 16 16" aria-label="pide clave"><rect x="3" y="7" width="10" height="7" rx="2"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg></b><small id="sub-tab-reportes">Por día, mes o rango</small></span>
         </button>
       </div>
 
@@ -156,7 +156,7 @@
           <div class="fila-titulo"><h2>Editar lista de ítems</h2><span class="admin-tag">🔓 Administrador</span></div>
           <p class="ayuda">Cambia nombres, categorías, unidades o valores, agrega ítems o borra los que ya no se usan. Un ítem borrado deja de aparecer, pero sus movimientos viejos siguen en los reportes. "Se cuenta" indica si entra en el inventario general.</p>
           <div class="tabla-scroll"><table class="editar-tabla">
-            <thead><tr><th>Nombre</th><th>Categoría</th><th>Unidad</th><th>Valor por unidad</th><th>Se compra por <em class="meta">(opcional)</em></th><th>Se cuenta</th><th></th></tr></thead>
+            <thead><tr><th>Nombre</th><th>Categoría</th><th>Unidad</th><th>Valor por unidad</th><th>Se compra por <em class="meta">(opcional)</em></th><th>Se cuenta</th><th>En el food cost</th><th></th></tr></thead>
             <tbody id="tb-editar"></tbody>
           </table></div>
           <div class="unir" id="unir">
@@ -197,6 +197,7 @@
                   <option value="ingresos">Solo ingresos</option>
                   <option value="bajas">Solo bajas</option>
                   <option value="cierre">Cierre del mes y diferencias</option>
+                  <option value="foodcost">Food cost y ventas</option>
                   <option value="existencias">Lo que hay hoy</option>
                   <option value="proveedores">Por proveedor</option>
                   <option value="cambios">Correcciones y borrados</option>
@@ -283,6 +284,6 @@
 <datalist id="proveedores"></datalist>
 
   <script src="/js/util.js"></script>
-  <script src="/js/inventarios.js"></script>
+  <script src="/js/inventarios.js?v=2"></script>
 </body>
 </html>

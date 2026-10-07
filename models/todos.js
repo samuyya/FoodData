@@ -12,5 +12,6 @@ module.exports = [
   require('./AjusteHorasExtra'),
   require('./ItemInventario'),
   require('./MovInventario'),
-  require('./ConteoInventario')
+  require('./ConteoInventario'),
+  require('./VentaDia')
 ];

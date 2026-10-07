@@ -6,8 +6,8 @@ const num = n => (+n).toLocaleString('es-CO', { maximumFractionDigits: 2 })
 const token = location.pathname.split('/').pop()
 const base = '/api/contar/' + encodeURIComponent(token)
 const main = $('main')
-const CATS = ['Materia prima', 'Bebidas', 'Menaje', 'Mobiliario', 'Insumos', 'Otros gastos']
-const CONSUMIBLE = c => ['Materia prima', 'Bebidas', 'Insumos'].includes(c)
+const CATS = ['Materia prima', 'Bebidas', 'Empaques', 'Menaje', 'Mobiliario', 'Insumos', 'Otros gastos']
+const CONSUMIBLE = c => ['Materia prima', 'Bebidas', 'Empaques', 'Insumos'].includes(c)
 const pillCat = c => `<span class="cat" data-c="${esc(c)}">${esc(c)}</span>`
 
 let paso = 'codigo', error = '', nombre = '', parte = null

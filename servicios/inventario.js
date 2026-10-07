@@ -3,11 +3,12 @@
 const ItemInventario = require('../models/ItemInventario');
 const MovInventario = require('../models/MovInventario');
 const ConteoInventario = require('../models/ConteoInventario');
+const VentaDia = require('../models/VentaDia');
 
 const { CATEGORIAS } = ItemInventario;
-// materia prima, bebidas e insumos se gastan usandolos: su conteo es la cantidad
+// materia prima, bebidas, empaques e insumos se gastan usandolos: su conteo es la cantidad
 // final del mes. menaje, mobiliario y otros gastos deberian seguir ahi: su conteo valida
-const CONSUMIBLE = { 'Materia prima': true, 'Bebidas': true, 'Insumos': true };
+const CONSUMIBLE = { 'Materia prima': true, 'Bebidas': true, 'Empaques': true, 'Insumos': true };
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
 const pad = n => String(n).padStart(2, '0');
@@ -111,7 +112,7 @@ function calcularCierre(conteo, anterior, datos) {
   const desde = anterior ? anterior.fechaAprobado : '0000-00-00';
   const itemDe = id => items.find(i => String(i._id) === id);
 
-  const consumo = ['Materia prima', 'Bebidas', 'Insumos'].map(c => {
+  const consumo = Object.keys(CONSUMIBLE).map(c => {
     let ini = 0, com = 0, baj = 0, fin = 0;
     const contados = new Set();
     for (const [id, r] of Object.entries(res)) {
@@ -164,8 +165,126 @@ async function cierresAprobados(empresaId) {
   return ConteoInventario.find({ empresa_id: empresaId, estado: 'aprobado' }).sort({ fechaAprobado: -1, updatedAt: -1 }).lean();
 }
 
+// food cost: cuanto de lo vendido se fue en costo de producto, comida y bebidas aparte.
+// el costo sale de los inventarios aprobados (lo que habia + lo que se compro - lo que quedo),
+// asi que incluye las bajas y la comida del personal. las ventas las escribe el administrador
+function grupoFC(it, empaques) {
+  if (it.cat === 'Empaques') return empaques ? 'Comida' : null;
+  if (it.cat === 'Materia prima') return it.costoDe || 'Comida';
+  if (it.cat === 'Bebidas') return it.costoDe || 'Bebidas';
+  return null;
+}
+function diasEntre(desde, hasta) {
+  const r = [];
+  for (let f = desde; f <= hasta; f = sumarDias(f, 1)) r.push(f);
+  return r;
+}
+function lunesDe(ymd) {
+  const [a, m, d] = ymd.split('-').map(Number);
+  return sumarDias(ymd, -((new Date(a, m - 1, d).getDay() + 6) % 7));
+}
+
+// costo de cada item del food cost entre dos cierres
+function costosCierre(conteo, anterior, datos, empaques) {
+  const res = conteo.resultado || {};
+  const fecha = conteo.fechaAprobado;
+  const filas = [];
+  for (const it of datos.items) {
+    const g = grupoFC(it, empaques);
+    if (!g) continue;
+    const id = String(it._id), ms = datos.porItem.get(id) || [];
+    const r = res[id];
+    const desde = r && r.antesFecha ? r.antesFecha : anterior.fechaAprobado;
+    const com = ms.filter(m => m.tipo === 'ing' && m.fecha > desde && m.fecha <= fecha).reduce((a, m) => a + m.costo, 0);
+    // lo que no se conto se toma como gastado completo
+    const costo = r ? (r.antesFecha ? valorPEPS(it, r.antes, r.antesFecha, ms) : 0) + com - valorPEPS(it, r.contado, fecha, ms) : com;
+    if (r || com) filas.push({ nombre: it.nombre, g, costo: Math.round(costo), contado: !!r });
+  }
+  return filas;
+}
+
+function calcularFoodCost(c, anterior, datos, ventasMap, ajustes) {
+  const base = { id: String(c._id), mes: nombreMes(c.mesCierre), mesCierre: c.mesCierre, fecha: c.fechaAprobado };
+  if (!anterior) return { ...base, partida: true };
+  const hoy = hoyStr();
+  const desde = sumarDias(anterior.fechaAprobado, 1), hasta = c.fechaAprobado;
+  const filas = costosCierre(c, anterior, datos, ajustes.empaques);
+  const costo = g => filas.filter(x => x.g === g).reduce((a, x) => a + x.costo, 0);
+  const dias = diasEntre(desde, hasta);
+  let v, faltan = [], porDia = [];
+  if (ajustes.modo === 'total') {
+    const t = c.ventas || {};
+    v = { comida: t.comida || 0, bebidas: t.bebidas || 0, dom: t.dom || 0 };
+  } else {
+    porDia = dias.filter(f => ventasMap.has(f)).map(f => ({ fecha: f, ...ventasMap.get(f) }));
+    v = porDia.reduce((a, x) => ({ comida: a.comida + x.comida, bebidas: a.bebidas + x.bebidas, dom: a.dom + x.dom }), { comida: 0, bebidas: 0, dom: 0 });
+    faltan = dias.filter(f => f < hoy && !ventasMap.has(f));
+  }
+  // estimado por semana (lunes a domingo): compras de comida / ventas de comida. solo con ventas diarias
+  let semanas = null;
+  if (ajustes.modo === 'diario') {
+    const grupos = new Map();
+    dias.forEach(f => { const l = lunesDe(f); if (!grupos.has(l)) grupos.set(l, []); grupos.get(l).push(f); });
+    const deComida = new Set(datos.items.filter(it => grupoFC(it, ajustes.empaques) === 'Comida').map(it => String(it._id)));
+    semanas = [...grupos.values()].map(ds => {
+      const a = ds[0], b = ds[ds.length - 1];
+      const comp = datos.movs.filter(m => m.tipo === 'ing' && m.fecha >= a && m.fecha <= b && deComida.has(String(m.item_id))).reduce((s, m) => s + m.costo, 0);
+      const vend = ds.filter(f => ventasMap.has(f)).reduce((s, f) => s + ventasMap.get(f).comida + ventasMap.get(f).dom, 0);
+      return { nombre: `${fechaCorta(a)} – ${fechaCorta(b)}`, pct: vend ? comp / vend * 100 : null, faltan: ds.filter(f => f < hoy && !ventasMap.has(f)).length };
+    });
+  }
+  return {
+    ...base, partida: false, desde, hasta,
+    comida: { costo: costo('Comida'), venta: v.comida + v.dom },
+    bebidas: { costo: costo('Bebidas'), venta: v.bebidas },
+    ventas: v, faltan, semanas, porDia,
+    top: filas.filter(x => x.g === 'Comida' && x.costo > 0).sort((a, b) => b.costo - a.costo).slice(0, 5).map(x => [x.nombre, x.costo]),
+    noContados: filas.filter(x => !x.contado && x.costo > 0).map(x => x.nombre)
+  };
+}
+
+async function armarFoodCost(empresaId, q, metas, ajustes, datos) {
+  const [cierres, ventas] = await Promise.all([cierresAprobados(empresaId), VentaDia.find({ empresa_id: empresaId }).lean()]);
+  const ventasMap = new Map(ventas.map(v => [v.fecha, { comida: v.comida, bebidas: v.bebidas, dom: v.dom }]));
+  const hoy = hoyStr();
+  // el periodo que se esta registrando ahora va desde el dia siguiente al ultimo inventario aprobado
+  const periodoDesde = cierres[0] ? sumarDias(cierres[0].fechaAprobado, 1) : null;
+  const diasPeriodo = periodoDesde && periodoDesde < hoy ? diasEntre(periodoDesde, sumarDias(hoy, -1)) : [];
+  const calc = k => calcularFoodCost(cierres[k], cierres[k + 1] || null, datos, ventasMap, ajustes);
+  const i = Math.max(0, cierres.findIndex(c => String(c._id) === q.cierre));
+  // ultimos meses para la grafica (el primer inventario es punto de partida y no entra)
+  const historia = [];
+  for (let k = Math.min(cierres.length - 2, 5); k >= 0; k--) {
+    const r = calc(k);
+    if (r.comida.venta || r.bebidas.venta) {
+      historia.push({ mes: r.mes, comida: r.comida.venta ? r.comida.costo / r.comida.venta * 100 : null, bebidas: r.bebidas.venta ? r.bebidas.costo / r.bebidas.venta * 100 : null });
+    }
+  }
+  return {
+    tipo: 'foodcost', ajustes, metas, hoy, periodoDesde,
+    diasPeriodo: diasPeriodo.length,
+    registrados: diasPeriodo.filter(f => ventasMap.has(f)).length,
+    faltan: ajustes.modo === 'diario' ? diasPeriodo.filter(f => !ventasMap.has(f)) : [],
+    ultimas: ventas.sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 5).map(v => ({ fecha: v.fecha, comida: v.comida, bebidas: v.bebidas, dom: v.dom })),
+    cierres: cierres.map((c, k) => ({ id: String(c._id), etiqueta: etiquetaMes(c.mesCierre).replace(/^./, s => s.toUpperCase()) + (k === cierres.length - 1 ? ' (primer inventario)' : '') })),
+    sel: cierres.length ? calc(i) : null,
+    historia
+  };
+}
+
+// dias del periodo actual sin ventas registradas (el aviso de la pestaña Reportes)
+async function ventasFaltan(empresaId, ajustes) {
+  if (ajustes.modo !== 'diario') return 0;
+  const ultimo = await ConteoInventario.findOne({ empresa_id: empresaId, estado: 'aprobado' }).sort({ fechaAprobado: -1, updatedAt: -1 }).select('fechaAprobado').lean();
+  if (!ultimo) return 0;
+  const desde = sumarDias(ultimo.fechaAprobado, 1), hasta = sumarDias(hoyStr(), -1);
+  if (desde > hasta) return 0;
+  const n = await VentaDia.countDocuments({ empresa_id: empresaId, fecha: { $gte: desde, $lte: hasta } });
+  return diasEntre(desde, hasta).length - n;
+}
+
 // arma los datos de cada reporte; el cliente solo los pinta
-async function armarReporte(empresaId, tipo, q, metas) {
+async function armarReporte(empresaId, tipo, q, metas, ajustes) {
   const datos = await cargar(empresaId);
   const { items, movs, porItem } = datos;
   const itemDe = id => items.find(i => String(i._id) === String(id));
@@ -189,11 +308,11 @@ async function armarReporte(empresaId, tipo, q, metas) {
       previo: previo ? {
         gasto: previo.gasto, faltante: previo.faltante,
         porCat: Object.fromEntries(previo.consumo.map(x => [x.cat, x.gasto]))
-      } : null,
-      ventas: actual.ventas || { comida: 0, bebidas: 0 },
-      metas
+      } : null
     };
   }
+
+  if (tipo === 'foodcost') return armarFoodCost(empresaId, q, metas, ajustes, datos);
 
   if (tipo === 'existencias') {
     const lista = items.filter(i => i.activo && i.cuenta === true && (!q.cat || q.cat === 'Todas' || i.cat === q.cat) && (!q.q || i.nombre.toLowerCase().includes(q.q.toLowerCase())));
@@ -264,5 +383,5 @@ async function armarReporte(empresaId, tipo, q, metas) {
 
 module.exports = {
   CATEGORIAS, CONSUMIBLE, hoyStr, sumarDias, mesAnterior, mesQueCierra, etiquetaMes, nombreMes, fechaCorta,
-  cargar, existencia, valorPEPS, precioInfo, recalcularPrecio, calcularCierre, cierresAprobados, armarReporte
+  cargar, existencia, valorPEPS, precioInfo, recalcularPrecio, calcularCierre, cierresAprobados, armarReporte, ventasFaltan
 };

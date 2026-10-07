@@ -56,6 +56,11 @@ const empresaSchema = new mongoose.Schema({
   metasFoodCost: {
     comida:  { type: Number, default: 32 },
     bebidas: { type: Number, default: 25 }
+  },
+  // como registra las ventas para el food cost y si los empaques suman al costo de comida
+  foodCost: {
+    modo:     { type: String, enum: ['diario', 'total'], default: 'diario' },
+    empaques: { type: Boolean, default: true }
   }
 }, { timestamps: true });
 

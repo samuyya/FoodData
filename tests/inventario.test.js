@@ -192,7 +192,7 @@ describe('modulo de inventarios', () => {
     const primero = await contar(10, 24);
     // el primer conteo se corre al 31 de enero para tener un periodo de verdad
     const ConteoInventario = require('../models/ConteoInventario');
-    await ConteoInventario.updateOne({ _id: primero }, { $set: { fechaAprobado: '2026-01-31' } });
+    await ConteoInventario.updateOne({ _id: primero }, { $set: { fechaConteo: '2026-01-31', fechaAprobado: '2026-01-31' } });
     await ItemInventario.updateMany({ empresa_id: empresa._id }, { $set: { conteoFecha: '2026-01-31' } });
 
     await agent.post('/api/inventario/movimientos').field({ tipo: 'ing', fecha: '2026-02-10', producto: 'Arroz', cantidad: '20', costo: '100000', por: 'Laura' });
@@ -215,6 +215,31 @@ describe('modulo de inventarios', () => {
     const total = (await agent.get('/api/inventario/reporte?tipo=foodcost')).body;
     expect(total.sel.comida.venta).toBe(1150000);
     expect(total.sel.semanas).toBeNull();
+  });
+
+  test('el inventario queda con la fecha en que se conto, no con la de aprobacion', async () => {
+    const { agent, empresa } = await empresaConAdmin();
+    const vasos = await ItemInventario.create({ empresa_id: empresa._id, nombre: 'Vasos', cat: 'Menaje', u: 'und', cuenta: true, precio: 4000, precioBase: 4000, conteo: 40, conteoFecha: '2026-01-01' });
+    await agent.post('/api/inventario/conteo/iniciar');
+    await agent.post('/api/inventario/conteo/sumar').send({ itemId: String(vasos._id), valor: 40 });
+    await agent.post('/api/inventario/conteo/enviar');
+    // se conto el 1 de febrero; el admin aprueba despues y en el medio se rompen 2 vasos
+    const ConteoInventario = require('../models/ConteoInventario');
+    await ConteoInventario.updateOne({ empresa_id: empresa._id, estado: 'enviado' }, { $set: { fechaConteo: '2026-02-01' } });
+    await agent.post('/api/inventario/movimientos').field({ tipo: 'baja', fecha: '2026-02-03', producto: 'Vasos', cantidad: '2', costo: '8000', por: 'Laura', motivo: 'Roto' });
+    await entrarAdmin(agent);
+    const ap = await agent.post('/api/inventario/conteo/aprobar');
+    expect(ap.status).toBe(200);
+
+    const est = (await agent.get('/api/inventario/estado')).body;
+    const it = est.items.find(i => i.nombre === 'Vasos');
+    expect(it.conteoFecha).toBe('2026-02-01');
+    // los 2 rotos despues del conteo se restan: deberia haber 38
+    expect(it.deberia).toBe(38);
+    expect(est.ultimoAprobado.fecha).toBe('2026-02-01');
+    // y en el cierre no aparecen como diferencia (el conteo es el punto de partida de este item igual)
+    const cierre = (await agent.get('/api/inventario/reporte?tipo=cierre')).body;
+    expect(cierre.subtitulo).toContain('inventario del 1 feb');
   });
 
   test('el superadmin carga la plantilla de restaurante', async () => {

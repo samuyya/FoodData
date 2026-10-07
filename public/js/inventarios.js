@@ -307,7 +307,7 @@ function pintarCardInv() {
     const ult = E.ultimoAprobado
     card.innerHTML = (recienAprobado ? `<div class="aprobado" style="margin-bottom:1rem"><div><b>✅ Inventario general de ${esc(recienAprobado.mes)} aprobado.</b><p>Las existencias quedaron actualizadas. ¿Quieres ver cómo cerró el mes frente al anterior?</p></div>
         <button type="button" class="btn-pri" data-accion="ver-cierre">Ver reporte del cierre</button></div>` : '') +
-      `<div class="fila-botones"><div><h2>Inventario general</h2><p class="meta" style="margin:.2rem 0 0">${ult ? `Último aprobado: ${fechaCorta(ult.fecha)} (cierre de ${esc(ult.mes)})` : 'Todavía no se ha hecho ninguno.'}</p></div>
+      `<div class="fila-botones"><div><h2>Inventario general</h2><p class="meta" style="margin:.2rem 0 0">${ult ? `Último inventario: ${fechaCorta(ult.fecha)} (cierre de ${esc(ult.mes)})${ult.aprobado && ult.aprobado !== ult.fecha ? `, aprobado el ${fechaCorta(ult.aprobado)}` : ''}` : 'Todavía no se ha hecho ninguno.'}</p></div>
       <button type="button" class="${recienAprobado ? 'btn-sec' : 'btn-pri'}" data-accion="iniciar">Iniciar inventario general</button></div>
       ${lineaPend()}<p class="ayuda" style="margin:.8rem 0 0">Se cuenta todo: en menaje y mobiliario sirve para validar que esté todo; en materia prima, bebidas e insumos, para saber cuánto quedó al cierre y calcular cuánto se gastó en el mes. Se puede repartir por partes, y las existencias solo cambian cuando el administrador lo aprueba.</p>`
     return
@@ -323,7 +323,7 @@ function pintarCardInv() {
         ${p.por ? `<span class="meta">Contó: ${esc(p.por)}</span>` : ''}
         <button type="button" class="btn-mini" data-contar="${esc(p.c)}">${p.lista ? 'Revisar' : p.curso ? 'Seguir contando' : 'Contar esta parte'}</button></div>`).join('') : '<p class="meta">La lista de conteo está vacía. El administrador puede agregar ítems con "Editar lista".</p>'}</div>
       ${conteo.estado === 'enviado'
-        ? `<div class="esperando"><span><b>Enviado al administrador.</b> Las existencias se actualizan cuando lo apruebe.</span><button type="button" class="btn-pri" data-accion="revisar">Revisar y aprobar 🔒</button></div>`
+        ? `<div class="esperando"><span><b>Enviado al administrador${conteo.fechaConteo ? ` el ${fechaCorta(conteo.fechaConteo)}` : ''}.</b> El inventario queda con fecha de ese día y las existencias se actualizan cuando lo apruebe.</span><button type="button" class="btn-pri" data-accion="revisar">Revisar y aprobar 🔒</button></div>`
         : `<div class="fila-botones"><span class="meta">${partes.length && listas === partes.length ? 'Todo contado. Ya se puede enviar.' : 'Puedes enviarlo aunque falten partes; solo se actualizan los ítems contados.'}</span>
           <div class="botones"><button type="button" class="btn-sec" data-accion="cancelar-inv">Descartar</button><button type="button" class="btn-pri" data-accion="enviar" ${partes.some(p => p.n) ? '' : 'disabled'}>Enviar al administrador</button></div></div>`}`
     return
@@ -348,6 +348,7 @@ function pintarCardInv() {
     const pend = pendientes()
     card.innerHTML = `<div class="fila-titulo"><h2>Revisar el conteo</h2><span class="admin-tag">🔓 Administrador</span></div>
       <p class="ayuda">Revisa que lo contado tenga sentido antes de aprobarlo. Al aprobar, estas cantidades pasan a ser las existencias reales. Las diferencias frente al mes anterior las ves después en Reportes.</p>
+      ${conteo.fechaConteo ? `<p class="nota-inv" style="margin:0 0 .4rem">Se contó el <b>${fechaCorta(conteo.fechaConteo)}</b>: el inventario queda con esa fecha aunque lo apruebes después. Lo que se registre después de ese día cuenta para el siguiente periodo.</p>` : ''}
       ${CATS().map(c => {
         const l = contados.filter(i => i.cat === c)
         if (!l.length) return ''

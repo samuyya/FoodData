@@ -90,7 +90,7 @@ function conteoPublico(c, admin) {
   if (!c) return null;
   const acceso = c.acceso && c.acceso.vence > new Date() ? c.acceso : null;
   return {
-    id: String(c._id), estado: c.estado, mesCierre: c.mesCierre, mesNombre: inv.nombreMes(c.mesCierre),
+    id: String(c._id), estado: c.estado, mesCierre: c.mesCierre, mesNombre: inv.nombreMes(c.mesCierre), fechaConteo: c.fechaConteo,
     cuentas: Object.fromEntries(c.cuentas instanceof Map ? c.cuentas : Object.entries(c.cuentas || {})),
     por: Object.fromEntries(c.por instanceof Map ? c.por : Object.entries(c.por || {})),
     nota: c.nota,
@@ -132,7 +132,7 @@ router.get('/estado', soloEmpresa, ah(async (req, res) => {
     hoyIngresos: { n: deHoy('ing').length, total: deHoy('ing').reduce((a, m) => a + m.costo, 0) },
     hoyBajas: { n: deHoy('baja').length, total: deHoy('baja').reduce((a, m) => a + m.costo, 0) },
     conteo: conteoPublico(conteo, admin),
-    ultimoAprobado: ultimo ? { id: String(ultimo._id), fecha: ultimo.fechaAprobado, mes: inv.nombreMes(ultimo.mesCierre), mesCierre: ultimo.mesCierre } : null,
+    ultimoAprobado: ultimo ? { id: String(ultimo._id), fecha: inv.fechaDe(ultimo), aprobado: ultimo.fechaAprobado, mes: inv.nombreMes(ultimo.mesCierre), mesCierre: ultimo.mesCierre } : null,
     sugerido: !hecho && !conteo ? { mes: inv.nombreMes(mesSugerido), clave: mesSugerido } : null,
     faltanVentas
   });
@@ -446,7 +446,8 @@ async function anotarConectados(c, empresaId, sid) {
 router.post('/conteo/enviar', soloEmpresa, ah(async (req, res) => {
   const c = await conteoDeEmpresa(req, res); if (!c) return;
   await anotarConectados(c, empresaDe(req));
-  c.estado = 'enviado'; c.acceso = null; c.nota = '';
+  // la fecha del inventario es el dia en que se termino de contar; si se devuelve y se reenvia, cambia
+  c.estado = 'enviado'; c.fechaConteo = inv.hoyStr(); c.acceso = null; c.nota = '';
   await c.save();
   res.json({ ok: true });
 }));
@@ -468,18 +469,21 @@ router.post('/conteo/aprobar', soloEmpresa, soloAdmin, ah(async (req, res) => {
   const datos = await inv.cargar(empresaId);
   const lista = datos.items.filter(i => i.activo && i.cuenta === true);
   const hoy = inv.hoyStr();
+  // todo queda a la fecha en que se conto, no a la de aprobacion: lo que se registre despues
+  // (ej. dos vasos rotos al dia siguiente) ya cuenta para el siguiente periodo
+  const fecha = c.fechaConteo || hoy;
   const resultado = {};
   for (const it of lista) {
     const id = String(it._id);
     const partes = c.cuentas.get(id);
     if (!partes || !partes.length) continue;
     const contado = Math.round(partes.reduce((a, n) => a + n, 0) * 1000) / 1000;
-    resultado[id] = { antes: it.conteoFecha ? it.conteo : 0, antesFecha: it.conteoFecha, deberia: inv.existencia(it, datos.porItem.get(id) || []), contado };
-    await ItemInventario.updateOne({ _id: it._id }, { $set: { conteo: contado, conteoFecha: hoy, contadoPor: c.por.get(it.cat) || '' } });
+    resultado[id] = { antes: it.conteoFecha ? it.conteo : 0, antesFecha: it.conteoFecha, deberia: inv.existencia(it, datos.porItem.get(id) || [], fecha), contado };
+    await ItemInventario.updateOne({ _id: it._id }, { $set: { conteo: contado, conteoFecha: fecha, contadoPor: c.por.get(it.cat) || '' } });
   }
   c.resultado = resultado;
   c.completo = lista.length > 0 && lista.every(it => resultado[String(it._id)]);
-  c.estado = 'aprobado'; c.fechaAprobado = hoy; c.aprobadoPor = adminInventarioActivo(req) || 'Superadmin'; c.acceso = null;
+  c.estado = 'aprobado'; c.fechaConteo = fecha; c.fechaAprobado = hoy; c.aprobadoPor = adminInventarioActivo(req) || 'Superadmin'; c.acceso = null;
   await c.save();
   res.json({ ok: true, completo: c.completo, mes: inv.nombreMes(c.mesCierre), id: String(c._id) });
 }));

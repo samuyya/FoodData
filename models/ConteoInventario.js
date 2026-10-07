@@ -27,6 +27,9 @@ const conteoSchema = new mongoose.Schema({
   // al aprobar: foto de como estaba cada item contado, para el reporte de cierre
   resultado: { type: Object, default: null },
   completo: { type: Boolean, default: false },
+  // el dia en que se conto (cuando se envio al administrador). el cierre llega hasta ese dia,
+  // aunque el administrador apruebe despues: lo que pase luego ya es del siguiente periodo
+  fechaConteo: { type: String, default: null },
   fechaAprobado: { type: String, default: null },
   aprobadoPor: { type: String, default: '' },
   // total de ventas del periodo, para quien no registra las ventas a diario

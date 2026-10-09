@@ -32,6 +32,14 @@ function fechaCorta(ymd) {
   return `${Number(d)} ${MESES[Number(m) - 1].slice(0, 3)}`;
 }
 
+// unidades que se pueden pasar de una a otra: peso con peso y liquido con liquido
+const FAMILIA = { g: ['peso', 1], kg: ['peso', 1000], lb: ['peso', 453.592], ml: ['liquido', 1], L: ['liquido', 1000], und: ['und', 1], paquete: ['paquete', 1], caja: ['caja', 1] };
+function convertir(valor, de, a) {
+  const x = FAMILIA[de], y = FAMILIA[a];
+  if (!x || !y || x[0] !== y[0]) return null;
+  return Math.round(valor * x[1] / y[1] * 1000) / 1000;
+}
+
 // la fecha de un cierre es el dia en que se conto. los aprobados antes de guardar esa fecha usan la de aprobacion
 const fechaDe = c => c.fechaConteo || c.fechaAprobado;
 
@@ -102,6 +110,46 @@ function precioInfo(item, movsItem, desde, hasta) {
   return { precio: item.precio || item.precioBase || 0, promedio: false, cambios, compras: detalle };
 }
 
+// ingresos vivos de un item en orden (el mas viejo primero)
+function listaIngresos(itemId) {
+  return MovInventario.find({ item_id: itemId, tipo: 'ing', borrado: null }).sort({ fecha: 1, createdAt: 1 }).lean();
+}
+// el precio de una baja sale del ingreso mas reciente hasta su fecha
+function ingresoVigente(ingresos, baja) {
+  let v = null;
+  for (const g of ingresos) { if (g.fecha > baja.fecha) break; v = g; }
+  return v;
+}
+const pesos = n => '$ ' + Math.round(n).toLocaleString('es-CO');
+
+// cuando se corrige o se borra un ingreso, las bajas que dependian de el (las hechas despues y
+// antes del siguiente ingreso del producto) se recalculan con el precio nuevo. quedan marcadas como automaticas
+async function ajustarBajas(item, ingresoId, antes, despues, hoy) {
+  const id = String(ingresoId);
+  const bajas = await MovInventario.find({ item_id: item._id, tipo: 'baja', borrado: null });
+  const cambiadas = [];
+  for (const b of bajas) {
+    const era = ingresoVigente(antes, b);
+    if (!era || String(era._id) !== id) continue;
+    const ahora = ingresoVigente(despues, b);
+    if (!ahora) continue;
+    // si el precio por unidad quedo igual (ej. solo se cambio el proveedor) no se toca la baja
+    if (Math.abs(era.costo / era.cant - ahora.costo / ahora.cant) < 1e-9) continue;
+    const costo = Math.round(b.cant * ahora.costo / ahora.cant);
+    if (costo === b.costo) continue;
+    const precio = g => `${pesos(g.costo / g.cant)} por ${item.u}`;
+    const razon = String(ahora._id) === id
+      ? `Se corrigió el ingreso del ${fechaCorta(ahora.fecha)}: ${precio(era)} → ${precio(ahora)}`
+      : `Se borró el ingreso del ${fechaCorta(era.fecha)}; ahora vale lo del ingreso del ${fechaCorta(ahora.fecha)} (${precio(ahora)})`;
+    const datos = c => ({ cant: b.cant, costo: c, prov: b.prov, motivo: b.motivo, motivoOtro: b.motivoOtro });
+    b.cambios.push({ por: 'Automático', razon, fecha: hoy, auto: true, antes: datos(b.costo), despues: datos(costo) });
+    cambiadas.push({ id: String(b._id), antes: b.costo, despues: costo });
+    b.costo = costo;
+    await b.save();
+  }
+  return cambiadas;
+}
+
 async function recalcularPrecio(itemId) {
   const ult = await MovInventario.findOne({ item_id: itemId, tipo: 'ing', borrado: null }).sort({ fecha: -1, createdAt: -1 }).lean();
   if (ult) await ItemInventario.updateOne({ _id: itemId }, { $set: { precio: Math.round(ult.costo / ult.cant) } });
@@ -141,6 +189,16 @@ function calcularCierre(conteo, anterior, datos) {
     return { cat: c, ini, com, baj, fin, gasto: ini + com - baj - fin, real: ini + com - fin };
   });
 
+  // lo que se compro y lo que se perdio en el periodo (compras de todo; bajas de lo que se consume)
+  let compras = 0, bajasMes = 0;
+  for (const it of items) {
+    for (const m of porItem.get(String(it._id)) || []) {
+      if (m.fecha <= desde || m.fecha > fecha) continue;
+      if (m.tipo === 'ing') compras += m.costo;
+      else if (CONSUMIBLE[it.cat]) bajasMes += m.costo;
+    }
+  }
+
   const diferencias = [];
   for (const [id, r] of Object.entries(res)) {
     const it = itemDe(id);
@@ -163,13 +221,45 @@ function calcularCierre(conteo, anterior, datos) {
     const p = precioInfo(it, porItem.get(id) || [], sumarDias(desde, 1), fecha);
     if (p.promedio) cambiaron.push({ id, nombre: it.nombre, u: it.u, ...p });
   }
-  return { consumo, diferencias, faltante, gasto, cambiaron, fecha, desde };
+  const periodo = { desde: anterior ? sumarDias(desde, 1) : null, hasta: fecha };
+  // ojo: "gasto" es la formula (lo que habia + compras - bajas - lo que quedo), en pantalla se llama "consumo real"
+  return { consumo, diferencias, faltante, gasto, compras, bajasMes, cambiaron, fecha, desde, periodo };
 }
 
 // "inventario del 1 oct, aprobado el 2 oct" (o solo una fecha si fue el mismo dia)
 function textoFechas(c) {
   const f = fechaDe(c);
   return f === c.fechaAprobado ? `inventario del ${fechaCorta(f)}` : `inventario del ${fechaCorta(f)}, aprobado el ${fechaCorta(c.fechaAprobado)}`;
+}
+
+// quien participo en un conteo y cuanto estuvo contando de verdad: desde la primera cantidad que
+// anoto en esa parte hasta la ultima. las pausas de mas de 10 minutos no cuentan
+const PAUSA_MAX = 10 * 60 * 1000;
+const horaCo = d => new Date(d).toLocaleString('es-CO', { timeZone: 'America/Bogota', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+function duracionTxt(ms) {
+  const min = Math.round(ms / 60000);
+  if (min < 1) return 'menos de 1 min';
+  return min < 60 ? `${min} min` : `${Math.floor(min / 60)} h ${min % 60} min`;
+}
+function participacion(c) {
+  const grupos = new Map();
+  for (const e of c.actividad || []) {
+    const nombre = e.q || 'Dispositivo principal';
+    const k = nombre + '|' + e.cat;
+    if (!grupos.has(k)) grupos.set(k, { nombre, cat: e.cat, celular: e.sid !== 'principal', ts: [], items: new Set() });
+    const g = grupos.get(k);
+    g.ts.push(+new Date(e.t));
+    g.items.add(e.item);
+  }
+  return [...grupos.values()].map(g => {
+    const ts = g.ts.sort((a, b) => a - b);
+    let activo = 0;
+    for (let i = 1; i < ts.length; i++) if (ts[i] - ts[i - 1] <= PAUSA_MAX) activo += ts[i] - ts[i - 1];
+    return {
+      nombre: g.nombre, cat: g.cat, celular: g.celular, items: g.items.size,
+      desde: ts[0], desdeTxt: horaCo(ts[0]), hastaTxt: horaCo(ts[ts.length - 1]), duracion: duracionTxt(activo)
+    };
+  }).sort((a, b) => a.desde - b.desde);
 }
 
 async function cierresAprobados(empresaId) {
@@ -316,8 +406,9 @@ async function armarReporte(empresaId, tipo, q, metas, ajustes) {
       subtitulo: `${etiquetaMes(actual.mesCierre).replace(/^./, s => s.toUpperCase())}${anterior ? ' frente a ' + nombreMes(anterior.mesCierre) : ''} · ${textoFechas(actual)}`,
       mesAnterior: anterior ? nombreMes(anterior.mesCierre) : null,
       ...calc,
+      participacion: participacion(actual),
       previo: previo ? {
-        gasto: previo.gasto, faltante: previo.faltante,
+        gasto: previo.gasto, faltante: previo.faltante, compras: previo.compras, bajasMes: previo.bajasMes,
         porCat: Object.fromEntries(previo.consumo.map(x => [x.cat, x.gasto]))
       } : null
     };
@@ -394,5 +485,6 @@ async function armarReporte(empresaId, tipo, q, metas, ajustes) {
 
 module.exports = {
   CATEGORIAS, CONSUMIBLE, fechaDe, textoFechas, hoyStr, sumarDias, mesAnterior, mesQueCierra, etiquetaMes, nombreMes, fechaCorta,
+  convertir, listaIngresos, ajustarBajas, participacion,
   cargar, existencia, valorPEPS, precioInfo, recalcularPrecio, calcularCierre, cierresAprobados, armarReporte, ventasFaltan
 };

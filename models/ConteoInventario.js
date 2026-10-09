@@ -25,6 +25,9 @@ const conteoSchema = new mongoose.Schema({
     default: null
   },
   // al aprobar: foto de como estaba cada item contado, para el reporte de cierre
+  // cada vez que alguien suma o corrige un numero queda una marca (quien, que parte, cuando).
+  // de ahi sale quien participo y cuanto tiempo estuvo contando de verdad
+  actividad: [{ _id: false, q: String, sid: String, cat: String, item: String, t: Date }],
   resultado: { type: Object, default: null },
   completo: { type: Boolean, default: false },
   // el dia en que se conto (cuando se envio al administrador). el cierre llega hasta ese dia,

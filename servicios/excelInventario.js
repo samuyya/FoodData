@@ -51,12 +51,16 @@ async function excelReporte(d, { detalle, empresa, titulo: sub }) {
     if (!d.id) { titulo(hoja, 'Cierre del mes', 'Todavía no hay un inventario general aprobado.', 4); return wb; }
     titulo(hoja, d.titulo, `${empresa} · ${d.subtitulo}`, 6);
     let fila = tabla(hoja, 4, [{ titulo: 'Indicador', ancho: 34 }, { titulo: 'Valor', ancho: 18, plata: true }], [
-      ['Gasto del mes', d.gasto], ...d.consumo.map(x => [x.cat, x.gasto]), ['Faltante en menaje y mobiliario', d.faltante]
+      ['Gasto del mes (todas las compras)', d.compras], ['Bajas del mes (lo que se consume)', d.bajasMes], ['Consumo real del mes (sin pérdidas)', d.gasto], ['Faltante en menaje y mobiliario', d.faltante]
     ]);
     fila = tabla(hoja, fila, [
       { titulo: 'Categoría', ancho: 18 }, { titulo: 'Al cierre anterior', plata: true }, { titulo: '+ Compras', plata: true },
-      { titulo: '− Bajas', plata: true }, { titulo: '− Al cierre', plata: true }, { titulo: '= Gasto del mes', plata: true }
+      { titulo: '− Bajas', plata: true }, { titulo: '− Al cierre', plata: true }, { titulo: '= Consumo real', plata: true }
     ], d.consumo.map(x => [x.cat, x.ini, x.com, x.baj, x.fin, x.gasto]));
+    if (d.participacion && d.participacion.length) {
+      fila = tabla(hoja, fila, [{ titulo: 'Quién contó' }, { titulo: 'Parte' }, { titulo: 'Ítems' }, { titulo: 'Empezó' }, { titulo: 'Último registro' }, { titulo: 'Tiempo contando' }],
+        d.participacion.map(p => [p.nombre + (p.celular ? ' (celular)' : ''), p.cat, p.items, p.desdeTxt, p.hastaTxt, p.duracion]));
+    }
     if (detalle && d.diferencias.length) {
       tabla(hoja, fila, [{ titulo: 'Ítem', ancho: 28 }, { titulo: 'Categoría' }, { titulo: 'Debería haber' }, { titulo: 'Se contó' }, { titulo: 'Diferencia' }, { titulo: 'Valor', plata: true }],
         d.diferencias.map(x => [x.nombre, x.cat, x.deberia, x.contado, x.dif, x.valor]));

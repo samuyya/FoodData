@@ -182,6 +182,16 @@
 }
 .inv .nuevo-campos { display: flex; flex-wrap: wrap; gap: .8rem 1.4rem; align-items: end; background: var(--aviso-bg); border: 1px solid var(--aviso-borde); border-radius: 8px; padding: .75rem .85rem; }
 .inv .nuevo-campos .campo { width: 200px; max-width: 100%; }
+.inv .empaque { display: grid; gap: .8rem; background: var(--menta-3); border: 1px solid var(--menta); border-radius: 8px; padding: .75rem .85rem; }
+.inv .empaque-fila { display: flex; flex-wrap: wrap; gap: .8rem 1.2rem; align-items: end; }
+.inv .empaque-fila .campo { width: 250px; max-width: 100%; }
+.inv .empaque p { margin: 0; }
+.inv .empaque .cant { grid-template-columns: minmax(0, 1fr) 112px; }
+.inv .aviso-auto { font-size: .76rem; font-weight: 600; color: var(--aviso); }
+.inv .aviso-razon { display: block; }
+.inv .partic { margin: .8rem 0 0; border: 1px solid var(--borde); border-radius: 10px; padding: .6rem .85rem; }
+.inv .partic summary { cursor: pointer; font-weight: 600; }
+.inv .partic summary .meta { font-weight: 400; margin-left: .4rem; }
 .inv .check { display: flex; gap: .55rem; align-items: center; font-size: .9rem; min-height: 40px; cursor: pointer; }
 .inv .check input { width: 18px; height: 18px; accent-color: var(--primario); }
 .inv .check small { display: block; color: var(--texto-debil); font-size: .78rem; }

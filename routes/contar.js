@@ -95,13 +95,15 @@ router.get('/:token/conteo', ah(async (req, res) => {
 }));
 router.post('/:token/sumar', ah(async (req, res) => {
   const c = await dentro(req, res); if (!c) return;
-  if (!(await ops.sumarCuenta(c._id, req.body.itemId, Number(req.body.valor)))) return res.status(400).json({ ok: false, error: 'Cantidad inválida.' });
+  const s = req.session.invitado;
+  if (!(await ops.sumarCuenta(c._id, req.body.itemId, Number(req.body.valor), { nombre: s.nombre, sid: s.sid }))) return res.status(400).json({ ok: false, error: 'Cantidad inválida.' });
   res.json({ ok: true });
 }));
 router.post('/:token/parcial', ah(async (req, res) => {
   const c = await dentro(req, res); if (!c) return;
   const valor = req.body.valor === null ? null : Number(req.body.valor);
-  if (!(await ops.cambiarParcial(c._id, req.body.itemId, Number(req.body.i), valor))) return res.status(400).json({ ok: false, error: 'Cantidad inválida.' });
+  const s = req.session.invitado;
+  if (!(await ops.cambiarParcial(c._id, req.body.itemId, Number(req.body.i), valor, { nombre: s.nombre, sid: s.sid }))) return res.status(400).json({ ok: false, error: 'Cantidad inválida.' });
   res.json({ ok: true });
 }));
 // elegir una parte (o soltarla al terminar). al terminar queda el nombre en esa parte

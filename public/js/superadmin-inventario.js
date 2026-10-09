@@ -37,7 +37,7 @@ function pintar() {
     <td><select data-ed="${k}:cat" aria-label="Categoría">${ops(cats, it.cat)}</select></td>
     <td><select data-ed="${k}:u" aria-label="Unidad">${ops(unidades, it.u)}</select></td>
     <td><div class="pesos"><input inputmode="numeric" value="${it.precio ? Math.round(it.precio).toLocaleString('es-CO') : ''}" data-ed="${k}:precio" aria-label="Valor por unidad"></div></td>
-    <td><div class="presentacion"><input placeholder="Ej. Caja" data-ed="${k}:presNombre" value="${esc(it.presNombre)}" style="width:84px" aria-label="Presentación de compra"><span class="meta">de</span><input type="number" min="2" placeholder="24" data-ed="${k}:presCant" value="${esc(it.presCant)}" style="width:62px" aria-label="Cuántas unidades trae"></div></td>
+    <td><div class="presentacion"><input placeholder="Ej. Caja" data-ed="${k}:presNombre" value="${esc(it.presNombre)}" style="width:84px" aria-label="Presentación de compra"><span class="meta">de</span><input type="number" min="0" step="any" placeholder="24" data-ed="${k}:presCant" value="${esc(it.presCant)}" style="width:62px" aria-label="Cuántas unidades trae"></div></td>
     <td style="text-align:center"><input type="checkbox" ${it.cuenta ? 'checked' : ''} data-ed="${k}:cuenta" aria-label="Se cuenta en el inventario general" style="width:18px;height:18px;accent-color:var(--primario)"></td>
     <td>${it.borrar ? `<button type="button" class="btn-mini" data-deshacer="${k}">Deshacer</button>` : `<button type="button" class="btn-borrar" data-borrar="${k}">🗑 Borrar</button>`}</td></tr>`).join('')
     : '<tr><td colspan="7" class="vacio">Todavía no hay ítems. Carga la plantilla o agrégalos uno por uno.</td></tr>'

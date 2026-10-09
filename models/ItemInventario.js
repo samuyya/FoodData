@@ -13,9 +13,10 @@ const itemSchema = new mongoose.Schema({
   // precio de arranque (el que puso el superadmin en la plantilla) — se usa
   // para valorar lo que haya de antes de la primera compra registrada
   precioBase: { type: Number, default: 0 },
-  // presentacion de compra opcional, ej { nombre: 'Caja', cant: 24 } => 1 caja = 24 und
+  // presentacion de compra opcional, ej { nombre: 'Bolsa', cant: 1000, contenido: 1, unidad: 'L' }
+  // => 1 bolsa = 1000 ml (cant va siempre en la unidad del item; contenido/unidad es como se escribio)
   pres: {
-    type: new mongoose.Schema({ nombre: String, cant: Number }, { _id: false }),
+    type: new mongoose.Schema({ nombre: String, cant: Number, contenido: Number, unidad: String }, { _id: false }),
     default: null
   },
   // true = se cuenta en el inventario general, false = no, null = nuevo sin decidir

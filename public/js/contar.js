@@ -145,9 +145,18 @@ async function guardarParcial(input) {
   } else pintar()
 }
 
+// mientras se verifica, el boton avisa que esta trabajando
+async function conCarga(form, texto, accion) {
+  const b = form.querySelector('button[type="submit"]')
+  if (b.disabled) return
+  const antes = b.textContent
+  b.disabled = true; b.textContent = texto
+  try { await accion() } finally { if (b.isConnected) { b.disabled = false; b.textContent = antes } }
+}
+
 document.addEventListener('submit', async e => {
   e.preventDefault()
-  if (e.target.id === 'form-codigo') {
+  if (e.target.id === 'form-codigo') await conCarga(e.target, 'Entrando…', async () => {
     const { res, d } = await api(base + '/entrar', { codigo: $('inv-codigo').value })
     if (!res.ok) {
       if (d.motivo) return cerrado(d.motivo)
@@ -157,8 +166,8 @@ document.addEventListener('submit', async e => {
     error = ''; paso = 'nombre'
     try { nombre = localStorage.getItem('fd_inv_nombre') || '' } catch (_) {}
     pintar()
-  }
-  if (e.target.id === 'form-nombre') {
+  })
+  if (e.target.id === 'form-nombre') await conCarga(e.target, 'Entrando…', async () => {
     const n = $('inv-nombre').value.trim()
     if (!n) { $('inv-nombre').focus(); return }
     const { res, d } = await api(base + '/nombre', { nombre: n })
@@ -166,7 +175,7 @@ document.addEventListener('submit', async e => {
     try { localStorage.setItem('fd_inv_nombre', n) } catch (_) {}
     paso = 'partes'
     if (await cargarConteo()) pintar()
-  }
+  })
 })
 
 document.addEventListener('click', async e => {

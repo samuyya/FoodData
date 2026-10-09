@@ -88,10 +88,15 @@ function pedirAdmin(texto, cb) {
 $('form-admin').addEventListener('submit', async e => {
   e.preventDefault()
   const btn = $('modal-ok')
-  btn.disabled = true
-  const { res, d } = await api('/api/admin/verificar-inventario', { method: 'POST', body: { password: $('admin-password').value } })
-  btn.disabled = false
-  if (!res.ok) { $('admin-msg').textContent = d.error || 'Algo salió mal, intenta de nuevo.'; return }
+  if (btn.disabled) return
+  btn.disabled = true; btn.textContent = 'Ingresando…'
+  $('admin-msg').textContent = ''
+  let r
+  try { r = await api('/api/admin/verificar-inventario', { method: 'POST', body: { password: $('admin-password').value } }) }
+  catch (_) { r = { res: { ok: false }, d: { error: 'No hay conexión, intenta de nuevo.' } } }
+  btn.disabled = false; btn.textContent = 'Ingresar'
+  const { res, d } = r
+  if (!res.ok) { $('admin-msg').textContent = d.error || 'Algo salió mal, intenta de nuevo.'; $('admin-password').select(); return }
   E.admin = true
   $('modal-admin').hidden = true
   const cb = alAutorizar; alAutorizar = null
@@ -112,7 +117,7 @@ function filaMov(m, conMotivo) {
   const atr = m.fecha < E.hoy ? `<br><span class="fecha-atr">día anterior</span>` : ''
   const etiqueta = m.cuenta === null ? ' <span class="sin-inv">nuevo</span>' : m.cuenta === false ? ' <span class="sin-inv">no se cuenta</span>' : ''
   return `<tr><td>${fechaCorta(m.fecha)}${m.fecha === E.hoy ? ' <span class="meta">(hoy)</span>' : atr}</td>
-    <td>${esc(m.nombre)} ${pillCat(m.cat)}${etiqueta}<br><small class="meta">${esc(m.por)}${m.obs ? ' · ' + esc(m.obs) : ''}</small>${m.corregidoPor ? `<br><span class="sin-inv">corregido por ${esc(m.corregidoPor)}</span>` : ''}</td>
+    <td>${esc(m.nombre)} ${pillCat(m.cat)}${etiqueta}<br><small class="meta">${esc(m.por)}${m.obs ? ' · ' + esc(m.obs) : ''}</small>${m.corregidoPor ? `<br><span class="sin-inv">corregido por ${esc(m.corregidoPor)}</span>` : ''}${m.ajuste ? `<br><span class="aviso-auto">ℹ️ Costo ajustado por corrección de un ingreso: ${plata(m.ajuste.antes)} → ${plata(m.ajuste.despues)}</span><small class="meta aviso-razon">${esc(m.ajuste.razon)}</small>` : ''}</td>
     <td class="num">${num(m.cant)} ${esc(m.u)}${m.compra ? `<span class="quien">${esc(m.compra)}</span>` : ''}</td>
     <td>${conMotivo ? `<span class="pill sal">${esc(m.motivo)}</span>${m.motivoOtro ? `<br><small class="meta">${esc(m.motivoOtro)}</small>` : ''}` : esc(m.prov || '—')}</td>
     <td class="num">${plata(m.costo)}</td>
@@ -156,36 +161,109 @@ document.addEventListener('focusin', e => { if (e.target.matches('select.unidad'
 document.addEventListener('change', e => { if (e.target.matches('select.unidad')) { unidadesCortas(e.target); e.target.blur() } })
 document.addEventListener('focusout', e => { if (e.target.matches('select.unidad')) unidadesCortas(e.target) })
 
-// si el item se compra por caja/paca, el selector ofrece esa presentacion
+// como viene lo que se compra: suelto o en bolsa, caja, paca...
+// las medidas solo se pasan entre las de su tipo (peso con peso, liquido con liquido)
+const FORMAS = ['Suelto', 'Bolsa', 'Botella', 'Caja', 'Paca', 'Paquete', 'Lata', 'Frasco', 'Bulto', 'Garrafa', 'Otro']
+const TIPO_MEDIDA = { g: 'peso', kg: 'peso', lb: 'peso', ml: 'liquido', L: 'liquido' }
+const EN_GRAMOS = { g: 1, kg: 1000, lb: 453.592 }
+const EN_ML = { ml: 1, L: 1000 }
+const tipoMedida = u => TIPO_MEDIDA[u] || u
+const mismaMedida = u => E.unidades.filter(x => tipoMedida(x) === tipoMedida(u))
+function convertir(v, de, a) {
+  if (tipoMedida(de) !== tipoMedida(a)) return null
+  const t = EN_GRAMOS[de] ? EN_GRAMOS : EN_ML[de] ? EN_ML : null
+  return t ? Math.round(v * t[de] / t[a] * 1000) / 1000 : v
+}
+const plural = n => { n = n.toLowerCase(); return n + (/[aeiou]$/.test(n) ? 's' : 'es') }
+const opcionesUnidadDe = (lista, sel) => lista.map(u => `<option value="${u}"${u === sel ? ' selected' : ''}>${u}</option>`).join('')
+const opcionesMedida = (lista, sel) => `<option value="" data-fijo="1"${sel ? '' : ' selected'} disabled>Medida…</option>` + opcionesUnidadDe(lista, sel)
+
+let empaque = { forma: 'Suelto', nombre: '', cant: '', unidad: '', recordar: false }
+let empClave = ''
+const empaqueNuevo = () => { empaque = { forma: 'Suelto', nombre: '', cant: '', unidad: '', recordar: false } }
+
+// la presentacion que se esta usando en este ingreso (null = suelto). cant va en la unidad del producto
+function presActual(it) {
+  const sel = $('ing-unidad').value
+  if (!it) {
+    if (empaque.forma === 'Suelto') return null
+    const cont = +empaque.cant
+    return { nombre: empaque.forma === 'Otro' ? empaque.nombre.trim() : empaque.forma, contenido: cont, unidad: empaque.unidad, cant: cont }
+  }
+  if (sel === 'pres' && it.pres) return { nombre: it.pres.nombre, contenido: it.pres.contenido ?? it.pres.cant, unidad: it.pres.unidad || it.u, cant: it.pres.cant }
+  if (sel === 'otra') {
+    const cont = +empaque.cant, unidad = empaque.unidad || it.u
+    return { nombre: empaque.nombre.trim(), contenido: cont, unidad, cant: convertir(cont, unidad, it.u) }
+  }
+  return null
+}
+
+// el selector de al lado de la cantidad: la presentacion guardada, la medida del producto u otra presentacion
 function prepararUnidad(it) {
   const sel = $('ing-unidad')
-  if (it && it.pres) {
-    if (sel.dataset.item !== it.id) {
-      sel.innerHTML = `<option value="${it.u}" data-fijo="1">${it.u}</option><option value="pres" data-fijo="1">${esc(it.pres.nombre)} (${it.pres.cant} ${it.u})</option>`
-      sel.dataset.item = it.id
-    }
+  const clave = it ? `${it.id}:${it.pres ? 1 : 0}` : (empaque.forma === 'Suelto' ? 'suelto' : 'paquete')
+  if (sel.dataset.clave === clave) return
+  sel.dataset.clave = clave
+  if (it) {
+    const p = it.pres
+    sel.innerHTML = (p ? `<option value="pres" data-fijo="1">${esc(p.nombre)} (${num(p.contenido ?? p.cant)} ${esc(p.unidad || it.u)})</option>` : '') +
+      `<option value="${it.u}" data-fijo="1">${it.u}</option><option value="otra" data-fijo="1">Otra presentación…</option>`
+    sel.value = p ? 'pres' : it.u
     sel.disabled = false
-  } else if (it) {
-    if (sel.dataset.item !== it.id) { sel.innerHTML = opcionesUnidad(it.u); sel.dataset.item = it.id }
-    sel.value = it.u; sel.disabled = true
+  } else if (empaque.forma === 'Suelto') {
+    sel.innerHTML = opcionesUnidad()
+    sel.disabled = false
   } else {
-    if (sel.dataset.item || !sel.options.length) { sel.innerHTML = opcionesUnidad(); sel.dataset.item = '' }
-    sel.disabled = false
+    sel.innerHTML = '<option data-fijo="1"></option>'
+    sel.disabled = true
   }
 }
-const factorUnidad = it => it && it.pres && $('ing-unidad').value === 'pres' ? it.pres.cant : 1
+
+// "¿Cómo viene?" para un producto nuevo, o los datos de otra presentación para uno que ya existe
+function pintarEmpaque() {
+  const nombre = $('ing-producto').value.trim(), it = porNombre(nombre), box = $('ing-empaque')
+  if (!nombre) { box.hidden = true; box.innerHTML = ''; return }
+  const nuevoPaquete = !it && empaque.forma !== 'Suelto'
+  const otra = !!it && $('ing-unidad').value === 'otra'
+  let html = ''
+  if (!it) {
+    html += `<div class="campo"><span>¿Cómo viene?</span><div class="chips" role="group" aria-label="Cómo viene">${FORMAS.map(f => `<button type="button" class="chip" data-forma="${f}" aria-pressed="${f === empaque.forma}">${f === 'Suelto' ? 'Suelto o a granel' : f}</button>`).join('')}</div></div>`
+  }
+  if (nuevoPaquete || otra) {
+    const pideNombre = otra || empaque.forma === 'Otro'
+    const quien = pideNombre ? (empaque.nombre.trim().toLowerCase() || 'una') : empaque.forma.toLowerCase()
+    html += `<div class="empaque-fila">
+      ${pideNombre ? `<label class="campo"><span>¿Cómo viene?</span><input id="ing-pres-nombre" maxlength="20" placeholder="Ej. Bolsa, Caja, Paca" value="${esc(empaque.nombre)}"></label>` : ''}
+      <label class="campo"><span>Cada ${esc(quien)} trae</span><div class="cant"><input id="ing-pres-cant" type="number" min="0" step="any" placeholder="1" value="${esc(empaque.cant)}"><select id="ing-pres-unidad" class="unidad" aria-label="Medida">${opcionesMedida(it ? mismaMedida(it.u) : E.unidades, empaque.unidad || (it ? it.u : ''))}</select></div></label>
+    </div>
+    ${nuevoPaquete ? '<p class="meta">El producto se contará en esa medida: si cada bolsa trae 1 L, se cuenta en litros.</p>' : ''}
+    ${otra && !it.pres ? `<label class="check"><input type="checkbox" id="ing-pres-recordar"${empaque.recordar ? ' checked' : ''}><span>Recordar esta presentación para este producto</span></label>` : ''}`
+  }
+  box.innerHTML = html
+  box.hidden = !html
+}
 
 function infoIngreso() {
   const nombre = $('ing-producto').value.trim(), it = porNombre(nombre), box = $('ing-info')
   $('ing-nuevo').hidden = !nombre || !!it
-  prepararUnidad(it)
+  // si cambia el producto se empieza de cero con la forma en que viene
+  const clave = it ? it.id : nombre ? 'nuevo' : ''
+  if (clave !== empClave) { empClave = clave; empaqueNuevo(); $('ing-unidad').dataset.clave = ''; prepararUnidad(it); pintarEmpaque() }
+  else prepararUnidad(it)
+  const p = presActual(it)
+  const bueno = !!(p && p.nombre && p.contenido > 0 && p.cant > 0 && p.unidad)
+  $('ing-cant-txt').textContent = p && p.nombre ? `¿Cuántas ${plural(p.nombre)}?` : 'Cantidad'
+  if (!it && empaque.forma !== 'Suelto') $('ing-unidad').options[0].textContent = p && p.nombre ? plural(p.nombre) : 'unidades'
   if (!nombre) { box.hidden = true; return }
   box.hidden = false
+  const escrita = +$('ing-cantidad').value
+  const cant = bueno ? escrita * p.cant : escrita
+  const medida = it ? it.u : p ? p.unidad : ''
+  const conv = bueno && escrita ? `<span class="precio-alerta" style="color:var(--texto-medio)">${num(escrita)} × ${esc(p.nombre.toLowerCase())} de ${num(p.contenido)} ${esc(p.unidad)} = <b>${num(cant)} ${esc(medida)}</b></span>` : ''
   if (it) {
     box.className = 'info'
     const ult = it.ultimaCompra
-    const cant = +$('ing-cantidad').value * factorUnidad(it), costo = leerPlata($('ing-costo').value)
-    const conv = factorUnidad(it) > 1 && cant ? `<span class="precio-alerta" style="color:var(--texto-medio)">${num(+$('ing-cantidad').value)} × ${esc(it.pres.nombre.toLowerCase())} de ${it.pres.cant} = <b>${num(cant)} ${it.u}</b></span>` : ''
+    const costo = leerPlata($('ing-costo').value)
     let alerta = ''
     if (ult && cant && costo) {
       const ahora = costo / cant, antes = ult.precio, v = (ahora - antes) / antes * 100
@@ -195,9 +273,9 @@ function infoIngreso() {
   } else {
     const sims = similares(nombre)
     box.className = 'info nuevo'
-    box.innerHTML = sims.length
-      ? `<span><b>¿Quisiste decir…?</b></span><span class="sugerencias-nombre">${sims.map(s => `<button type="button" data-usar-nombre="${esc(s.nombre)}">${esc(s.nombre)}</button>`).join('')}</span><span>Si no es ninguno, es nuevo: toca qué es y elige la unidad.</span>`
-      : `<span><b>"${esc(nombre)}" es nuevo.</b> Toca qué es y elige la unidad; queda creado al guardar.</span>`
+    box.innerHTML = (sims.length
+      ? `<span><b>¿Quisiste decir…?</b></span><span class="sugerencias-nombre">${sims.map(s => `<button type="button" data-usar-nombre="${esc(s.nombre)}">${esc(s.nombre)}</button>`).join('')}</span><span>Si no es ninguno, es nuevo: toca qué es y cómo viene; queda creado al guardar.</span>`
+      : `<span><b>"${esc(nombre)}" es nuevo.</b> Toca qué es y cómo viene; queda creado al guardar.</span>`) + conv
   }
 }
 function pintarCatsNueva() {
@@ -291,6 +369,20 @@ function panelAcceso() {
     </div></div>`
 }
 
+// quien participo en el conteo: solo lo ve el administrador
+function tablaParticipacion(lista, titulo) {
+  if (!lista || !lista.length) return ''
+  return `${titulo ? `<h3 class="sub-tabla">${titulo}</h3>` : ''}<div class="tabla-scroll"><table><thead><tr><th>Persona</th><th>Parte</th><th class="num">Ítems</th><th>Empezó</th><th>Último registro</th><th class="num">Tiempo contando</th></tr></thead><tbody>
+    ${lista.map(p => `<tr><td><b>${esc(p.nombre)}</b> <span class="meta">${p.celular ? '📱 celular' : 'dispositivo principal'}</span></td><td>${pillCat(p.cat)}</td><td class="num">${p.items}</td><td>${esc(p.desdeTxt)}</td><td>${esc(p.hastaTxt)}</td><td class="num"><b>${esc(p.duracion)}</b></td></tr>`).join('')}</tbody></table></div>
+    <p class="nota">El tiempo cuenta desde la primera cantidad que anotó en esa parte, no desde que entró. Las pausas de más de 10 minutos no se suman.</p>`
+}
+function detallePartic(conteo) {
+  const p = conteo.participacion
+  if (!E.admin || !p || !p.length) return ''
+  const personas = new Set(p.map(x => x.nombre)).size
+  return `<details class="partic"><summary>Quién ha participado <span class="meta">${personas} persona${personas === 1 ? '' : 's'}</span></summary>${tablaParticipacion(p)}</details>`
+}
+
 function pintarCardInv() {
   const card = $('card-inv')
   $('card-exist').hidden = vista !== 'resumen' || !$('card-editar').hidden
@@ -317,7 +409,7 @@ function pintarCardInv() {
     const listas = partes.filter(p => p.lista).length
     card.innerHTML = `<div class="fila-botones"><div><h2>Inventario general en curso</h2><p class="meta" style="margin:.2rem 0 0">Cierre de ${esc(conteo.mesNombre)} · ${listas} de ${partes.length} partes listas</p></div>
       <button type="button" class="btn-sec" data-contar="todo">Contar todo de una vez</button></div>
-      ${conteo.nota ? `<p class="nota-inv">${esc(conteo.nota)}</p>` : ''}${lineaPend()}${conteo.estado === 'curso' ? panelAcceso() : ''}<p class="ayuda" style="margin:.8rem 0 .2rem">Elige una parte para contarla. Cada persona puede tomar una parte distinta.</p>
+      ${conteo.nota ? `<p class="nota-inv">${esc(conteo.nota)}</p>` : ''}${lineaPend()}${conteo.estado === 'curso' ? panelAcceso() : ''}${detallePartic(conteo)}<p class="ayuda" style="margin:.8rem 0 .2rem">Elige una parte para contarla. Cada persona puede tomar una parte distinta.</p>
       <div class="partes">${partes.length ? partes.map(p => `<div class="parte${p.lista ? ' lista' : ''}">${pillCat(p.c)}
         <span class="estado ${p.lista ? 'lista' : p.curso ? 'curso' : 'pend'}">${p.lista ? '✓ Lista' : p.curso ? `En curso · ${p.n} de ${p.total}` : `Sin empezar · ${p.total} ítems`}</span>
         ${p.por ? `<span class="meta">Contó: ${esc(p.por)}</span>` : ''}
@@ -356,6 +448,7 @@ function pintarCardInv() {
         <div class="tabla-scroll"><table><thead><tr><th>Ítem</th><th class="num">Contado</th><th>Cómo se contó</th></tr></thead><tbody>
         ${l.map(it => `<tr><td>${esc(it.nombre)}</td><td class="num"><b>${num(totalDe(it.id))}</b> ${it.u}</td><td class="meta">${(cuentas()[it.id] || []).map(num).join(' + ')}</td></tr>`).join('')}</tbody></table></div>`
       }).join('')}
+      ${tablaParticipacion(conteo.participacion, 'Quién participó en el conteo')}
       ${pend.length ? `<div class="pend-box" style="margin-top:1rem"><b>Hay ${pend.length} ítem${pend.length === 1 ? ' nuevo que no se contó' : 's nuevos que no se contaron'} en este inventario.</b>
         <p>Elige cuáles se agregan a la lista. Si agregas alguno, el inventario vuelve a conteo para contarlos antes de aprobar; los que no agregues quedan fuera (se puede cambiar después en "Editar lista").</p>
         ${selectorPend()}
@@ -392,7 +485,7 @@ function pintarLista() {
 
 // editar lista (solo administrador)
 function abrirEditar() {
-  borrador = activos().map(i => ({ id: i.id, nombre: i.nombre, cat: i.cat, u: i.u, precio: i.precio, presNombre: i.pres ? i.pres.nombre : '', presCant: i.pres ? i.pres.cant : '', cuenta: i.cuenta, costoDe: i.costoDe }))
+  borrador = activos().map(i => ({ id: i.id, nombre: i.nombre, cat: i.cat, u: i.u, precio: i.precio, presNombre: i.pres ? i.pres.nombre : '', presCant: i.pres ? (i.pres.contenido ?? i.pres.cant) : '', presUnidad: i.pres ? (i.pres.unidad || i.u) : i.u, cuenta: i.cuenta, costoDe: i.costoDe }))
   $('card-editar').hidden = false
   pintarEditar()
   $('card-editar').scrollIntoView({ block: 'start' })
@@ -416,7 +509,7 @@ function pintarEditar() {
     <td><select data-ed="${k}:cat" aria-label="Categoría">${opciones(CATS(), it.cat)}</select></td>
     <td><select class="unidad" data-ed="${k}:u" aria-label="Unidad">${opcionesUnidad(it.u)}</select></td>
     <td><div class="pesos"><input inputmode="numeric" value="${it.precio ? Math.round(it.precio).toLocaleString('es-CO') : ''}" data-ed="${k}:precio" aria-label="Valor por unidad"></div></td>
-    <td><div class="presentacion"><input placeholder="Ej. Caja" data-ed="${k}:presNombre" value="${esc(it.presNombre)}" style="width:84px" aria-label="Presentación de compra"><span class="meta">de</span><input type="number" min="2" placeholder="24" data-ed="${k}:presCant" value="${esc(it.presCant)}" style="width:62px" aria-label="Cuántas unidades trae"></div></td>
+    <td><div class="presentacion"><input placeholder="Ej. Bolsa" data-ed="${k}:presNombre" value="${esc(it.presNombre)}" style="width:78px" aria-label="Presentación de compra"><span class="meta">de</span><input type="number" min="0" step="any" placeholder="1" data-ed="${k}:presCant" value="${esc(it.presCant)}" style="width:60px" aria-label="Cuánto trae cada una"><select class="unidad" data-ed="${k}:presUnidad" aria-label="Medida de lo que trae" style="width:70px">${opcionesUnidadDe(mismaMedida(it.u), it.presUnidad || it.u)}</select></div></td>
     <td style="text-align:center"><input type="checkbox" ${it.cuenta ? 'checked' : ''} data-ed="${k}:cuenta" aria-label="Se cuenta en el inventario general" style="width:18px;height:18px;accent-color:var(--primario)"></td>
     <td>${celdaCostoDe(it, k)}</td>
     <td>${it.borrar === 'confirmar' ? `<span class="confirmar-borrar">¿Borrar? <button type="button" class="btn-mini" data-borrar-si="${k}">Sí</button><button type="button" class="btn-mini" data-borrar-no="${k}">No</button></span>`
@@ -502,27 +595,29 @@ function semaforo(pct, meta) {
 function htmlCierre(d) {
   if (!d.id) return `<div class="encab-rep"><div><h2>Cierre del mes</h2></div></div>
     <p class="info nuevo" style="margin-top:1rem"><span>Este reporte aparece cuando el administrador apruebe un inventario general.</span><button type="button" data-accion="ir-inventario">Ir al inventario general</button></p>`
-  const porCat = c => d.consumo.find(x => x.cat === c)
+  const per = d.periodo
+  const rango = per.desde ? `del ${fechaCorta(per.desde)} al ${fechaCorta(per.hasta)}` : `hasta el ${fechaCorta(per.hasta)}`
   const prev = d.previo, mes = d.mesAnterior
   return `<div class="encab-rep"><div><h2>${esc(d.titulo)}</h2><span class="meta">${esc(d.subtitulo)}</span></div>${BOTONES}</div>
     <div class="kpis" style="margin-top:1rem">
-      <div class="kpi"><small>Gasto del mes</small><b>${plata(d.gasto)}</b>${prev ? variacion(d.gasto, prev.gasto, mes) : ''}</div>
-      <div class="kpi"><small>Materia prima</small><b>${plata(porCat('Materia prima').gasto)}</b>${prev ? variacion(porCat('Materia prima').gasto, prev.porCat['Materia prima'], mes) : ''}</div>
-      <div class="kpi"><small>Bebidas</small><b>${plata(porCat('Bebidas').gasto)}</b>${prev ? variacion(porCat('Bebidas').gasto, prev.porCat['Bebidas'], mes) : ''}</div>
+      <div class="kpi"><small>Gasto del mes</small><b>${plata(d.compras)}</b><span>Todo lo que se compró, ${rango}</span>${prev ? variacion(d.compras, prev.compras, mes) : ''}</div>
+      <div class="kpi perdida"><small>Bajas del mes</small><b>${plata(d.bajasMes)}</b><span>Lo que se perdió de materia prima, bebidas, empaques e insumos</span>${prev ? variacion(d.bajasMes, prev.bajasMes, mes) : ''}</div>
+      <div class="kpi"><small>Consumo real del mes</small><b>${plata(d.gasto)}</b><span>Lo que se usó, sin contar las pérdidas</span>${prev ? variacion(d.gasto, prev.gasto, mes) : ''}</div>
       <div class="kpi perdida"><small>Faltante en menaje y mobiliario</small><b>${plata(d.faltante)}</b>${prev ? variacion(d.faltante, prev.faltante, mes) : ''}</div>
     </div>
     <p class="info" style="margin-top:1rem"><span>El food cost de este cierre (cuánto de lo vendido se fue en costo) está en su propio reporte.</span><button type="button" data-accion="ver-fc">Ver food cost</button></p>
-    <h3 class="sub-tabla">Cuánto se gastó <span class="meta">en pesos, valores exactos</span></h3>
-    <div class="tabla-scroll"><table><thead><tr><th></th><th class="num">Al cierre anterior</th><th class="num">+ Compras</th><th class="num">− Bajas</th><th class="num">− Al cierre</th><th class="num">= Gasto del mes</th></tr></thead><tbody>
+    <h3 class="sub-tabla">Cómo sale el consumo real <span class="meta">en pesos, valores exactos</span></h3>
+    <div class="tabla-scroll"><table><thead><tr><th></th><th class="num">Al cierre anterior</th><th class="num">+ Compras</th><th class="num">− Bajas</th><th class="num">− Al cierre</th><th class="num">= Consumo real</th></tr></thead><tbody>
     ${d.consumo.map(x => `<tr><td>${pillCat(x.cat)}</td><td class="num">${plata(x.ini)}</td><td class="num">${plata(x.com)}</td><td class="num">${plata(x.baj)}</td><td class="num">${plata(x.fin)}</td><td class="num"><b>${plata(x.gasto)}</b></td></tr>`).join('')}
     </tbody></table></div>
-    <p class="nota" style="margin-top:.4rem">Compras y bajas se suman con su valor exacto. Lo que queda al cierre se valora con el precio exacto de las últimas compras (método PEPS: lo primero que entra es lo primero que sale), así no se esconde ninguna subida de precio. Las bajas se restan aparte porque ya salen en "Perdido".</p>
+    <p class="nota" style="margin-top:.4rem">Compras y bajas se suman con su valor exacto. Lo que queda al cierre se valora con el precio exacto de las últimas compras (método PEPS: lo primero que entra es lo primero que sale), así no se esconde ninguna subida de precio. El consumo real es lo que se usó, sin contar lo que se perdió: las bajas se restan aparte porque ya salen en "Bajas del mes". El "Gasto del mes" suma todas las compras (también menaje, mobiliario y otros gastos).</p>
     ${d.cambiaron.length ? `<div class="detalle-rep"><h3 class="sub-tabla">Ítems cuyo precio cambió en el mes <span class="meta">solo informativo</span></h3><ul class="nombres">${d.cambiaron.map((i, k) => `<li><b>${esc(i.nombre)}</b> ${etiquetaPrecio(i, i.u, 'c' + k, 'en el mes')}</li>`).join('')}</ul></div>` : ''}
     <div class="detalle-rep"><h3 class="sub-tabla">Menaje y mobiliario <span class="meta">lo que debería haber frente a lo que se contó</span></h3>
     ${d.diferencias.length ? `<div class="tabla-scroll"><table><thead><tr><th>Ítem</th><th class="num">Debería haber</th><th class="num">Se contó</th><th class="num">Diferencia</th><th class="num">Valor</th></tr></thead><tbody>
       ${d.diferencias.map(x => `<tr><td>${esc(x.nombre)} ${pillCat(x.cat)}</td><td class="num">${num(x.deberia)}</td><td class="num">${num(x.contado)}</td>
         <td class="num"><span class="dif ${x.dif < 0 ? 'falta' : 'sobra'}">${x.dif < 0 ? 'Faltan ' + num(-x.dif) : 'Sobran ' + num(x.dif)}</span></td><td class="num">${plata(x.valor)}</td></tr>`).join('')}
       </tbody></table></div>` : '<p class="nota">Todo cuadró: no falta ni sobra nada.</p>'}</div>
+    ${tablaParticipacion(d.participacion, 'Quién contó este inventario')}
     <p class="nota" style="margin-top:1rem">Es una referencia para el dueño, no contabilidad oficial.</p>`
 }
 
@@ -772,7 +867,8 @@ function abrirCorregir(id) {
             : `<label class="campo c6"><span>Motivo</span><select id="mov-motivo">${opciones(E.motivos[it.cat] || [], m.motivo)}</select></label>
                <label class="campo c6"><span>¿Cuál fue el motivo? <em>(si es "Otro")</em></span><input id="mov-otro" value="${esc(m.motivoOtro || '')}"></label>`}
       <label class="campo c6"><span>¿Quién corrige?</span><input id="mov-por" placeholder="Tu nombre" value="${esc(nombreGuardado())}"></label>
-      <label class="campo c6"><span>¿Por qué se corrige?</span><input id="mov-razon" placeholder="Ej. Se escribió un cero de más"></label>`
+      <label class="campo c6"><span>¿Por qué se corrige?</span><input id="mov-razon" placeholder="Ej. Se escribió un cero de más"></label>
+      ${ing ? '<p class="nota c6">Si cambias el costo o la cantidad, las bajas de este producto hechas después de este ingreso (y antes del siguiente ingreso) se recalculan solas con el precio nuevo y quedan marcadas.</p>' : ''}`
     $('mov-borrar').innerHTML = ''
     $('mov-msg').textContent = ''
     $('modal-mov').hidden = false
@@ -844,6 +940,7 @@ document.addEventListener('click', async e => {
   if (d.fc && t.classList.contains('chip')) { filtroCat = d.fc; pintarLista() }
   if (d.catNueva) { catNueva = d.catNueva; pintarCatsNueva() }
   if (d.usarNombre) { $('ing-producto').value = d.usarNombre; infoIngreso() }
+  if (d.forma) { empaque.forma = d.forma; $('ing-unidad').dataset.clave = ''; prepararUnidad(null); pintarEmpaque(); infoIngreso() }
   if (d.quitarFoto) quitarFoto($(d.quitarFoto + '-prev'))
   if (t.id === 'usar-costo') { $('baja-costo').value = (+d.v).toLocaleString('es-CO'); $('baja-info').hidden = true }
   if (t.id === 'btn-desbloquear') pedirAdmin('Los reportes muestran el dinero de todo el establecimiento.', () => { $('candado').hidden = true; $('reportes').hidden = false; pintarTodo(); pintarReporte() })
@@ -875,17 +972,19 @@ document.addEventListener('click', async e => {
     if (!r.res.ok) { $('mov-msg').className = 'msg err'; $('mov-msg').textContent = r.d.error || 'Algo salió mal, intenta de nuevo.'; return }
     $('modal-mov').hidden = true; movEditando = null
     await refrescar()
+    const n = r.d.bajasActualizadas
+    if (n) aviso('msg-ingreso', `Listo. Se actualizó el costo de ${n} baja${n === 1 ? '' : 's'} de este producto: las ves marcadas en la pestaña Bajas.`)
   }
 
   // editar lista
   if (t.id === 'btn-editar-lista') pedirAdmin('Editar la lista de ítems es solo para el administrador.', abrirEditar)
-  if (t.id === 'btn-agregar-fila') { borrador.push({ id: null, nombre: '', cat: 'Materia prima', u: 'kg', precio: 0, presNombre: '', presCant: '', cuenta: true }); pintarEditar(); document.querySelector(`[data-ed="${borrador.length - 1}:nombre"]`).focus() }
+  if (t.id === 'btn-agregar-fila') { borrador.push({ id: null, nombre: '', cat: 'Materia prima', u: 'kg', precio: 0, presNombre: '', presCant: '', presUnidad: 'kg', cuenta: true }); pintarEditar(); document.querySelector(`[data-ed="${borrador.length - 1}:nombre"]`).focus() }
   if (d.borrar !== undefined) { borrador[+d.borrar].borrar = 'confirmar'; pintarEditar() }
   if (d.borrarSi !== undefined) { const k = +d.borrarSi; if (!borrador[k].id) borrador.splice(k, 1); else borrador[k].borrar = true; pintarEditar() }
   if (d.borrarNo !== undefined) { delete borrador[+d.borrarNo].borrar; pintarEditar() }
   if (t.id === 'btn-cancelar-editar') { borrador = null; $('card-editar').hidden = true; pintarLista() }
   if (t.id === 'btn-guardar-lista') {
-    const cambios = borrador.map(b => ({ id: b.id, nombre: b.nombre, cat: b.cat, u: b.u, precio: b.precio, presNombre: b.presNombre, presCant: b.presCant, cuenta: b.cuenta, costoDe: b.costoDe, borrar: b.borrar === true }))
+    const cambios = borrador.map(b => ({ id: b.id, nombre: b.nombre, cat: b.cat, u: b.u, precio: b.precio, presNombre: b.presNombre, presCant: b.presCant, presUnidad: b.presUnidad, cuenta: b.cuenta, costoDe: b.costoDe, borrar: b.borrar === true }))
     const r = await conClave('Editar la lista de ítems es solo para el administrador.', () => api('/api/inventario/items', { method: 'PUT', body: { cambios } }))
     if (!r.res.ok) return aviso('msg-editar', r.d.error || 'Algo salió mal, intenta de nuevo.', false)
     borrador = null; $('card-editar').hidden = true
@@ -992,6 +1091,8 @@ document.addEventListener('input', e => {
   const t = e.target
   if (t.matches('.pesos input')) { const v = leerPlata(t.value); t.value = v ? v.toLocaleString('es-CO') : '' }
   if (t.id === 'ing-producto' || t.id === 'ing-cantidad' || t.id === 'ing-costo') infoIngreso()
+  if (t.id === 'ing-pres-nombre') { empaque.nombre = t.value; infoIngreso() }
+  if (t.id === 'ing-pres-cant') { empaque.cant = t.value; infoIngreso() }
   if (t.id === 'baja-producto' || t.id === 'baja-cantidad') infoBaja()
   if (t.id === 'buscar') pintarLista()
   if (t.dataset.ed) { const [k, campo] = t.dataset.ed.split(':'); borrador[+k][campo] = campo === 'precio' ? leerPlata(t.value) : campo === 'cuenta' ? t.checked : t.value }
@@ -999,14 +1100,22 @@ document.addEventListener('input', e => {
 })
 document.addEventListener('change', async e => {
   const t = e.target
-  if (t.dataset.ed) { const [k, campo] = t.dataset.ed.split(':'); borrador[+k][campo] = campo === 'cuenta' ? t.checked : campo === 'precio' ? leerPlata(t.value) : t.value }
+  if (t.dataset.ed) {
+    const [k, campo] = t.dataset.ed.split(':')
+    borrador[+k][campo] = campo === 'cuenta' ? t.checked : campo === 'precio' ? leerPlata(t.value) : t.value
+    // si cambia la unidad, la medida de lo que trae cada presentacion tiene que ser del mismo tipo
+    if (campo === 'u') { const b = borrador[+k]; if (!mismaMedida(b.u).includes(b.presUnidad)) b.presUnidad = b.u; pintarEditar() }
+  }
   if (['rep-periodo', 'rep-tipo', 'rep-cat', 'rep-cierre', 'rep-desde', 'rep-hasta'].includes(t.id)) pintarReporte()
-  if (t.id === 'ing-unidad') infoIngreso()
+  if (t.id === 'ing-unidad') { pintarEmpaque(); infoIngreso() }
+  if (t.id === 'ing-pres-unidad') { empaque.unidad = t.value; infoIngreso() }
+  if (t.id === 'ing-pres-recordar') empaque.recordar = t.checked
   if (t.dataset.meta) guardarAjustesFC({ [t.dataset.meta]: +t.value })
   if (t.id === 'fc-cierre') { fcSel = t.value; pintarReporte() }
 })
 document.addEventListener('keydown', e => {
   const t = e.target
+  if (e.key === 'Enter' && t.id === 'admin-password') { e.preventDefault(); const f = $('form-admin'); f.requestSubmit ? f.requestSubmit() : f.dispatchEvent(new Event('submit', { cancelable: true })) }
   if (e.key === 'Enter' && t.dataset.sumarInput) { e.preventDefault(); sumar(t.dataset.sumarInput) }
   if (e.key === 'Enter' && t.dataset.editarParcial) { e.preventDefault(); guardarParcial(t) }
   if (e.key === 'Escape' && t.dataset.editarParcial) { editandoParcial = null; pintarCardInv() }
@@ -1047,11 +1156,19 @@ $('form-ingreso').addEventListener('submit', async e => {
   if (!it && !catNueva) return aviso('msg-ingreso', 'Toca qué es: materia prima, bebidas, menaje, mobiliario, insumos u otros gastos.', false)
   const costo = leerPlata($('ing-costo').value)
   if (!costo) return aviso('msg-ingreso', 'Escribe el costo total.', false)
+  // como se compro: suelto, con la presentacion guardada del producto ('pres') o con una presentacion nueva ('otra')
+  const sel = $('ing-unidad').value, p = presActual(it)
+  const modo = it ? (sel === 'pres' ? 'pres' : sel === 'otra' ? 'otra' : '') : (empaque.forma === 'Suelto' ? '' : 'otra')
+  if (modo === 'otra' && !(p && p.nombre && p.contenido > 0 && p.unidad)) return aviso('msg-ingreso', 'Escribe cómo viene (por ejemplo bolsa o caja), cuánto trae cada una y en qué medida.', false)
   const f = new FormData()
   f.append('tipo', 'ing'); f.append('fecha', $('ing-fecha').value); f.append('producto', nombre)
   f.append('cantidad', $('ing-cantidad').value); f.append('costo', costo)
-  f.append('unidadCompra', $('ing-unidad').value === 'pres' ? 'pres' : '')
-  f.append('u', $('ing-unidad').value); f.append('cat', catNueva)
+  f.append('unidadCompra', modo)
+  if (modo === 'otra') {
+    f.append('presNombre', p.nombre); f.append('presCant', p.contenido); f.append('presUnidad', p.unidad)
+    if (empaque.recordar) f.append('presRecordar', '1')
+  }
+  f.append('u', it ? it.u : modo === 'otra' ? p.unidad : sel); f.append('cat', catNueva)
   f.append('prov', $('ing-proveedor').value.trim()); f.append('factura', $('ing-factura').value.trim()); f.append('por', $('ing-por').value.trim())
   const foto = await fotoComoBlob($('ing-foto-prev'))
   if (foto) f.append('foto', foto, 'factura.jpg')
@@ -1063,8 +1180,9 @@ $('form-ingreso').addEventListener('submit', async e => {
   guardarNombre($('ing-por').value.trim())
   e.target.reset(); $('ing-por').value = nombreGuardado(); $('ing-fecha').value = E.hoy; $('ing-info').hidden = true; $('ing-nuevo').hidden = true
   catNueva = ''; quitarFoto($('ing-foto-prev'))
+  empClave = ''; empaqueNuevo(); $('ing-unidad').dataset.clave = ''
   await refrescar()
-  prepararUnidad(null); pintarCatsNueva()
+  prepararUnidad(null); pintarCatsNueva(); pintarEmpaque(); infoIngreso()
   aviso('msg-ingreso', 'Ingreso guardado.' + (d.nuevo ? ` "${d.item.nombre}" quedó registrado.` : ''))
 })
 $('form-baja').addEventListener('submit', async e => {

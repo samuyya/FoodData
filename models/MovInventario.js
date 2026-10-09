@@ -21,6 +21,8 @@ const movSchema = new mongoose.Schema({
     _id: false,
     por: String,
     razon: String,
+    // true = lo hizo el sistema solo (ej. la baja se recalculo porque se corrigio un ingreso)
+    auto: Boolean,
     fecha: String,
     antes: { type: Object },
     despues: { type: Object }

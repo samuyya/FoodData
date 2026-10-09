@@ -40,6 +40,18 @@ const upload = multer({
 });
 
 const texto = (v, max = 120) => String(v == null ? '' : v).trim().slice(0, max);
+const redondear = n => Math.round(n * 1000) / 1000;
+
+// como viene un producto (bolsa, caja, paca...): nombre + cuanto trae. "cant" queda siempre en la unidad
+// del item, asi una bolsa de 1 L en un item que se cuenta en ml guarda 1000
+function presDe(nombre, contenido, unidad, unidadItem) {
+  nombre = texto(nombre, 20); contenido = Number(contenido);
+  if (!nombre || !(contenido > 0)) return { error: 'Escribe cómo viene (por ejemplo bolsa o caja) y cuánto trae cada una.' };
+  if (!UNIDADES.includes(unidad)) unidad = unidadItem;
+  const cant = inv.convertir(contenido, unidad, unidadItem);
+  if (cant === null) return { error: `${unidad} no se puede pasar a ${unidadItem}. Elige una medida del mismo tipo (peso con peso, líquido con líquido).` };
+  return { pres: { nombre, cant, contenido, unidad } };
+}
 const numero = v => { const n = Number(v); return Number.isFinite(n) ? n : NaN; };
 const esFecha = f => /^\d{4}-\d{2}-\d{2}$/.test(f || '');
 
@@ -78,12 +90,20 @@ function itemPublico(it, movsItem) {
     ultimaCompra: ult ? { precio: Math.round(ult.costo / ult.cant), fecha: ult.fecha } : null
   };
 }
+function ajusteAuto(m) {
+  const ult = (m.cambios || []).slice(-1)[0];
+  if (!ult || !ult.auto) return null;
+  return { razon: ult.razon, antes: ult.antes && ult.antes.costo, despues: ult.despues && ult.despues.costo };
+}
 function movPublico(m, it) {
   return {
     nombre: it ? it.nombre : '', cat: it ? it.cat : '', u: it ? it.u : '', cuenta: it ? it.cuenta : true,
     id: String(m._id), tipo: m.tipo, fecha: m.fecha, itemId: String(m.item_id), cant: m.cant, compra: m.compra,
     costo: m.costo, prov: m.prov, factura: m.factura, motivo: m.motivo, motivoOtro: m.motivoOtro, obs: m.obs,
-    por: m.por, foto: !!m.foto, corregidoPor: m.cambios && m.cambios.length ? m.cambios[m.cambios.length - 1].por : ''
+    por: m.por, foto: !!m.foto,
+    corregidoPor: ((m.cambios || []).filter(c => !c.auto).slice(-1)[0] || {}).por || '',
+    // si el ultimo cambio lo hizo el sistema (se corrigio un ingreso), la pantalla lo avisa
+    ajuste: ajusteAuto(m)
   };
 }
 function conteoPublico(c, admin) {
@@ -94,6 +114,8 @@ function conteoPublico(c, admin) {
     cuentas: Object.fromEntries(c.cuentas instanceof Map ? c.cuentas : Object.entries(c.cuentas || {})),
     por: Object.fromEntries(c.por instanceof Map ? c.por : Object.entries(c.por || {})),
     nota: c.nota,
+    // quien participo (solo lo ve el administrador)
+    participacion: admin ? inv.participacion(c) : undefined,
     acceso: acceso ? (admin
       ? { codigo: acceso.codigo, token: acceso.token, vence: acceso.vence, conectados: acceso.conectados, bloqueado: acceso.intentos >= 5 }
       : { activo: true, conectados: acceso.conectados.map(x => ({ nombre: x.nombre, parte: x.parte })) }) : null
@@ -174,12 +196,32 @@ router.post('/movimientos', soloEmpresa, upload.single('foto'), ah(async (req, r
   const activos = await ItemInventario.find({ empresa_id: empresaId, activo: true });
   let item = activos.find(i => i.nombre.toLowerCase() === nombre.toLowerCase());
   let nuevo = false;
+  // pk = la presentacion con la que se compro esta vez (bolsa, caja...), si la hay
+  let pk = null;
+  const comprado = tipo === 'ing' ? b.unidadCompra : '';
   if (!item) {
     if (tipo === 'baja') return res.status(400).json({ ok: false, error: 'Ese producto no está registrado. Revisa el nombre.' });
     if (!CATEGORIAS.includes(b.cat)) return res.status(400).json({ ok: false, error: 'Toca qué es: materia prima, bebidas, menaje, mobiliario, insumos u otros gastos.' });
-    if (!UNIDADES.includes(b.u)) return res.status(400).json({ ok: false, error: 'Elige la unidad.' });
-    item = await ItemInventario.create({ empresa_id: empresaId, nombre, cat: b.cat, u: b.u, cuenta: null, precioBase: Math.round(costo / cant), precio: Math.round(costo / cant) });
+    // si viene en bolsa/caja el producto se cuenta en la medida de su contenido (ej. bolsa de 1 L: se cuenta en L)
+    const u = comprado === 'otra' ? b.presUnidad : b.u;
+    if (!UNIDADES.includes(u)) return res.status(400).json({ ok: false, error: 'Elige la unidad.' });
+    if (comprado === 'otra') {
+      const r = presDe(b.presNombre, b.presCant, u, u);
+      if (r.error) return res.status(400).json({ ok: false, error: r.error });
+      pk = r.pres;
+    }
+    const precio = Math.round(costo / (pk ? redondear(cant * pk.cant) : cant));
+    item = await ItemInventario.create({ empresa_id: empresaId, nombre, cat: b.cat, u, pres: pk, cuenta: null, precioBase: precio, precio });
     nuevo = true;
+  } else if (comprado === 'pres') {
+    if (!item.pres) return res.status(400).json({ ok: false, error: 'Este producto no tiene una presentación guardada.' });
+    pk = { nombre: item.pres.nombre, cant: item.pres.cant, contenido: item.pres.contenido, unidad: item.pres.unidad };
+  } else if (comprado === 'otra') {
+    const r = presDe(b.presNombre, b.presCant, b.presUnidad, item.u);
+    if (r.error) return res.status(400).json({ ok: false, error: r.error });
+    pk = r.pres;
+    // si el producto no tenia presentacion, se puede dejar guardada para la proxima
+    if (b.presRecordar === '1' && !item.pres) { item.pres = pk; await item.save(); }
   }
 
   let motivo = '', motivoOtro = '';
@@ -190,9 +232,8 @@ router.post('/movimientos', soloEmpresa, upload.single('foto'), ah(async (req, r
     if (motivo === 'Otro' && !motivoOtro) return res.status(400).json({ ok: false, error: 'Escribe cuál fue el motivo.' });
   }
 
-  // si se compro por caja/paca se convierte a la unidad en que se cuenta
-  const porPres = tipo === 'ing' && b.unidadCompra === 'pres' && item.pres && item.pres.cant > 1;
-  const cantBase = porPres ? cant * item.pres.cant : cant;
+  // si se compro por caja/bolsa/paca se convierte a la unidad en que se cuenta
+  const cantBase = pk ? redondear(cant * pk.cant) : cant;
 
   let foto = '';
   if (req.file) {
@@ -202,7 +243,7 @@ router.post('/movimientos', soloEmpresa, upload.single('foto'), ah(async (req, r
 
   const mov = await MovInventario.create({
     empresa_id: empresaId, tipo, fecha, item_id: item._id, cant: cantBase,
-    compra: porPres ? `${cant} × ${item.pres.nombre.toLowerCase()}` : '',
+    compra: pk ? `${cant} × ${pk.nombre.toLowerCase()}${pk.contenido ? ` de ${pk.contenido} ${pk.unidad}` : ''}` : '',
     costo, prov: tipo === 'ing' ? texto(b.prov, 80) : '', factura: tipo === 'ing' ? texto(b.factura, 40) : '',
     motivo, motivoOtro, obs: tipo === 'baja' ? texto(b.obs, 200) : '', por, foto
   });
@@ -225,8 +266,9 @@ router.put('/movimientos/:id', soloEmpresa, ah(async (req, res) => {
   if (!por) return res.status(400).json({ ok: false, error: 'Escribe quién corrige.' });
   const item = await ItemInventario.findById(m.item_id);
   const antes = { cant: m.cant, costo: m.costo, prov: m.prov, motivo: m.motivo, motivoOtro: m.motivoOtro };
+  const ingresosAntes = m.tipo === 'ing' ? await inv.listaIngresos(m.item_id) : null;
   const cant = numero(req.body.cant), costo = Math.round(numero(req.body.costo));
-  if (cant > 0) m.cant = cant;
+  if (cant > 0) { if (cant !== m.cant) m.compra = ''; m.cant = cant; }
   if (costo > 0) m.costo = costo;
   if (m.tipo === 'ing') m.prov = texto(req.body.prov, 80);
   else {
@@ -236,8 +278,12 @@ router.put('/movimientos/:id', soloEmpresa, ah(async (req, res) => {
   }
   m.cambios.push({ por, razon: texto(req.body.razon, 200), fecha: inv.hoyStr(), antes, despues: { cant: m.cant, costo: m.costo, prov: m.prov, motivo: m.motivo, motivoOtro: m.motivoOtro } });
   await m.save();
-  if (m.tipo === 'ing') await inv.recalcularPrecio(m.item_id);
-  res.json({ ok: true, mov: movPublico(m) });
+  let bajas = [];
+  if (m.tipo === 'ing') {
+    await inv.recalcularPrecio(m.item_id);
+    if (item) bajas = await inv.ajustarBajas(item, m._id, ingresosAntes, await inv.listaIngresos(m.item_id), inv.hoyStr());
+  }
+  res.json({ ok: true, mov: movPublico(m), bajasActualizadas: bajas.length });
 }));
 
 router.post('/movimientos/:id/borrar', soloEmpresa, ah(async (req, res) => {
@@ -246,10 +292,16 @@ router.post('/movimientos/:id/borrar', soloEmpresa, ah(async (req, res) => {
   if (!puedeCorregir(req, m)) return res.status(403).json({ ok: false, error: 'Borrar un registro de días anteriores es solo para el administrador.', pideClave: true });
   const por = texto(req.body.por, 60);
   if (!por) return res.status(400).json({ ok: false, error: 'Escribe quién borra.' });
+  const ingresosAntes = m.tipo === 'ing' ? await inv.listaIngresos(m.item_id) : null;
   m.borrado = { por, razon: texto(req.body.razon, 200), fecha: inv.hoyStr() };
   await m.save();
-  if (m.tipo === 'ing') await inv.recalcularPrecio(m.item_id);
-  res.json({ ok: true });
+  let bajas = [];
+  if (m.tipo === 'ing') {
+    await inv.recalcularPrecio(m.item_id);
+    const item = await ItemInventario.findById(m.item_id);
+    if (item) bajas = await inv.ajustarBajas(item, m._id, ingresosAntes, await inv.listaIngresos(m.item_id), inv.hoyStr());
+  }
+  res.json({ ok: true, bajasActualizadas: bajas.length });
 }));
 
 router.get('/movimientos/:id/foto', soloEmpresa, ah(async (req, res) => {
@@ -273,6 +325,10 @@ router.put('/items', soloEmpresa, soloAdmin, ah(async (req, res) => {
   if (new Set(nombres).size !== nombres.length) return res.status(400).json({ ok: false, error: 'Hay dos ítems con el mismo nombre.' });
   for (const c of vivos) {
     if (!CATEGORIAS.includes(c.cat) || !UNIDADES.includes(c.u)) return res.status(400).json({ ok: false, error: `Revisa la categoría y la unidad de "${texto(c.nombre)}".` });
+    if (texto(c.presNombre, 20) && numero(c.presCant) > 0) {
+      const r = presDe(c.presNombre, c.presCant, c.presUnidad, c.u);
+      if (r.error) return res.status(400).json({ ok: false, error: `"${texto(c.nombre)}": ${r.error}` });
+    }
   }
   // solo materia prima y bebidas pueden cambiar de lado en el food cost; si queda igual a su categoria, null
   const costoDe = c => {
@@ -280,8 +336,8 @@ router.put('/items', soloEmpresa, soloAdmin, ah(async (req, res) => {
     return (c.cat === 'Bebidas') === (c.costoDe === 'Bebidas') ? null : c.costoDe;
   };
   const pres = c => {
-    const n = texto(c.presNombre, 20), k = Math.round(numero(c.presCant));
-    return n && k > 1 ? { nombre: n, cant: k } : null;
+    if (!texto(c.presNombre, 20) || !(numero(c.presCant) > 0)) return null;
+    return presDe(c.presNombre, c.presCant, c.presUnidad, c.u).pres || null;
   };
   for (const c of cambios) {
     if (!c.id) {
@@ -385,25 +441,36 @@ router.post('/conteo/iniciar', soloEmpresa, ah(async (req, res) => {
 }));
 
 // operaciones del conteo que comparten el dispositivo de la empresa y los celulares con el link
-async function sumarCuenta(conteoId, itemId, valor) {
+// cada cantidad que alguien anota deja una marca con la hora: de ahi sale cuanto tiempo conto cada quien.
+// quien = { nombre, sid }; en el dispositivo principal el nombre se pone despues, al guardar la parte
+const PRINCIPAL = { nombre: '', sid: 'principal' };
+async function marca(itemId, quien) {
+  const it = await ItemInventario.findById(itemId).select('cat').lean();
+  if (!it) return null;
+  return { actividad: { $each: [{ q: quien.nombre, sid: quien.sid, cat: it.cat, item: String(itemId), t: new Date() }], $slice: -4000 } };
+}
+async function sumarCuenta(conteoId, itemId, valor, quien = PRINCIPAL) {
   if (!mongoose.isValidObjectId(itemId) || !(valor >= 0)) return false;
-  await ConteoInventario.updateOne({ _id: conteoId, estado: 'curso' }, { $push: { [`cuentas.${itemId}`]: valor } });
+  const m = await marca(itemId, quien);
+  if (!m) return false;
+  await ConteoInventario.updateOne({ _id: conteoId, estado: 'curso' }, { $push: { [`cuentas.${itemId}`]: valor, ...m } });
   return true;
 }
-async function cambiarParcial(conteoId, itemId, i, valor) {
+async function cambiarParcial(conteoId, itemId, i, valor, quien = PRINCIPAL) {
   if (!mongoose.isValidObjectId(itemId) || !(i >= 0)) return false;
+  const m = await marca(itemId, quien);
   if (valor === null) {
-    await ConteoInventario.updateOne({ _id: conteoId, estado: 'curso' }, { $unset: { [`cuentas.${itemId}.${i}`]: 1 } });
+    await ConteoInventario.updateOne({ _id: conteoId, estado: 'curso' }, { $unset: { [`cuentas.${itemId}.${i}`]: 1 }, ...(m ? { $push: m } : {}) });
     await ConteoInventario.updateOne({ _id: conteoId }, { $pull: { [`cuentas.${itemId}`]: null } });
     const c = await ConteoInventario.findById(conteoId);
     if (c && c.cuentas.get(itemId) && !c.cuentas.get(itemId).length) { c.cuentas.delete(itemId); await c.save(); }
     return true;
   }
   if (!(valor >= 0)) return false;
-  await ConteoInventario.updateOne({ _id: conteoId, estado: 'curso' }, { $set: { [`cuentas.${itemId}.${i}`]: valor } });
+  await ConteoInventario.updateOne({ _id: conteoId, estado: 'curso' }, { $set: { [`cuentas.${itemId}.${i}`]: valor }, ...(m ? { $push: m } : {}) });
   return true;
 }
-async function guardarParte(conteo, parte, por, empresaId) {
+async function guardarParte(conteo, parte, por, empresaId, nombrarPrincipal = false) {
   const items = await ItemInventario.find({ empresa_id: empresaId, activo: true, cuenta: true }).select('cat').lean();
   const cats = parte === 'todo' ? CATEGORIAS : [parte];
   for (const cat of cats) {
@@ -413,6 +480,10 @@ async function guardarParte(conteo, parte, por, empresaId) {
     const nombres = conteo.por.get(cat) ? conteo.por.get(cat).split(', ') : [];
     if (!nombres.includes(por)) nombres.push(por);
     conteo.por.set(cat, nombres.join(', '));
+  }
+  // lo que se conto en este dispositivo sin nombre queda a nombre de quien guarda la parte
+  if (nombrarPrincipal) {
+    for (const e of conteo.actividad) if (e.sid === 'principal' && !e.q && cats.includes(e.cat)) e.q = por;
   }
   await conteo.save();
 }
@@ -432,7 +503,7 @@ router.post('/conteo/parte', soloEmpresa, ah(async (req, res) => {
   const c = await conteoDeEmpresa(req, res); if (!c) return;
   const por = texto(req.body.por, 60);
   if (!por) return res.status(400).json({ ok: false, error: 'Escribe quién contó.' });
-  await guardarParte(c, req.body.parte, por, empresaDe(req));
+  await guardarParte(c, req.body.parte, por, empresaDe(req), true);
   res.json({ ok: true });
 }));
 // quien estaba contando desde otro celular queda anotado en su parte aunque no haya tocado "Terminé"

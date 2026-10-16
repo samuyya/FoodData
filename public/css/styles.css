@@ -3056,3 +3056,28 @@ textarea:focus {
     margin: 12mm;
   }
 }
+
+/* formatos con varios baños, neveras, llaves: tarjetas por elemento */
+.elementos-cab { display: grid; gap: .6rem; margin-bottom: 1rem; }
+.elementos-cab-fila { display: flex; justify-content: space-between; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
+.elementos-barra { height: 8px; border-radius: 999px; background: var(--color-borde); overflow: hidden; }
+.elementos-barra i { display: block; height: 100%; width: 0; background: var(--color-primario); border-radius: 999px; }
+.elementos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: .9rem; margin-bottom: 1rem; }
+.tarjeta-elemento { background: var(--color-superficie); border: 1px solid var(--color-borde); border-radius: var(--radio); padding: 1rem; display: grid; gap: .55rem; align-content: start; }
+.tarjeta-elemento h3 { margin: 0; font-size: 1.1rem; }
+.tarjeta-elemento-cab { display: flex; justify-content: space-between; align-items: start; gap: .5rem; flex-wrap: wrap; }
+.tarjeta-elemento-sub { margin: 0; font-size: .88rem; color: var(--color-texto-medio); }
+.tarjeta-elemento-aviso { margin: 0; font-size: .84rem; font-weight: 600; color: var(--color-aviso); }
+.tarjeta-elemento--listo { border-color: var(--color-ok-borde); }
+.tarjeta-elemento--parcial, .tarjeta-elemento--atrasado { border-color: var(--color-aviso-borde); }
+.tarjeta-elemento button { justify-self: stretch; }
+.pill-estado { display: inline-flex; align-items: center; justify-self: start; font-size: .78rem; font-weight: 700; padding: .15rem .65rem; border-radius: 999px; background: var(--color-superficie-alt); color: var(--color-texto-medio); white-space: nowrap; }
+.pill-estado--listo { background: var(--color-ok-bg); color: var(--color-ok); }
+.pill-estado--parcial, .pill-estado--atrasado { background: var(--color-aviso-bg); color: var(--color-aviso); border: 1px solid var(--color-aviso-borde); }
+.pill-estado--tipo { background: var(--color-primario-suave, #ecf9f5); color: var(--color-primario-oscuro); }
+.formato-info .pill-estado { margin-top: .3rem; }
+.elementos-fuera { margin-bottom: 1rem; font-size: .9rem; }
+.elementos-fuera summary { cursor: pointer; font-weight: 600; }
+.elemento-cab { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.elemento-cab h2 { margin: 0; font-size: 1.4rem; }
+.falta-medicion { color: var(--color-aviso); font-weight: 600; background: var(--color-aviso-bg); }

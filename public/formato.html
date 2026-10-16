@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Formato - FoodData</title>
   <link rel="icon" href="/img/icon-fooddata-favicon.png" type="image/png" />
-  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="stylesheet" href="/css/styles.css?v=2" />
 </head>
 <body class="sub-body">
   <header class="sub-topbar">
@@ -55,7 +55,26 @@
     <div id="banner-corregir"   class="banner banner-warning" hidden></div>
     <div id="banner-exito"      class="banner banner-exito"   hidden></div>
     <div id="banner-pendientes" class="banner banner-warning" hidden></div>
+    <div id="banner-incompletos" class="banner banner-warning" hidden></div>
     <div id="banner-info"       class="banner banner-info"    hidden></div>
+
+    <!-- formatos con varios baños, neveras, llaves...: una tarjeta por elemento -->
+    <section id="vista-elementos" hidden>
+      <div class="card elementos-cab">
+        <div class="elementos-cab-fila"><strong id="elementos-resumen"></strong><span id="elementos-faltan" class="ayuda"></span></div>
+        <div class="elementos-barra"><i id="elementos-barra-i"></i></div>
+      </div>
+      <div id="elementos-grid" class="elementos-grid"></div>
+      <details id="elementos-fuera" class="elementos-fuera" hidden>
+        <summary id="elementos-fuera-resumen"></summary>
+        <p id="elementos-fuera-lista" class="ayuda"></p>
+      </details>
+    </section>
+    <div id="elemento-cabecera" class="card elemento-cab" hidden>
+      <button type="button" id="elemento-volver" class="btn-secundario btn-pequeno"></button>
+      <h2 id="elemento-nombre"></h2>
+      <span id="elemento-tipo" class="pill-estado pill-estado--tipo" hidden></span>
+    </div>
 
     <!-- ============================================================
          FORM GENÉRICO (formatos sin plantilla específica)
@@ -230,20 +249,22 @@
         <div class="param-grid">
           <label class="campo">
             <span>Hora</span>
-            <input type="time" name="hora2" id="te-hora2" required />
+            <input type="time" name="hora2" id="te-hora2" />
           </label>
           <label class="campo">
             <span>Temperatura (°C)</span>
-            <input type="number" step="0.1" name="temp2" id="te-temp2" placeholder="Ej: 3.8" required />
+            <input type="number" step="0.1" name="temp2" id="te-temp2" placeholder="Ej: 3.8" />
           </label>
           <div class="campo">
             <span class="campo-label">Cumplimiento</span>
             <output id="te-res2" class="badge-resultado badge-resultado--vacio">—</output>
           </div>
         </div>
+        <p class="ayuda" id="te-m2-hint">Se llena más tarde, cuando toque. Quien la llene queda anotado con su nombre y la hora.</p>
+        <button type="button" id="te-btn-ambas" class="btn-secundario btn-pequeno">Llenar también la medición 2 ahora</button>
       </fieldset>
 
-      <label class="campo">
+      <label class="campo" id="te-tipo-campo">
         <span>Tipo de equipo</span>
         <select id="te-tipo" name="tipoEquipo" required>
           <option value="">— Selecciona —</option>
@@ -625,7 +646,7 @@
 
   <div id="modal-admin-atrasado" class="modal-backdrop" hidden role="dialog" aria-modal="true">
     <div class="modal">
-      <h2>Días pendientes por registrar</h2>
+      <h2 id="modal-admin-atrasado-titulo">Días pendientes por registrar</h2>
       <p class="subtitulo" id="modal-admin-atrasado-info">Este formato tiene días atrasados. Solo el administrador puede llenarlos; ingresa la contraseña para continuar.</p>
       <form id="form-admin-atrasado" class="form">
         <label class="campo">
@@ -661,6 +682,6 @@
 
   <script src="/js/util.js"></script>
   <script src="/js/festivos.js"></script>
-  <script src="/js/formato.js"></script>
+  <script src="/js/formato.js?v=3"></script>
 </body>
 </html>

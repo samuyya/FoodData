@@ -263,4 +263,25 @@ describe('formatos que se llenan en dos momentos (temperatura)', () => {
     expect(con.status).toBe(200);
     expect(con.body.registro.parcial).toBe(false);
   });
+
+  test('la lista de formatos sabe en cuales falta una medicion este mes', async () => {
+    const { agent, ids } = await conNeveras();
+    expect((await agent.get('/api/registros/incompletos?carpeta=cocina')).body.formatos).toEqual({});
+    const g = await temp(agent, ids[0], medicion1, { parcial: true });
+    const r = await agent.get('/api/registros/incompletos?carpeta=cocina');
+    expect(r.body.formatos).toEqual({ control_temperatura: { dias: 1, medicion: 2 } });
+    await agent.post(`/api/registros/${g.body.registro._id}/completar`).send({ responsable: 'Andrés', datos: medicion2 });
+    expect((await agent.get('/api/registros/incompletos?carpeta=cocina')).body.formatos).toEqual({});
+    expect((await agent.get('/api/registros/incompletos?carpeta=inventada')).status).toBe(400);
+  });
+
+  test('corregir un registro al que le faltaba la medicion 2 y traer las dos lo deja completo', async () => {
+    const { agent, ids } = await conNeveras();
+    const g = await temp(agent, ids[0], medicion1, { parcial: true });
+    await agent.post('/api/admin/verificar-reporte').send({ password: PASSWORD_ADMIN });
+    const r = await agent.put(`/api/registros/${g.body.registro._id}`).send({ responsable: 'Laura', datos: { ...medicion1, ...medicion2 } });
+    expect(r.status).toBe(200);
+    expect(r.body.registro.parcial).toBe(false);
+    expect((await agent.get('/api/registros/resumen-pendientes')).body.diasIncompletos).toBe(0);
+  });
 });

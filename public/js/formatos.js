@@ -536,6 +536,7 @@ function mostrarFormatos(clave) {
     formatos.forEach(f => {
       const li = document.createElement('li');
       li.className = 'formato-card';
+      li.dataset.formato = f.id;
       li.innerHTML = `
         <div class="formato-numero">${f.numero}</div>
         <div class="formato-info">
@@ -549,10 +550,28 @@ function mostrarFormatos(clave) {
     });
   }
 
+  marcarIncompletos(clave);
   vistaCarpetas.hidden = true;
   vistFormatos.hidden = false;
   filaAccionesFormatos.hidden = true; // el reporte y la inspeccion son de todas las carpetas juntas, no de una sola
   btnVolver.textContent = '← Volver a carpetas';
+}
+
+// "Falta la medición 2" en los formatos que se llenan en dos momentos
+async function marcarIncompletos(carpeta) {
+  try {
+    const r = await fetch(`/api/registros/incompletos?carpeta=${encodeURIComponent(carpeta)}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    Object.entries(d.formatos).forEach(([id, x]) => {
+      const info = listaFormatos.querySelector(`[data-formato="${id}"] .formato-info`);
+      if (!info) return;
+      const pill = document.createElement('span');
+      pill.className = 'pill-estado pill-estado--parcial';
+      pill.textContent = `Falta la medición ${x.medicion}`;
+      info.appendChild(pill);
+    });
+  } catch (_) { /* si falla, la lista sigue igual */ }
 }
 
 function volverACarpetas() {

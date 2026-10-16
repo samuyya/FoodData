@@ -67,7 +67,8 @@ async function cargarBadgePendientes() {
     const d = await r.json();
     const badge = document.getElementById('badge-pendientes');
     if (!badge) return;
-    if (d.totalDiasPendientes > 0) {
+    // tambien cuentan los dias con la medicion 2 pendiente
+    if (d.totalDiasPendientes > 0 || d.diasIncompletos > 0) {
       badge.textContent = 'Hay formatos pendientes por llenar';
       badge.hidden = false;
     } else if (d.totalFormatos > 0) {

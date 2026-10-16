@@ -19,6 +19,8 @@ const btnCancelar = document.getElementById('btn-cancelar-historial');
 const params = new URLSearchParams(window.location.search);
 const formatoId = params.get('id');
 const carpetaId = params.get('carpeta') || 'cocina';
+const elementoId = params.get('elemento');
+const sufijoElemento = elementoId ? `&elemento=${encodeURIComponent(elementoId)}` : '';
 
 const MESES_LARGOS = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -140,9 +142,11 @@ function pintarTablaTemperatura(registros, tbody) {
       <td>${escapeHTML(d.hora1 || '')}</td>
       <td class="num">${d.temp1 != null && !isNaN(d.temp1) ? d.temp1 + ' °C' : ''}</td>
       <td>${cncCell(d.resultado1)}</td>
-      <td>${escapeHTML(d.hora2 || '')}</td>
+      ${r.parcial
+        ? '<td colspan="3" class="falta-medicion">Falta la medición 2</td>'
+        : `<td>${escapeHTML(d.hora2 || '')}</td>
       <td class="num">${d.temp2 != null && !isNaN(d.temp2) ? d.temp2 + ' °C' : ''}</td>
-      <td>${cncCell(d.resultado2)}</td>
+      <td>${cncCell(d.resultado2)}</td>`}
       <td>${escapeHTML(r.observaciones || '')}</td>
       <td>${escapeHTML(r.responsable || '')}</td>
     `;
@@ -436,7 +440,7 @@ async function cargarHistorial(anio, mes) {
   contenedorTabla.appendChild(estadoHistorial);
 
   try {
-    const r = await fetch(`/api/registros/historial/${encodeURIComponent(formatoId)}?carpeta=${encodeURIComponent(carpetaId)}&anio=${anio}&mes=${mes}`);
+    const r = await fetch(`/api/registros/historial/${encodeURIComponent(formatoId)}?carpeta=${encodeURIComponent(carpetaId)}&anio=${anio}&mes=${mes}${sufijoElemento}`);
     if (miPeticion !== peticionHistorial) return; // el usuario ya cambio de mes, esta respuesta llego tarde
     if (r.status === 401) {
       intentoPendiente = { anio, mes, accion: 'ver' };
@@ -563,7 +567,7 @@ btnDescargar.addEventListener('click', async () => {
 });
 
 btnVolverFormato.addEventListener('click', () => {
-  window.location.href = `/formato.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}`;
+  window.location.href = `/formato.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}${sufijoElemento}`;
 });
 
 btnIrMenu.addEventListener('click', () => { window.location.href = '/formatos.html'; });
@@ -590,9 +594,17 @@ async function iniciar() {
     const dF = await rFormato.json();
     formatoActual = dF.formato;
     tituloEl.textContent = `Registros — ${formatoActual.numero}. ${formatoActual.nombre}`;
+    if (elementoId) {
+      try {
+        const rEl = await fetch(`/api/elementos/${encodeURIComponent(formatoId)}?carpeta=${encodeURIComponent(carpetaId)}`);
+        const dEl = rEl.ok ? await rEl.json() : null;
+        const el = dEl && dEl.elementos.find(e => e.id === elementoId);
+        if (el) tituloEl.textContent += ` · ${el.nombre}`;
+      } catch (_) {}
+    }
     subtituloEl.textContent = 'Los empleados solo ven el mes en curso. Los meses anteriores requieren contraseña de administrador.';
 
-    const rMeses = await fetch(`/api/registros/meses/${encodeURIComponent(formatoId)}?carpeta=${encodeURIComponent(carpetaId)}`);
+    const rMeses = await fetch(`/api/registros/meses/${encodeURIComponent(formatoId)}?carpeta=${encodeURIComponent(carpetaId)}${sufijoElemento}`);
     const dMeses = await rMeses.json();
     pintarOpcionesMes(dMeses.meses || []);
 

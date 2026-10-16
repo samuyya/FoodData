@@ -200,6 +200,25 @@ router.get('/resumen-pendientes', requireEmpresa, ah(async (req, res) => {
   });
 }));
 
+// por formato de una carpeta: cuantos dias de este mes tienen una medicion pendiente (para la lista de formatos)
+router.get('/incompletos', requireEmpresa, ah(async (req, res) => {
+  const carpeta = req.query.carpeta || 'cocina';
+  if (!Registro.CARPETAS_VALIDAS.includes(carpeta)) {
+    return res.status(400).json({ ok: false, error: 'Carpeta no válida' });
+  }
+  const empresaId = req.session.empresa.id;
+  const config = await getConfigEmpresa(empresaId);
+  const { mes, anio } = partesDeHoy();
+  const formatos = {};
+  for (const formatoId of (config.carpetas[carpeta] || [])) {
+    const formato = getFormato(formatoId);
+    if (!formato || !formato.momentos) continue;
+    const dias = await Registro.countDocuments({ empresa_id: empresaId, formato: formatoId, carpeta, parcial: true, anio, mes });
+    if (dias) formatos[formatoId] = { dias, medicion: formato.momentos[formato.momentos.length - 1].n };
+  }
+  res.json({ ok: true, formatos });
+}));
+
 router.get('/pendientes/:formatoId', requireEmpresa, ah(async (req, res) => {
   const { formatoId } = req.params;
   const carpeta = req.query.carpeta || 'cocina';
@@ -533,6 +552,9 @@ router.put('/:id', requireEmpresa, limiteAdmin, ah(async (req, res) => {
   registro.responsable = limpio;
   registro.observaciones = (observaciones || '').trim();
   registro.datos = datos || {};
+  // en un formato de varios momentos, el registro queda completo solo si ya tiene todos
+  const formatoReg = getFormato(registro.formato);
+  if (formatoReg && formatoReg.momentos) registro.parcial = faltantes(formatoReg, registro).length > 0;
   await registro.save();
 
   // mismo patron de sincronizacion que al guardar un dia nuevo: excel se

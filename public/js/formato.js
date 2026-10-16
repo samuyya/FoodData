@@ -86,6 +86,12 @@ const params = new URLSearchParams(window.location.search);
 const formatoId = params.get('id');
 const carpetaId = params.get('carpeta') || 'cocina';
 const registroIdCorreccion = params.get('corregir');
+// baños, neveras, llaves...: el elemento que se esta llenando (si el formato los tiene)
+const elementoId = params.get('elemento');
+const sufijoElemento = elementoId ? `&elemento=${encodeURIComponent(elementoId)}` : '';
+const bannerIncompletos = $('banner-incompletos');
+let elementoActual = null;
+let entrarEnCompletarMomento = null; // lo define la plantilla de temperatura
 
 let formatoActual = null;
 let esCarpetaAdmin = false;
@@ -213,6 +219,95 @@ function pintarBanners(info, diaObjetivoEl) {
 
   diaObjetivoEl.innerHTML = `📝 Estás registrando el <strong>día ${siguienteDia} de ${nombreMes}</strong>. ${restantesTxt}`;
   diaObjetivoEl.hidden = false;
+}
+
+// varios baños, neveras, llaves...: tarjetas por elemento, y cada una abre el formulario de siempre
+const urlFormato = () => `/formato.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}`;
+
+// "Falta la medición 2." / "Faltan las mediciones 2 y 3."
+function textoFalta(falta) {
+  return falta.length === 1 ? `Falta la medición ${falta[0]}.` : `Faltan las mediciones ${falta.join(' y ')}.`;
+}
+
+const TIPOS_EQUIPO = { refrigeracion: 'Refrigeración', congelacion: 'Congelación' };
+
+function tarjetaElemento(e) {
+  const s = e.estado;
+  const parcialHoy = s.parciales.find(p => p.esHoy);
+  const viejos = s.parciales.filter(p => !p.esHoy);
+  const faltaHoy = s.pendientes.includes(s.diaActual);
+  let cls = '', pill = 'Pendiente hoy', sub = 'Sin llenar hoy', boton = 'Llenar', primario = true;
+  if (s.atrasados > 0) {
+    cls = 'atrasado';
+    pill = `Faltan ${s.atrasados} día${s.atrasados === 1 ? '' : 's'}${faltaHoy ? ' y hoy' : ''}`;
+    sub = 'Primero los días atrasados: pide la clave de administrador.';
+    boton = 'Llenar atrasados 🔒'; primario = false;
+  } else if (parcialHoy) {
+    cls = 'parcial';
+    pill = textoFalta(parcialHoy.falta).replace(/\.$/, '');
+    sub = `Medición ${parcialHoy.falta[0] - 1} guardada.`;
+    boton = `Llenar medición ${parcialHoy.falta[0]}`;
+  } else if (s.hoyListo) {
+    cls = 'listo'; pill = '✓ Listo hoy'; sub = 'El día de hoy ya está lleno.'; boton = 'Ver'; primario = false;
+  }
+  const dias = viejos.map(p => p.dia).join(', ');
+  return `<article class="tarjeta-elemento tarjeta-elemento--${cls || 'pendiente'}">
+    <div class="tarjeta-elemento-cab"><h3>${escapeHTML(e.nombre)}</h3>${e.tipo ? `<span class="pill-estado pill-estado--tipo">${TIPOS_EQUIPO[e.tipo] || ''}</span>` : ''}</div>
+    <span class="pill-estado pill-estado--${cls || 'pendiente'}">${pill}</span>
+    <p class="tarjeta-elemento-sub">${sub}</p>
+    ${viejos.length ? `<p class="tarjeta-elemento-aviso">El día ${dias} quedó sin la medición ${viejos[0].falta[0]}.</p>` : ''}
+    <button type="button" class="${primario ? 'btn-primario' : 'btn-secundario'}" data-elemento="${e.id}">${boton}</button>
+  </article>`;
+}
+
+function pintarTarjetas(info) {
+  bannerPendientes.hidden = true; bannerInfo.hidden = true;
+  const activos = info.elementos.filter(e => e.activo);
+  const fuera = info.elementos.filter(e => !e.activo);
+  const listos = activos.filter(e => e.estado.hoyListo).length;
+  $('elementos-resumen').textContent = `Hoy: ${listos} de ${activos.length} listos`;
+  $('elementos-faltan').textContent = listos === activos.length ? '' : `${activos.length - listos} por llenar`;
+  $('elementos-barra-i').style.width = (activos.length ? listos / activos.length * 100 : 0) + '%';
+
+  const grid = $('elementos-grid');
+  grid.innerHTML = activos.map(tarjetaElemento).join('');
+  grid.onclick = (ev) => {
+    const b = ev.target.closest('[data-elemento]');
+    if (b) window.location.href = `${urlFormato()}&elemento=${encodeURIComponent(b.dataset.elemento)}`;
+  };
+
+  $('elementos-fuera').hidden = fuera.length === 0;
+  $('elementos-fuera-resumen').textContent = `Fuera de servicio (${fuera.length})`;
+  $('elementos-fuera-lista').textContent = `${fuera.map(e => e.nombre).join(', ')}. Conservan su historial y no piden días.`;
+  $('vista-elementos').hidden = false;
+}
+
+// encabezado del formulario cuando se esta llenando un elemento puntual
+function pintarCabeceraElemento(formato, el) {
+  $('elemento-volver').textContent = `← Volver a ${formato.plural}`;
+  $('elemento-volver').onclick = () => { window.location.href = urlFormato(); };
+  $('elemento-nombre').textContent = el.nombre;
+  const tipo = $('elemento-tipo');
+  tipo.textContent = TIPOS_EQUIPO[el.tipo] || '';
+  tipo.hidden = !TIPOS_EQUIPO[el.tipo];
+  $('elemento-cabecera').hidden = false;
+}
+
+// dias que ya pasaron y se quedaron sin una medición: se completan con la clave del administrador
+function pintarIncompletos(info) {
+  const viejos = (info.parciales || []).filter(p => !p.esHoy);
+  if (!viejos.length || !entrarEnCompletarMomento) { bannerIncompletos.hidden = true; return; }
+  bannerIncompletos.innerHTML = '⚠️ ' + viejos.map(p => `<strong>El día ${p.dia}</strong> quedó sin la medición ${p.falta[0]}. <button type="button" class="btn-secundario btn-pequeno" data-completar="${p.id}">Completar</button>`).join('<br>') +
+    '<br><small>Completar un día que ya pasó pide la clave del administrador.</small>';
+  bannerIncompletos.hidden = false;
+  bannerIncompletos.onclick = (ev) => {
+    const b = ev.target.closest('[data-completar]');
+    if (!b) return;
+    const reg = (info.registrosMes || []).find(r => String(r._id) === b.dataset.completar);
+    if (!reg) return;
+    entrarEnCompletarMomento(reg);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 }
 
 // Empleados (formato presentacion_personal)
@@ -464,7 +559,8 @@ function mostrarModalAdminAtrasadoUpfront(info, onVerificadoOk) {
   formAdminAtrasado.reset();
   const dias = (info.pendientes || []).join(', ');
   const nombreCarpeta = NOMBRES_CARPETA_F[carpetaId] || carpetaId;
-  modalAdminAtrasadoInfo.innerHTML = `Este formato de <strong>${nombreCarpeta}</strong> tiene <strong>${info.pendientes.length} día(s) atrasado(s)</strong> sin registrar (${dias}). Solo el administrador puede llenarlos; ingresa la contraseña para continuar.`;
+  document.getElementById('modal-admin-atrasado-titulo').textContent = info.texto ? 'Se necesita la clave del administrador' : 'Días pendientes por registrar';
+  modalAdminAtrasadoInfo.innerHTML = info.texto || `Este formato de <strong>${nombreCarpeta}</strong> tiene <strong>${info.pendientes.length} día(s) atrasado(s)</strong> sin registrar (${dias}). Solo el administrador puede llenarlos; ingresa la contraseña para continuar.`;
   modalAdminAtrasado.hidden = false;
   setTimeout(() => formAdminAtrasado.password.focus(), 80);
 
@@ -512,6 +608,24 @@ async function enviarRegistro(cuerpo) {
     const url = modoCorreccion ? `/api/registros/${encodeURIComponent(registroIdCorreccion)}` : '/api/registros';
     const r = await fetch(url, {
       method: modoCorreccion ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(elementoId && !modoCorreccion ? { ...cuerpo, elemento: elementoId } : cuerpo)
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      return { error: data.error || 'algo salio mal al guardar', requiereClaveAdmin: data.requiereClaveAdmin };
+    }
+    return { ok: true, registro: data.registro, info: data.info };
+  } catch (err) {
+    return { error: 'no se pudo guardar, intenta otra vez' };
+  }
+}
+
+// llena la medicion que faltaba de un registro que ya estaba guardado
+async function enviarCompletar(registroId, cuerpo) {
+  try {
+    const r = await fetch(`/api/registros/${encodeURIComponent(registroId)}/completar`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(cuerpo)
     });
@@ -610,7 +724,7 @@ function iniciarFormGenerico(infoInicial) {
   });
 
   btnVerRegistros.addEventListener('click', () => {
-    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}`;
+    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}${sufijoElemento}`;
   });
 }
 
@@ -790,7 +904,7 @@ function iniciarFormCalidadAgua(infoInicial) {
   });
 
   caBtnRegistros.addEventListener('click', () => {
-    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}`;
+    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}${sufijoElemento}`;
   });
 }
 
@@ -826,6 +940,13 @@ async function postRegistro(cuerpo, btn, msgEl, diaObjEl, formEl, opciones = {})
   }
   if (res.error) {
     mostrarMensaje(msgEl, res.error, true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+  // solo se guardo la primera medicion (formatos de dos momentos): el aviso se queda hasta que se llene la otra
+  if (res.registro.parcial && opciones.onParcial) {
+    ocultarBannerExito();
+    opciones.onParcial(res.registro, res.info);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
@@ -865,6 +986,9 @@ function iniciarFormTemperatura(infoInicial) {
   const teTemp2 = document.getElementById('te-temp2');
   const teRes2 = document.getElementById('te-res2');
   const teTipo = document.getElementById('te-tipo');
+  const teTipoCampo = document.getElementById('te-tipo-campo');
+  const teBtnAmbas = document.getElementById('te-btn-ambas');
+  const teM2Hint = document.getElementById('te-m2-hint');
   const teObs = document.getElementById('te-observaciones');
   const teResp = document.getElementById('te-responsable');
   const teHint = document.getElementById('te-responsable-hint');
@@ -876,6 +1000,17 @@ function iniciarFormTemperatura(infoInicial) {
   formTE.hidden = false;
   teNota.textContent = formatoActual.nota || '';
   configurarResponsableEsCarpetaAdmin(teResp, teHint);
+
+  // el equipo (nevera, congelador) ya trae su tipo: no se vuelve a preguntar
+  if (elementoActual && elementoActual.tipo) {
+    teTipo.value = elementoActual.tipo;
+    teTipoCampo.hidden = true;
+  }
+
+  let infoActual = infoInicial;
+  let llenarAmbas = false;   // llenar tambien la medicion 2 ahora
+  let completando = null;    // registro al que le falta la medicion 2
+  let bloqueado = false;
 
   function evaluar(temp) {
     const num = parseFloat(temp);
@@ -892,6 +1027,24 @@ function iniciarFormTemperatura(infoInicial) {
   teTemp1.addEventListener('input', () => pintar(teRes1, teTemp1.value));
   teTemp2.addEventListener('input', () => pintar(teRes2, teTemp2.value));
   teTipo.addEventListener('change', () => { pintar(teRes1, teTemp1.value); pintar(teRes2, teTemp2.value); });
+
+  // la medicion 1 se puede guardar sola solo el dia de hoy; un dia atrasado se llena completo
+  const puedeParcial = () => !!infoActual && infoActual.siguienteDia === infoActual.diaActual;
+
+  function pintarMomento2() {
+    if (bloqueado) return;
+    const abierta = llenarAmbas || !!completando || !puedeParcial();
+    teHora2.disabled = teTemp2.disabled = !abierta;
+    teBtnAmbas.hidden = !!completando || !puedeParcial();
+    teBtnAmbas.textContent = llenarAmbas ? 'Dejar la medición 2 para más tarde' : 'Llenar también la medición 2 ahora';
+    teM2Hint.hidden = abierta;
+    teBtn.textContent = completando ? 'Guardar medición 2' : (abierta ? 'Guardar día' : 'Guardar medición 1');
+  }
+  teBtnAmbas.addEventListener('click', () => {
+    llenarAmbas = !llenarAmbas;
+    pintarMomento2();
+    if (llenarAmbas) teHora2.focus();
+  });
 
   function recoger() {
     return {
@@ -917,20 +1070,112 @@ function iniciarFormTemperatura(infoInicial) {
   function resetear() {
     teHora1.value = ''; teTemp1.value = ''; teHora2.value = ''; teTemp2.value = '';
     teObs.value = '';
+    llenarAmbas = false;
     pintarBadgeCNC(teRes1, null);
     pintarBadgeCNC(teRes2, null);
+    pintarMomento2();
   }
   function bloquear() {
+    bloqueado = true;
     Array.from(formTE.querySelectorAll('input, textarea, select')).forEach(el => el.disabled = true);
     teBtn.disabled = true;
+    teBtnAmbas.hidden = true;
+    teM2Hint.hidden = true;
+    teBtn.textContent = 'Guardar día';
+  }
+
+  // a este registro le falta la medicion 2: la 1 queda bloqueada y se llena la 2
+  // (la puede llenar otra persona, por eso el responsable queda vacio)
+  function entrarEnCompletar(reg) {
+    bloqueado = false;
+    Array.from(formTE.querySelectorAll('input, textarea, select')).forEach(el => el.disabled = false);
+    teBtn.disabled = false;
+    completando = reg;
+    llenarAmbas = false;
+    const d = reg.datos || {};
+    if (d.tipoEquipo) teTipo.value = d.tipoEquipo;
+    teHora1.value = d.hora1 || '';
+    teTemp1.value = d.temp1 != null ? d.temp1 : '';
+    pintar(teRes1, d.temp1);
+    teHora2.value = ''; teTemp2.value = '';
+    pintarBadgeCNC(teRes2, null);
+    teObs.value = '';
+    if (!esCarpetaAdmin) teResp.value = '';
+    [teHora1, teTemp1, teTipo].forEach(el => { el.disabled = true; });
+    teMsg.hidden = true;
+    teDia.innerHTML = `📝 Completando la medición 2 del <strong>día ${reg.dia} de ${MESES_LARGOS[reg.mes - 1]}</strong>.`;
+    teDia.hidden = false;
+    pintarMomento2();
+  }
+  entrarEnCompletarMomento = entrarEnCompletar;
+
+  // el aviso que se queda mientras falte la medicion
+  function avisoFalta(falta) {
+    ocultarBannerExito();
+    bannerInfo.hidden = true;
+    bannerPendientes.innerHTML = `⚠️ <strong>Medición 1 guardada. ${textoFalta(falta)}</strong>`;
+    bannerPendientes.hidden = false;
   }
 
   if (infoInicial) {
     pintarBanners(infoInicial, teDia);
+    const parcialHoy = (infoInicial.parciales || []).find(p => p.esHoy);
     if (infoInicial.completoHoy && infoInicial.registroHoy) {
-      rellenar(infoInicial.registroHoy);
-      bloquear();
+      if (parcialHoy) {
+        entrarEnCompletar(infoInicial.registroHoy);
+        avisoFalta(parcialHoy.falta);
+      } else {
+        rellenar(infoInicial.registroHoy);
+        bloquear();
+      }
     }
+  }
+  pintarMomento2();
+
+  async function completarMedicion2(d) {
+    const txt = teBtn.textContent;
+    teBtn.disabled = true;
+    teBtn.textContent = 'Guardando...';
+    let res;
+    try {
+      res = await enviarCompletar(completando._id, {
+        responsable: teResp.value.trim(),
+        observaciones: teObs.value.trim(),
+        datos: { hora2: d.hora2, temp2: d.temp2, resultado2: d.resultado2 }
+      });
+    } finally {
+      teBtn.disabled = false;
+      teBtn.textContent = txt;
+    }
+    if (res.requiereClaveAdmin) {
+      mostrarModalAdminAtrasadoUpfront(
+        { texto: `El día ${completando.dia} ya pasó: completar la medición 2 necesita la clave del administrador.` },
+        () => formTE.requestSubmit ? formTE.requestSubmit() : formTE.dispatchEvent(new Event('submit', { cancelable: true }))
+      );
+      return;
+    }
+    if (res.error) {
+      mostrarMensaje(teMsg, res.error, true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    const reg = res.registro;
+    const eraDeHoy = res.info && reg.dia === res.info.diaActual;
+    const textoOk = `✅ <strong>Medición 2 guardada.</strong> El día ${reg.dia} de ${MESES_LARGOS[reg.mes - 1]} quedó completo.`;
+    if (!eraDeHoy) {
+      // era un dia que ya paso: se recarga para seguir con el dia de hoy desde cero
+      try { sessionStorage.setItem('fd_flash', textoOk); } catch (_) {}
+      window.location.reload();
+      return;
+    }
+    mostrarBannerExito(textoOk);
+    bannerPendientes.hidden = true;
+    completando = null;
+    infoActual = res.info;
+    rellenar(reg);
+    bloquear();
+    pintarBanners(res.info, teDia);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   formTE.addEventListener('submit', async (e) => {
@@ -938,22 +1183,44 @@ function iniciarFormTemperatura(infoInicial) {
     teMsg.hidden = true;
     const d = recoger();
     if (!d.tipoEquipo) { mostrarMensaje(teMsg, 'Selecciona el tipo de equipo.', true); return; }
-    if (!d.hora1 || !d.hora2) { mostrarMensaje(teMsg, 'Indica las horas de las dos mediciones.', true); return; }
-    if (isNaN(d.temp1) || isNaN(d.temp2)) { mostrarMensaje(teMsg, 'Ingresa las dos temperaturas.', true); return; }
+
+    if (completando) {
+      if (!d.hora2 || isNaN(d.temp2)) { mostrarMensaje(teMsg, 'Indica la hora y la temperatura de la medición 2.', true); return; }
+      const hora1 = (completando.datos || {}).hora1;
+      if (hora1 && d.hora2 <= hora1) { mostrarMensaje(teMsg, 'La hora de la medición 2 debe ser posterior a la de la medición 1.', true); return; }
+      if (!teResp.value.trim()) { mostrarMensaje(teMsg, 'Ingresa el nombre del responsable.', true); return; }
+      await completarMedicion2(d);
+      return;
+    }
+
+    const parcial = puedeParcial() && !llenarAmbas;
+    if (!d.hora1 || isNaN(d.temp1)) { mostrarMensaje(teMsg, 'Indica la hora y la temperatura de la medición 1.', true); return; }
+    if (!parcial) {
+      if (!d.hora2) { mostrarMensaje(teMsg, 'Indica las horas de las dos mediciones.', true); return; }
+      if (isNaN(d.temp2)) { mostrarMensaje(teMsg, 'Ingresa las dos temperaturas.', true); return; }
+      if (d.hora2 <= d.hora1) { mostrarMensaje(teMsg, 'La hora de la medición 2 debe ser posterior a la de la medición 1.', true); return; }
+    }
     if (!teResp.value.trim()) { mostrarMensaje(teMsg, 'Ingresa el nombre del responsable.', true); return; }
 
+    // solo la medicion 1: la 2 se llena despues
+    const datos = parcial ? { tipoEquipo: d.tipoEquipo, hora1: d.hora1, temp1: d.temp1, resultado1: d.resultado1 } : d;
     await postRegistro({
       formatoId, carpeta: carpetaId,
       responsable: teResp.value.trim(),
       observaciones: teObs.value.trim(),
-      datos: d
+      datos, parcial
     }, teBtn, teMsg, teDia, formTE, {
-      onCompleto: (info) => { rellenar(info.registroHoy); bloquear(); },
-      onAvance: () => resetear()
+      onCompleto: (info) => { infoActual = info; rellenar(info.registroHoy); bloquear(); },
+      onAvance: (info) => { infoActual = info; resetear(); },
+      onParcial: (reg, info) => {
+        infoActual = info;
+        entrarEnCompletar(reg);
+        avisoFalta(((info.parciales || []).find(p => String(p.id) === String(reg._id)) || { falta: [2] }).falta);
+      }
     });
   });
   teBtnReg.addEventListener('click', () => {
-    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}`;
+    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}${sufijoElemento}`;
   });
 }
 
@@ -1038,7 +1305,7 @@ function iniciarFormPlagas(infoInicial) {
     });
   });
   plBtnReg.addEventListener('click', () => {
-    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}`;
+    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}${sufijoElemento}`;
   });
 }
 
@@ -1118,7 +1385,7 @@ function iniciarFormResiduos(infoInicial) {
     });
   });
   rsBtnReg.addEventListener('click', () => {
-    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}`;
+    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}${sufijoElemento}`;
   });
 }
 
@@ -1218,7 +1485,7 @@ function iniciarFormLimpiezaSalon(infoInicial) {
     });
   });
   btnReg.addEventListener('click', () => {
-    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}`;
+    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}${sufijoElemento}`;
   });
 }
 
@@ -1299,7 +1566,7 @@ function iniciarFormLimpiezaBano(infoInicial) {
     });
   });
   btnReg.addEventListener('click', () => {
-    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}`;
+    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}${sufijoElemento}`;
   });
 }
 
@@ -1382,7 +1649,7 @@ function iniciarFormLimpiezaCT(infoInicial) {
     });
   });
   btnReg.addEventListener('click', () => {
-    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}`;
+    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}${sufijoElemento}`;
   });
 }
 
@@ -1587,7 +1854,7 @@ function iniciarFormRecepcion(infoInicial) {
     });
   });
   btnReg.addEventListener('click', () => {
-    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}`;
+    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}${sufijoElemento}`;
   });
 }
 
@@ -1639,7 +1906,7 @@ function iniciarFormPresentacionPersonal(infoInicial) {
     });
   });
   ppBtnReg.addEventListener('click', () => {
-    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}`;
+    window.location.href = `/registros.html?id=${encodeURIComponent(formatoId)}&carpeta=${encodeURIComponent(carpetaId)}${sufijoElemento}`;
   });
 }
 
@@ -1723,6 +1990,8 @@ async function cargar() {
     if (me.rol !== 'empleado') { window.location.href = '/index.html'; return; }
     pintarHeader(me.empresa);
     pintarFecha();
+    // aviso que se guardo antes de recargar la pagina (ej. se completo un dia que ya paso)
+    try { const flash = sessionStorage.getItem('fd_flash'); if (flash) { sessionStorage.removeItem('fd_flash'); mostrarBannerExito(flash); } } catch (_) {}
 
     const rFormato = await fetch(`/api/formatos/${encodeURIComponent(formatoId)}?carpeta=${encodeURIComponent(carpetaId)}`);
     if (!rFormato.ok) {
@@ -1763,13 +2032,29 @@ async function cargar() {
       return;
     }
 
+    // formatos con varios baños, neveras, llaves...: tarjetas, y cada una abre el formulario de siempre
+    if (formatoActual.elementos) {
+      const rEl = await fetch(`/api/elementos/${encodeURIComponent(formatoId)}?carpeta=${encodeURIComponent(carpetaId)}`);
+      const dEl = rEl.ok ? await rEl.json() : null;
+      if (dEl && dEl.configurado) {
+        if (!elementoId) { pintarTarjetas(dEl); return; }
+        elementoActual = dEl.elementos.find(e => e.id === elementoId && e.activo) || null;
+        if (!elementoActual) { window.location.replace(urlFormato()); return; }
+        pintarCabeceraElemento(dEl.formato, elementoActual);
+      } else if (elementoId) {
+        window.location.replace(urlFormato());
+        return;
+      }
+    }
+
     // Cargar pendientes ANTES de mostrar el formulario
-    const rPend = await fetch(`/api/registros/pendientes/${encodeURIComponent(formatoId)}?carpeta=${encodeURIComponent(carpetaId)}`);
+    const rPend = await fetch(`/api/registros/pendientes/${encodeURIComponent(formatoId)}?carpeta=${encodeURIComponent(carpetaId)}${sufijoElemento}`);
     const pendInicial = rPend.ok ? await rPend.json() : null;
 
     const arrancarFormulario = () => {
       const iniciador = PLANTILLAS[formatoActual.id] || iniciarFormGenerico;
       iniciador(pendInicial);
+      if (pendInicial) pintarIncompletos(pendInicial);
     };
 
     // Si requiere contraseña de admin para días atrasados, pedirla AHORA antes de mostrar el form

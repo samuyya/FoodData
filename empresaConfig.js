@@ -5,7 +5,7 @@ const TODOS_IDS = FORMATOS.map(f => f.id);
 
 async function getConfigEmpresa(empresaId) {
   const e = await Empresa.findById(empresaId)
-    .select('formatosActivos formatosCarpeta formatosCompartidos')
+    .select('formatosActivos formatosCarpeta formatosCompartidos elementos')
     .lean();
 
   // si la empresa ya no existe (ej: la borraron con una sesion vieja todavia activa),
@@ -32,7 +32,8 @@ async function getConfigEmpresa(empresaId) {
   return {
     activos,
     carpetas,
-    compartidos: compartidos.filter(id => activos.includes(id))
+    compartidos: compartidos.filter(id => activos.includes(id)),
+    elementos: (e && e.elementos) || []
   };
 }
 
@@ -42,4 +43,9 @@ function getCarpetasDeFormato(carpetas, formatoId) {
   return resultado.length > 0 ? resultado : ['cocina'];
 }
 
-module.exports = { getConfigEmpresa, getCarpetasDeFormato };
+// elementos (baños, neveras...) de un formato en una carpeta
+function elementosDe(config, formatoId, carpeta, soloActivos) {
+  return config.elementos.filter(e => e.formato === formatoId && e.carpeta === carpeta && (!soloActivos || e.activo));
+}
+
+module.exports = { getConfigEmpresa, getCarpetasDeFormato, elementosDe };

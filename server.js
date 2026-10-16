@@ -21,6 +21,7 @@ const superadminRoutes = require('./routes/superadmin');
 const formatosRoutes = require('./routes/formatos');
 const adminRoutes = require('./routes/admin');
 const registrosRoutes = require('./routes/registros');
+const elementosRoutes = require('./routes/elementos');
 const empleadosRoutes = require('./routes/empleados');
 const asistenciaRoutes = require('./routes/asistencia');
 const documentosRoutes = require('./routes/documentos');
@@ -161,6 +162,7 @@ app.use('/api/admin', adminRoutes);
 // rutas protegidas por modulo (superadmin siempre puede pasar)
 app.use('/api/formatos',  requireModulo('formatos'),  formatosRoutes);
 app.use('/api/registros', requireModulo('formatos'),  registrosRoutes);
+app.use('/api/elementos', requireModulo('formatos'),  elementosRoutes);
 app.use('/api/empleados', requireModulo('formatos'),  empleadosRoutes);
 app.use('/api/asistencia',requireModulo('asistencia'),asistenciaRoutes);
 // documentos: el superadmin sube; las empresas leen los suyos solo si tienen el modulo "programas"

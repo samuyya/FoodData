@@ -20,6 +20,7 @@ const FORMATOS = [
   },
   {
     id: 'calidad_agua',
+    elementos: { abrev: 'Agua', singular: 'punto', plural: 'llaves y tanques' },
     numero: 2,
     nombre: 'Control de calidad del agua potable',
     nombreCorto: 'Calidad del agua',
@@ -33,6 +34,8 @@ const FORMATOS = [
   },
   {
     id: 'control_temperatura',
+    elementos: { abrev: 'T°', singular: 'equipo', plural: 'equipos de frío', conTipo: true },
+    momentos: [{ n: 1, campos: ['hora1', 'temp1'] }, { n: 2, campos: ['hora2', 'temp2'] }],
     numero: 3,
     nombre: 'Temperatura de equipos de frío',
     nombreCorto: 'T° equipos de frío',
@@ -96,6 +99,7 @@ const FORMATOS = [
   },
   {
     id: 'limpieza_bano',
+    elementos: { abrev: 'Baño', singular: 'baño', plural: 'baños' },
     numero: 6,
     nombre: 'Limpieza y desinfección - Baño',
     nombreCorto: 'Limpieza baño',
@@ -162,4 +166,8 @@ const NOMBRES_CARPETA = {
   administracion: 'Administración'
 };
 
-module.exports = { FORMATOS, getFormato, CARPETAS, NOMBRES_CARPETA };
+// elementos: un formato puede tener varios baños, neveras, llaves... (solo los que traen `elementos` arriba).
+// 18 caracteres para que la pestaña de Excel (prefijo + nombre) nunca pase de 31
+const ELEMENTO_NOMBRE_MAX = 18;
+
+module.exports = { FORMATOS, getFormato, CARPETAS, NOMBRES_CARPETA, ELEMENTO_NOMBRE_MAX };

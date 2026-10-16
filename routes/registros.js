@@ -6,7 +6,7 @@ const Empresa = require('../models/Empresa');
 const Administrador = require('../models/Administrador');
 const bcrypt = require('bcryptjs');
 const { FORMATOS, getFormato, CARPETAS, NOMBRES_CARPETA } = require('../formatos');
-const { getConfigEmpresa } = require('../empresaConfig');
+const { getConfigEmpresa, elementosDe } = require('../empresaConfig');
 const { requireEmpresa, ah } = require('../middleware/sesion');
 const { limiteAdmin } = require('../middleware/limites');
 const { adminCarpetaAdministracionActivo, adminHistorialActivo, adminAtrasadoActivo, adminReporteActivo, adminInspeccionActivo } = require('./admin');
@@ -50,23 +50,43 @@ function partesDeHoy() {
   };
 }
 
-async function infoPendientes(empresaId, formatoId, carpeta) {
+// dia del mes desde el que se exige llenar: un elemento (baño, nevera...) nuevo solo cuenta
+// desde que se dio de alta, no hacia atras
+function diaDesde(el, mes, anio) {
+  if (!el || !el.desde) return 1;
+  const [a, m, d] = el.desde.split('-').map(Number);
+  return (a === anio && m === mes) ? d : 1;
+}
+
+// momentos del dia que faltan en un registro (ej. [2] = falta la medicion 2)
+function faltantes(formato, registro) {
+  if (!formato || !formato.momentos) return [];
+  const d = registro.datos || {};
+  return formato.momentos.filter(m => !m.campos.every(c => d[c] !== '' && d[c] != null)).map(m => m.n);
+}
+
+async function infoPendientes(empresaId, formatoId, carpeta, el = null) {
   const { dia, mes, anio } = partesDeHoy();
   const guardados = await Registro.find({
     empresa_id: empresaId,
     formato: formatoId,
     carpeta,
+    elemento: el ? el._id : null,
     anio, mes,
     dia: { $lte: dia }
   }).sort({ dia: 1 }).lean();
 
   const set = new Set(guardados.map(g => g.dia));
   const pendientes = [];
-  for (let d = 1; d <= dia; d++) {
+  for (let d = diaDesde(el, mes, anio); d <= dia; d++) {
     if (!set.has(d)) pendientes.push(d);
   }
   const siguienteDia = pendientes.length > 0 ? pendientes[0] : null;
   const registroHoy = guardados.find(g => g.dia === dia) || null;
+  // dias a los que les falta un momento (ej. la medicion 2): ya tienen registro, asi que no
+  // bloquean los dias siguientes, pero hay que avisar que faltan
+  const formato = getFormato(formatoId);
+  const parciales = guardados.filter(g => g.parcial).map(g => ({ id: g._id, dia: g.dia, falta: faltantes(formato, g), esHoy: g.dia === dia }));
 
   return {
     diaActual: dia,
@@ -76,8 +96,66 @@ async function infoPendientes(empresaId, formatoId, carpeta) {
     siguienteDia,
     completoHoy: pendientes.length === 0,
     registroHoy,
-    registrosMes: guardados
+    registrosMes: guardados,
+    parciales
   };
+}
+
+// el elemento (baño, nevera...) con el que se llena un formato. si el formato tiene elementos
+// en servicio en esa carpeta hay que elegir uno; si no tiene, no se manda ninguno
+function resolverElemento(config, formatoId, carpeta, elementoId) {
+  const activos = elementosDe(config, formatoId, carpeta, true);
+  if (activos.length === 0) {
+    if (elementoId) return { status: 400, error: 'Este formato no tiene elementos configurados' };
+    return { el: null };
+  }
+  if (!elementoId) return { status: 400, error: 'Elige cuál es (por ejemplo, qué baño)' };
+  const el = activos.find(e => String(e._id) === String(elementoId));
+  if (!el) return { status: 400, error: 'Ese elemento no está en servicio' };
+  return { el };
+}
+
+// formatos que se llenan en varios momentos del dia (temperatura: medicion 1 y 2). se puede guardar
+// solo el primero ("parcial") y completar el resto despues
+function validarMomentos(formato, datos, parcial) {
+  const mom = formato.momentos;
+  if (!mom) return parcial ? { error: 'Este formato se llena una sola vez al día' } : { datos, completos: [] };
+  datos = { ...(datos || {}) };
+  const listo = m => m.campos.every(c => datos[c] !== '' && datos[c] != null);
+  if (!listo(mom[0])) return { error: 'Falta la medición 1.' };
+  if (parcial) {
+    mom.slice(1).forEach(m => m.campos.concat('resultado' + m.n).forEach(c => delete datos[c]));
+    return { datos, completos: [1] };
+  }
+  const falta = mom.find(m => !listo(m));
+  if (falta) return { error: `Falta la medición ${falta.n}.` };
+  const horas = mom.map(m => datos[m.campos[0]]);
+  const mal = horas.findIndex((h, i) => i && h <= horas[i - 1]);
+  if (mal > 0) return { error: `La hora de la medición ${mal + 1} debe ser posterior a la de la medición ${mal}.` };
+  return { datos, completos: mom.map(m => m.n) };
+}
+
+// excel se espera, google sheets corre de fondo (mismo criterio que al guardar un dia nuevo)
+async function sincronizarDespuesDeGuardar(req, registro, config) {
+  const empresaId = req.session.empresa.id;
+  let excelError = null;
+  try {
+    await sincronizarFormatoCarpeta(empresaId, registro.formato, registro.carpeta, { config, empresaNombre: req.session.empresa.nombre });
+  } catch (errSync) {
+    logger.warn(`no se pudo escribir excel: ${errSync.message}`);
+    excelError = 'No se pudo actualizar el Excel: ' + errSync.message;
+  }
+  (async () => {
+    try {
+      const empresaDoc = await Empresa.findById(empresaId).select('googleSheetId').lean();
+      if (empresaDoc && empresaDoc.googleSheetId && googleSheets.estaDisponible()) {
+        await googleSheets.sincronizarFormato(empresaDoc.googleSheetId, empresaId, registro.formato, registro.carpeta);
+      }
+    } catch (errGS) {
+      logger.warn(`no se sincronizo google sheets: ${errGS.message}`);
+    }
+  })();
+  return excelError;
 }
 
 // suma de dias pendientes a lo largo de todos los formatos activos de la empresa
@@ -87,38 +165,37 @@ router.get('/resumen-pendientes', requireEmpresa, ah(async (req, res) => {
   const config = await getConfigEmpresa(empresaId);
   const { mes, anio } = partesDeHoy();
 
-  // cada (formato, carpeta) cuenta como una instancia independiente, incluso si son compartidos
-  const instancias = new Set();
+  // cada (formato, carpeta) cuenta como una instancia independiente, incluso si son compartidos.
+  // si el formato tiene elementos (baños, neveras...), cada elemento en servicio es una instancia
+  const instancias = [];
   for (const carpeta of CARPETAS) {
     for (const formatoId of (config.carpetas[carpeta] || [])) {
-      instancias.add(`${formatoId}|${carpeta}`);
+      const els = elementosDe(config, formatoId, carpeta, true);
+      if (els.length) els.forEach(el => instancias.push({ formatoId, carpeta, el }));
+      else instancias.push({ formatoId, carpeta, el: null });
     }
   }
 
   // reuso infoPendientes (la misma logica de dias faltantes que usa cada formato)
   // en vez de recalcular el conteo aparte, asi no se pueden desincronizar -- se piden
   // todas las instancias a la vez en vez de una por una, cada una es una consulta aparte
-  const infos = await Promise.all(
-    [...instancias].map(key => {
-      const [formatoId, carpeta] = key.split('|');
-      return infoPendientes(empresaId, formatoId, carpeta);
-    })
-  );
+  const infos = await Promise.all(instancias.map(i => infoPendientes(empresaId, i.formatoId, i.carpeta, i.el)));
 
   let totalDiasPendientes = 0;
   let formatosConPendientes = 0;
+  let diasIncompletos = 0;
   for (const info of infos) {
-    if (info.pendientes.length > 0) {
-      formatosConPendientes++;
-      totalDiasPendientes += info.pendientes.length;
-    }
+    if (info.pendientes.length > 0 || info.parciales.length > 0) formatosConPendientes++;
+    totalDiasPendientes += info.pendientes.length;
+    diasIncompletos += info.parciales.length;
   }
 
   res.json({
     ok: true,
     totalDiasPendientes,
+    diasIncompletos,
     formatosConPendientes,
-    totalFormatos: instancias.size,
+    totalFormatos: instancias.length,
     mes, anio
   });
 }));
@@ -138,14 +215,20 @@ router.get('/pendientes/:formatoId', requireEmpresa, ah(async (req, res) => {
   }
   // cada carpeta lleva su propia secuencia de pendientes, incluso si el formato esta marcado
   // como "compartido" (eso solo afecta como se ve en el excel/sheets)
-  const info = await infoPendientes(req.session.empresa.id, formatoId, carpeta);
   const config = await getConfigEmpresa(req.session.empresa.id);
+  const resEl = resolverElemento(config, formatoId, carpeta, req.query.elemento);
+  if (resEl.error) return res.status(resEl.status).json({ ok: false, error: resEl.error });
+  const el = resEl.el;
+  const info = await infoPendientes(req.session.empresa.id, formatoId, carpeta, el);
 
   const esCarpetaAdmin = carpeta === 'administracion' && config.carpetas.administracion.includes(formatoId);
   const hayAtrasados = !info.completoHoy && info.siguienteDia !== info.diaActual;
   const requiereAdminAtrasado = hayAtrasados && !esCarpetaAdmin && !adminAtrasadoActivo(req, carpeta);
 
-  res.json({ ok: true, ...info, requiereAdminAtrasado, esCarpetaAdmin });
+  res.json({
+    ok: true, ...info, requiereAdminAtrasado, esCarpetaAdmin,
+    elemento: el ? { id: el._id, nombre: el.nombre, tipo: el.tipo, desde: el.desde } : null
+  });
 }));
 
 router.get('/hoy/:formatoId', requireEmpresa, ah(async (req, res) => {
@@ -159,6 +242,7 @@ router.get('/hoy/:formatoId', requireEmpresa, ah(async (req, res) => {
     empresa_id: req.session.empresa.id,
     formato: formatoId,
     carpeta,
+    elemento: mongoose.Types.ObjectId.isValid(req.query.elemento) ? req.query.elemento : null,
     dia, mes, anio
   }).lean();
   res.json({ ok: true, registro });
@@ -166,7 +250,7 @@ router.get('/hoy/:formatoId', requireEmpresa, ah(async (req, res) => {
 
 router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
   try {
-    const { formatoId, carpeta, responsable, observaciones, datos } = req.body;
+    const { formatoId, carpeta, responsable, observaciones, datos, elemento, parcial } = req.body;
     const formato = getFormato(formatoId);
     if (!formato) return res.status(400).json({ ok: false, error: 'Formato no válido' });
     if (!carpeta || !Registro.CARPETAS_VALIDAS.includes(carpeta)) {
@@ -190,7 +274,13 @@ router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
       return res.status(403).json({ ok: false, error: 'Este formato no está disponible en esa carpeta' });
     }
 
-    const info = await infoPendientes(req.session.empresa.id, formatoId, carpeta);
+    const resEl = resolverElemento(config, formatoId, carpeta, elemento);
+    if (resEl.error) return res.status(resEl.status).json({ ok: false, error: resEl.error });
+    const el = resEl.el;
+    const mom = validarMomentos(formato, datos, !!parcial);
+    if (mom.error) return res.status(400).json({ ok: false, error: mom.error });
+
+    const info = await infoPendientes(req.session.empresa.id, formatoId, carpeta, el);
     if (info.completoHoy) {
       return res.status(409).json({ ok: false, error: 'Ya completaste todos los días de este mes hasta hoy' });
     }
@@ -238,9 +328,12 @@ router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
       dia,
       mes: info.mes,
       anio: info.anio,
+      elemento: el ? el._id : null,
+      parcial: !!parcial,
+      mediciones: mom.completos.map(n => ({ n, por: nombreResponsable, en: new Date() })),
       responsable: nombreResponsable,
       observaciones: (observaciones || '').trim(),
-      datos: datos || {}
+      datos: mom.datos || {}
     });
 
     // excel y google sheets arrancan los dos al mismo tiempo, pero solo se espera
@@ -308,6 +401,7 @@ router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
     infoNuevo.siguienteDia = infoNuevo.pendientes.length > 0 ? infoNuevo.pendientes[0] : null;
     infoNuevo.completoHoy = infoNuevo.pendientes.length === 0;
     if (dia === info.diaActual) infoNuevo.registroHoy = registro;
+    if (registro.parcial) infoNuevo.parciales = [...info.parciales, { id: registro._id, dia, falta: faltantes(formato, registro), esHoy: dia === info.diaActual }];
 
     res.status(201).json({ ok: true, registro, info: infoNuevo, excelError, googleSheetsError });
   } catch (err) {
@@ -317,6 +411,85 @@ router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
+
+// completa el momento que falta de un registro (ej. la medicion 2 de temperatura). el mismo dia
+// no pide clave; completar un dia que ya paso si, igual que llenar un dia atrasado
+router.post('/:id/completar', requireEmpresa, limiteAdmin, ah(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ ok: false, error: 'Id de registro inválido' });
+  }
+  const { responsable, observaciones, datos } = req.body;
+  if (datos && JSON.stringify(datos).length > 32000) {
+    return res.status(413).json({ ok: false, error: 'Los datos son demasiado grandes' });
+  }
+  if (observaciones && String(observaciones).length > 2000) {
+    return res.status(413).json({ ok: false, error: 'Las observaciones son muy largas (máx 2000 caracteres)' });
+  }
+
+  const empresaId = req.session.empresa.id;
+  const registro = await Registro.findOne({ _id: req.params.id, empresa_id: empresaId });
+  if (!registro) return res.status(404).json({ ok: false, error: 'Registro no encontrado' });
+  const formato = getFormato(registro.formato);
+  if (!registro.parcial || !formato || !formato.momentos) {
+    return res.status(409).json({ ok: false, error: 'Este registro ya está completo' });
+  }
+
+  const config = await getConfigEmpresa(empresaId);
+  if (!config.activos.includes(registro.formato) || !(config.carpetas[registro.carpeta] || []).includes(registro.formato)) {
+    return res.status(403).json({ ok: false, error: 'Este formato no está disponible en esa carpeta' });
+  }
+
+  let nombreResponsable;
+  if (registro.carpeta === 'administracion') {
+    const adminNombre = adminCarpetaAdministracionActivo(req);
+    if (!adminNombre) {
+      return res.status(401).json({ ok: false, error: 'Se requiere acceso a la carpeta Administración para guardar este formato' });
+    }
+    nombreResponsable = adminNombre;
+  } else {
+    const limpio = (responsable || '').trim();
+    if (!limpio) return res.status(400).json({ ok: false, error: 'El responsable es obligatorio' });
+    if (!REGEX_LETRAS.test(limpio)) return res.status(400).json({ ok: false, error: 'El responsable solo puede contener letras y espacios' });
+    nombreResponsable = limpio;
+
+    const { dia, mes, anio } = partesDeHoy();
+    const esHoy = registro.dia === dia && registro.mes === mes && registro.anio === anio;
+    if (!esHoy && !adminAtrasadoActivo(req, registro.carpeta)) {
+      const v = await verificarPasswordAdmin(empresaId, req.body.password);
+      if (v.error) {
+        return res.status(v.status).json({ ok: false, error: v.error, requiereClaveAdmin: !!v.requiereClave });
+      }
+      if (!req.session.adminAtrasado || typeof req.session.adminAtrasado.ts === 'number') {
+        req.session.adminAtrasado = {};
+      }
+      req.session.adminAtrasado[registro.carpeta] = { ts: Date.now() };
+    }
+  }
+
+  // solo se aceptan los campos del momento que falta; lo que ya estaba guardado no se toca
+  const faltan = faltantes(formato, registro);
+  const permitidos = new Set();
+  formato.momentos.filter(m => faltan.includes(m.n)).forEach(m => {
+    m.campos.forEach(c => permitidos.add(c));
+    permitidos.add('resultado' + m.n);
+  });
+  const nuevos = {};
+  Object.keys(datos || {}).forEach(k => { if (permitidos.has(k)) nuevos[k] = datos[k]; });
+  const mom = validarMomentos(formato, { ...(registro.datos || {}), ...nuevos }, false);
+  if (mom.error) return res.status(400).json({ ok: false, error: mom.error });
+
+  registro.datos = mom.datos;
+  registro.parcial = false;
+  faltan.forEach(n => registro.mediciones.push({ n, por: nombreResponsable, en: new Date() }));
+  const obs = (observaciones || '').trim();
+  if (obs) registro.observaciones = registro.observaciones ? `${registro.observaciones} · ${obs}` : obs;
+  await registro.save();
+
+  const excelError = await sincronizarDespuesDeGuardar(req, registro, config);
+  const el = registro.elemento ? (config.elementos.find(e => String(e._id) === String(registro.elemento)) || { _id: registro.elemento }) : null;
+  const info = await infoPendientes(empresaId, registro.formato, registro.carpeta, el);
+  res.json({ ok: true, registro, info, excelError, googleSheetsError: null });
+}));
 
 // trae un registro puntual por su _id, para el modo "corregir" que se abre
 // desde una novedad del reporte -- gateado por el mismo marcador que el
@@ -408,7 +581,7 @@ router.get('/meses/:formatoId', requireEmpresa, ah(async (req, res) => {
   }
   const empresaId = new mongoose.Types.ObjectId(req.session.empresa.id);
   const agregados = await Registro.aggregate([
-    { $match: { empresa_id: empresaId, formato: formatoId, carpeta } },
+    { $match: { empresa_id: empresaId, formato: formatoId, carpeta, ...(mongoose.Types.ObjectId.isValid(req.query.elemento) ? { elemento: new mongoose.Types.ObjectId(req.query.elemento) } : {}) } },
     { $group: { _id: { anio: '$anio', mes: '$mes' }, count: { $sum: 1 } } },
     { $sort: { '_id.anio': -1, '_id.mes': -1 } }
   ]);
@@ -439,12 +612,9 @@ router.get('/historial/:formatoId', requireEmpresa, ah(async (req, res) => {
     return res.status(401).json({ ok: false, error: 'Requiere verificación de administrador para meses anteriores' });
   }
 
-  const registros = await Registro.find({
-    empresa_id: req.session.empresa.id,
-    formato: formatoId,
-    carpeta,
-    anio, mes
-  }).sort({ dia: 1 }).lean();
+  const filtro = { empresa_id: req.session.empresa.id, formato: formatoId, carpeta, anio, mes };
+  if (mongoose.Types.ObjectId.isValid(req.query.elemento)) filtro.elemento = req.query.elemento;
+  const registros = await Registro.find(filtro).sort({ dia: 1 }).lean();
 
   res.json({ ok: true, anio, mes, esMesActual, registros });
 }));
@@ -669,3 +839,4 @@ router.get('/excel', requireEmpresa, descargarExcel);
 router.get('/excel/:anio/:mes', requireEmpresa, descargarExcel);
 
 module.exports = router;
+module.exports.infoPendientes = infoPendientes;

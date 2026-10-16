@@ -41,6 +41,19 @@ const empresaSchema = new mongoose.Schema({
       message: 'Módulo inválido'
     }
   },
+  // baños, neveras, llaves...: cada uno es un registro independiente dentro de su formato y carpeta.
+  // nunca se borran (se sacan de servicio) para no perder el historial; el _id no cambia al renombrar
+  elementos: [{
+    formato: { type: String, required: true },
+    carpeta: { type: String, required: true },
+    nombre: { type: String, required: true, trim: true, maxlength: 18 },
+    tipo: { type: String, enum: ['refrigeracion', 'congelacion', null], default: null },
+    activo: { type: Boolean, default: true },
+    // desde que dia cuenta pendientes ('YYYY-MM-DD'); al volver a servicio se reinicia
+    desde: { type: String, default: '' },
+    // ultimo nombre de pestaña en google sheets, para renombrarla en vez de duplicarla
+    hoja: { type: String, default: '' }
+  }],
   // horas de jornada normal esperadas cada dia — se usa para saber cuanto es
   // "menos de lo normal" cuando se resta del saldo de horas extra
   jornadaEsperada: {

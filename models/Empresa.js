@@ -52,7 +52,9 @@ const empresaSchema = new mongoose.Schema({
     // desde que dia cuenta pendientes ('YYYY-MM-DD'); al volver a servicio se reinicia
     desde: { type: String, default: '' },
     // ultimo nombre de pestaña en google sheets, para renombrarla en vez de duplicarla
-    hoja: { type: String, default: '' }
+    hoja: { type: String, default: '' },
+    // lo mismo para el excel
+    hojaExcel: { type: String, default: '' }
   }],
   // horas de jornada normal esperadas cada dia — se usa para saber cuanto es
   // "menos de lo normal" cuando se resta del saldo de horas extra

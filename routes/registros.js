@@ -6,7 +6,7 @@ const Empresa = require('../models/Empresa');
 const Administrador = require('../models/Administrador');
 const bcrypt = require('bcryptjs');
 const { FORMATOS, getFormato, CARPETAS, NOMBRES_CARPETA } = require('../formatos');
-const { getConfigEmpresa, elementosDe } = require('../empresaConfig');
+const { getConfigEmpresa, elementosDe, gruposDe, buscarElemento } = require('../empresaConfig');
 const { requireEmpresa, ah } = require('../middleware/sesion');
 const { limiteAdmin } = require('../middleware/limites');
 const { adminCarpetaAdministracionActivo, adminHistorialActivo, adminAtrasadoActivo, adminReporteActivo, adminInspeccionActivo } = require('./admin');
@@ -140,7 +140,7 @@ async function sincronizarDespuesDeGuardar(req, registro, config) {
   const empresaId = req.session.empresa.id;
   let excelError = null;
   try {
-    await sincronizarFormatoCarpeta(empresaId, registro.formato, registro.carpeta, { config, empresaNombre: req.session.empresa.nombre });
+    await sincronizarFormatoCarpeta(empresaId, registro.formato, registro.carpeta, { config, empresaNombre: req.session.empresa.nombre, elementoId: registro.elemento });
   } catch (errSync) {
     logger.warn(`no se pudo escribir excel: ${errSync.message}`);
     excelError = 'No se pudo actualizar el Excel: ' + errSync.message;
@@ -149,7 +149,7 @@ async function sincronizarDespuesDeGuardar(req, registro, config) {
     try {
       const empresaDoc = await Empresa.findById(empresaId).select('googleSheetId').lean();
       if (empresaDoc && empresaDoc.googleSheetId && googleSheets.estaDisponible()) {
-        await googleSheets.sincronizarFormato(empresaDoc.googleSheetId, empresaId, registro.formato, registro.carpeta);
+        await googleSheets.sincronizarFormato(empresaDoc.googleSheetId, empresaId, registro.formato, registro.carpeta, registro.elemento);
       }
     } catch (errGS) {
       logger.warn(`no se sincronizo google sheets: ${errGS.message}`);
@@ -367,7 +367,7 @@ router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
         // le paso el config y el nombre que ya tenemos a mano en este request,
         // asi no los vuelve a pedir a Mongo (eran 2 consultas redundantes)
         await sincronizarFormatoCarpeta(req.session.empresa.id, formatoId, carpeta, {
-          config, empresaNombre: req.session.empresa.nombre
+          config, empresaNombre: req.session.empresa.nombre, elementoId: el ? el._id : null
         });
         return null;
       } catch (errSync) {
@@ -389,7 +389,7 @@ router.post('/', requireEmpresa, limiteAdmin, async (req, res) => {
         if (!googleSheets.estaDisponible()) {
           return 'El servidor no tiene configuradas las credenciales de Google Sheets.';
         }
-        await googleSheets.sincronizarFormato(empresaDoc.googleSheetId, req.session.empresa.id, formatoId, carpeta);
+        await googleSheets.sincronizarFormato(empresaDoc.googleSheetId, req.session.empresa.id, formatoId, carpeta, el ? el._id : null);
         return null;
       } catch (errGS) {
         logger.warn(`no se sincronizo google sheets: ${errGS.message}`);
@@ -563,7 +563,7 @@ router.put('/:id', requireEmpresa, limiteAdmin, ah(async (req, res) => {
   try {
     const config = await getConfigEmpresa(req.session.empresa.id);
     await sincronizarFormatoCarpeta(req.session.empresa.id, registro.formato, registro.carpeta, {
-      config, empresaNombre: req.session.empresa.nombre
+      config, empresaNombre: req.session.empresa.nombre, elementoId: registro.elemento
     });
   } catch (errSync) {
     logger.warn(`no se pudo escribir excel tras corregir: ${errSync.message}`);
@@ -573,7 +573,7 @@ router.put('/:id', requireEmpresa, limiteAdmin, ah(async (req, res) => {
     try {
       const empresaDoc = await Empresa.findById(req.session.empresa.id).select('googleSheetId').lean();
       if (empresaDoc && empresaDoc.googleSheetId && googleSheets.estaDisponible()) {
-        await googleSheets.sincronizarFormato(empresaDoc.googleSheetId, req.session.empresa.id, registro.formato, registro.carpeta);
+        await googleSheets.sincronizarFormato(empresaDoc.googleSheetId, req.session.empresa.id, registro.formato, registro.carpeta, registro.elemento);
       }
     } catch (errGS) {
       logger.warn(`no se sincronizo google sheets tras corregir: ${errGS.message}`);
@@ -664,6 +664,44 @@ async function descargarExcel(req, res) {
   }
 }
 
+// una fila del reporte: un formato en una carpeta, o un elemento de ese formato (baño, nevera...).
+// el elemento nuevo solo cuenta desde que se dio de alta
+async function resumenReporte(empresaId, formatoId, carpeta, el, desde, hasta, hoy) {
+  let ini = desde;
+  if (el && el.desde) {
+    const [a, m, d] = el.desde.split('-').map(Number);
+    const alta = new Date(a, m - 1, d);
+    if (alta > ini) ini = alta;
+  }
+  const total = ini > hasta ? 0 : Math.round((hasta - ini) / 86400000) + 1;
+  const regs = await Registro.find({
+    empresa_id: empresaId, formato: formatoId, carpeta, elemento: el ? el._id : null,
+    fecha: { $gte: ini, $lte: hasta }
+  }).select('fecha parcial datos dia mes anio responsable').lean();
+
+  const formato = getFormato(formatoId) || {};
+  const completos = regs.filter(r => !r.parcial).length;
+  const parciales = regs.filter(r => r.parcial);
+  const deHoy = parciales.find(r => r.fecha.getTime() === hoy.getTime());
+  const viejos = parciales.filter(r => r !== deHoy);
+  const notas = [];
+  if (deHoy) notas.push(`+ hoy falta la medición ${faltantes(formato, deHoy)[0]}`);
+  if (viejos.length) notas.push(`${viejos.length} día${viejos.length === 1 ? '' : 's'} incompleto${viejos.length === 1 ? '' : 's'}`);
+
+  return {
+    fila: {
+      formatoId,
+      nombre: (formato.nombre || formatoId) + (el ? ` · ${el.nombre}` : ''),
+      diasRegistrados: completos,
+      diasTotales: total,
+      pendientes: Math.max(0, total - regs.length),
+      notas,
+      cumplimiento: total > 0 ? Math.round((completos / total) * 100) : 0
+    },
+    viejos
+  };
+}
+
 // reporte de seguimiento: cumplimiento por formato + novedades, agrupado por carpeta,
 // para el rango de fechas que pida el administrador (por defecto, lo que va del mes)
 router.get('/reporte', requireEmpresa, ah(async (req, res) => {
@@ -696,20 +734,20 @@ router.get('/reporte', requireEmpresa, ah(async (req, res) => {
     if (formatoIds.length === 0) continue;
 
     const formatos = [];
+    const incompletos = [];
     for (const formatoId of formatoIds) {
-      const diasRegistrados = await Registro.countDocuments({
-        empresa_id: empresaId, formato: formatoId, carpeta: clave,
-        fecha: { $gte: desde, $lte: hasta }
-      });
-      sumaRegistrados += diasRegistrados;
-      sumaTotales += diasTotales;
-      formatos.push({
-        formatoId,
-        nombre: (getFormato(formatoId) || {}).nombre || formatoId,
-        diasRegistrados,
-        diasTotales,
-        cumplimiento: diasTotales > 0 ? Math.round((diasRegistrados / diasTotales) * 100) : 0
-      });
+      // cada baño, nevera... en servicio es su propia fila
+      for (const el of gruposDe(config, formatoId, clave).filter(e => !e || e.activo)) {
+        const { fila, viejos } = await resumenReporte(empresaId, formatoId, clave, el, desde, hasta, hoy);
+        sumaRegistrados += fila.diasRegistrados;
+        sumaTotales += fila.diasTotales;
+        formatos.push(fila);
+        viejos.forEach(r => incompletos.push({
+          id: r._id, dia: r.dia, mes: r.mes, anio: r.anio, formatoId, carpeta: clave, nombre: fila.nombre,
+          observaciones: `Quedó sin la medición ${faltantes(getFormato(formatoId), r)[0]}`,
+          responsable: r.responsable
+        }));
+      }
     }
 
     const registrosConNovedad = await Registro.find({
@@ -724,7 +762,7 @@ router.get('/reporte', requireEmpresa, ah(async (req, res) => {
         dia: r.dia, mes: r.mes, anio: r.anio,
         formatoId: r.formato,
         carpeta: clave,
-        nombre: (getFormato(r.formato) || {}).nombre || r.formato,
+        nombre: ((getFormato(r.formato) || {}).nombre || r.formato) + (buscarElemento(config, r.elemento) ? ` · ${buscarElemento(config, r.elemento).nombre}` : ''),
         observaciones: r.observaciones,
         responsable: r.responsable
       }));
@@ -751,8 +789,9 @@ router.get('/reporte', requireEmpresa, ah(async (req, res) => {
           });
         });
       });
-      novedades.sort((a, b) => new Date(a.anio, a.mes - 1, a.dia) - new Date(b.anio, b.mes - 1, b.dia));
     }
+    novedades.push(...incompletos);
+    novedades.sort((a, b) => new Date(a.anio, a.mes - 1, a.dia) - new Date(b.anio, b.mes - 1, b.dia));
 
     totalNovedades += novedades.length;
     bloques.push({ clave, formatos, novedades });
@@ -783,25 +822,29 @@ async function armarDatosInspeccion(empresaId, anio, mes) {
 
     const formatos = [];
     for (const formatoId of formatoIds) {
-      const registros = await Registro.find({
-        empresa_id: empresaId, formato: formatoId, carpeta: clave, anio, mes
-      }).sort({ dia: 1 }).lean();
-      if (registros.length === 0) continue; // sin datos ese mes, se omite
+      // un baño, nevera... por tabla (cada uno con su propio historial)
+      for (const el of gruposDe(config, formatoId, clave)) {
+        const registros = await Registro.find({
+          empresa_id: empresaId, formato: formatoId, carpeta: clave, elemento: el ? el._id : null, anio, mes
+        }).sort({ dia: 1 }).lean();
+        if (registros.length === 0) continue; // sin datos ese mes, se omite
 
-      const { columnas, fila, expandirFilas } = columnasYFila(formatoId);
-      const filas = expandirFilas ? registros.flatMap(r => expandirFilas(r)) : registros.map(fila);
-      const formato = getFormato(formatoId) || {};
+        const { columnas, fila, expandirFilas } = columnasYFila(formatoId);
+        const filas = expandirFilas ? registros.flatMap(r => expandirFilas(r)) : registros.map(fila);
+        const formato = getFormato(formatoId) || {};
+        const titulo = formato.titulo || formato.nombre || formatoId;
 
-      formatos.push({
-        formatoId,
-        nombre: formato.nombre || formatoId,
-        titulo: formato.titulo || formato.nombre || formatoId,
-        plan: formato.plan || '',
-        programa: formato.programa || '',
-        codigo: formato.codigo || '',
-        columnas,
-        filas
-      });
+        formatos.push({
+          formatoId,
+          nombre: (formato.nombre || formatoId) + (el ? ` · ${el.nombre}` : ''),
+          titulo: el ? `${titulo} — ${formato.elementos.abrev}: ${el.nombre}` : titulo,
+          plan: formato.plan || '',
+          programa: formato.programa || '',
+          codigo: formato.codigo || '',
+          columnas,
+          filas
+        });
+      }
     }
     if (formatos.length > 0) carpetas.push({ clave, nombre: NOMBRES_CARPETA[clave], formatos });
   }

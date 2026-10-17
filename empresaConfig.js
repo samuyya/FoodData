@@ -1,5 +1,5 @@
 const Empresa = require('./models/Empresa');
-const { FORMATOS, CARPETAS } = require('./formatos');
+const { FORMATOS, CARPETAS, getFormato } = require('./formatos');
 
 const TODOS_IDS = FORMATOS.map(f => f.id);
 
@@ -48,4 +48,29 @@ function elementosDe(config, formatoId, carpeta, soloActivos) {
   return config.elementos.filter(e => e.formato === formatoId && e.carpeta === carpeta && (!soloActivos || e.activo));
 }
 
-module.exports = { getConfigEmpresa, getCarpetasDeFormato, elementosDe };
+// cada "instancia" de un formato en una carpeta: un elemento (baño, nevera...) o null si el formato se
+// llena como uno solo. los registros viejos sin elemento solo cuentan mientras no haya ninguno en servicio
+function gruposDe(config, formatoId, carpeta) {
+  const f = getFormato(formatoId);
+  const todos = f && f.elementos ? elementosDe(config, formatoId, carpeta) : [];
+  if (todos.length === 0) return [null];
+  return todos.some(e => e.activo) ? todos : [...todos, null];
+}
+
+// nombre de la pestaña de un elemento: "Baño · Mujeres" (max 31 letras por el limite de excel)
+function nombreHojaElemento(formato, el, sufijo) {
+  const base = `${formato.elementos.abrev} · ${el.nombre}`.replace(/[\\\/\?\*\[\]:]/g, '');
+  return base.slice(0, 31 - sufijo.length) + sufijo;
+}
+
+function buscarElemento(config, id) {
+  return id ? config.elementos.find(e => String(e._id) === String(id)) || null : null;
+}
+
+// texto de la fila de arriba en la hoja: "Baño: Mujeres" o "T°: Nevera 1 · Refrigeración"
+function textoElemento(formato, el) {
+  const tipo = el.tipo === 'congelacion' ? ' · Congelación' : el.tipo === 'refrigeracion' ? ' · Refrigeración' : '';
+  return `${formato.elementos.abrev}: ${el.nombre}${tipo}${el.activo ? '' : ' (fuera de servicio)'}`;
+}
+
+module.exports = { getConfigEmpresa, getCarpetasDeFormato, elementosDe, gruposDe, nombreHojaElemento, buscarElemento, textoElemento };

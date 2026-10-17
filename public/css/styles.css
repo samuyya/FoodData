@@ -3091,4 +3091,5 @@ textarea:focus {
 #btn-editar-elementos { margin-bottom: 1rem; }
 .elemento-cab { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; margin-bottom: 1rem; }
 .elemento-cab h2 { margin: 0; font-size: 1.4rem; }
+.nota-parcial { display: block; font-size: .78rem; font-weight: 600; color: var(--color-aviso); }
 .falta-medicion { color: var(--color-aviso); font-weight: 600; background: var(--color-aviso-bg); }

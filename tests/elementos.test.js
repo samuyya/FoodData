@@ -285,3 +285,108 @@ describe('formatos que se llenan en dos momentos (temperatura)', () => {
     expect((await agent.get('/api/registros/resumen-pendientes')).body.diasIncompletos).toBe(0);
   });
 });
+
+describe('excel, reporte e inspeccion por elemento', () => {
+  const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const ExcelJS = require('exceljs');
+  const { getRutaArchivoActual } = require('../servicios/excel');
+
+  async function conNeverasLlenas() {
+    const o = await empresaConAdmin();
+    await entrarAdmin(o.agent);
+    const r = await guardarLista(o.agent, 'control_temperatura', [
+      { nombre: 'Nevera 1', tipo: 'refrigeracion' }, { nombre: 'Congelador', tipo: 'congelacion' }
+    ]);
+    const ids = r.body.elementos.map(e => e.id);
+    // nevera 1 con las dos mediciones, congelador solo con la primera
+    await temp(o.agent, ids[0], { ...medicion1, ...medicion2 });
+    await temp(o.agent, ids[1], { ...medicion1, tipoEquipo: 'congelacion' }, { parcial: true });
+    return { ...o, ids };
+  }
+
+  async function hojasDelExcel(empresaId) {
+    const { filePath } = await getRutaArchivoActual(empresaId);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(filePath);
+    return wb;
+  }
+
+  test('cada elemento tiene su propia hoja en el excel, con su nombre arriba', async () => {
+    const { empresa } = await conNeverasLlenas();
+    const wb = await hojasDelExcel(empresa._id);
+    expect(wb.worksheets.map(w => w.name).sort()).toEqual(['T° · Congelador', 'T° · Nevera 1']);
+    const textos = [];
+    wb.getWorksheet('T° · Congelador').eachRow(row => textos.push(String(row.getCell(1).value || '') + '|' + String(row.getCell(10).value || '')));
+    expect(textos.join('\n')).toContain('T°: Congelador · Congelación');
+    expect(textos.join('\n')).toContain('Falta la medición 2');
+    const otra = [];
+    wb.getWorksheet('T° · Nevera 1').eachRow(row => otra.push(String(row.getCell(10).value || '')));
+    expect(otra.join('\n')).not.toContain('Falta la medición 2');
+  });
+
+  test('al renombrar un elemento la hoja vieja se va y queda la nueva', async () => {
+    const { agent, empresa, ids } = await conNeverasLlenas();
+    await guardarLista(agent, 'control_temperatura', [{ id: ids[0], nombre: 'Nevera cocina', tipo: 'refrigeracion' }]);
+    // para que se reescriba la hoja hay que guardar otro dia de ese elemento: lo hago con una correccion
+    const reg = await Registro.findOne({ elemento: ids[0] });
+    await agent.post('/api/admin/verificar-reporte').send({ password: PASSWORD_ADMIN });
+    await agent.put(`/api/registros/${reg._id}`).send({ responsable: 'Laura', datos: { ...medicion1, ...medicion2 } });
+    const wb = await hojasDelExcel(empresa._id);
+    expect(wb.worksheets.map(w => w.name).sort()).toEqual(['T° · Congelador', 'T° · Nevera cocina']);
+  });
+
+  test('el reporte tiene una fila por elemento y avisa lo que falta hoy', async () => {
+    const { agent } = await conNeverasLlenas();
+    await agent.post('/api/admin/verificar-reporte').send({ password: PASSWORD_ADMIN });
+    const hoy = ymd(new Date());
+    const r = await agent.get(`/api/registros/reporte?desde=${hoy}&hasta=${hoy}`);
+    const filas = r.body.carpetas.find(c => c.clave === 'cocina').formatos.filter(f => f.formatoId === 'control_temperatura');
+    expect(filas.map(f => f.nombre).sort()).toEqual(['Temperatura de equipos de frío · Congelador', 'Temperatura de equipos de frío · Nevera 1']);
+    const nevera = filas.find(f => f.nombre.endsWith('Nevera 1'));
+    const cong = filas.find(f => f.nombre.endsWith('Congelador'));
+    expect(nevera).toMatchObject({ diasRegistrados: 1, diasTotales: 1, pendientes: 0, notas: [] });
+    expect(cong).toMatchObject({ diasRegistrados: 0, pendientes: 0, notas: ['+ hoy falta la medición 2'] });
+  });
+
+  test('un elemento nuevo solo cuenta desde su alta y un dia viejo sin medicion 2 sale como incompleto', async () => {
+    const { agent, ids } = await conNeverasLlenas();
+    const hoy = new Date();
+    const primero = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    await Registro.updateOne({ elemento: ids[1] }, { $set: { dia: 1, fecha: primero } });
+    await Empresa.updateOne({ 'elementos._id': ids[1] }, { $set: { 'elementos.$.desde': ymd(primero) } });
+    await agent.post('/api/admin/verificar-reporte').send({ password: PASSWORD_ADMIN });
+    const hasta = ymd(hoy);
+    const desde = ymd(primero);
+    const r = await agent.get(`/api/registros/reporte?desde=${desde}&hasta=${hasta}`);
+    const cocina = r.body.carpetas.find(c => c.clave === 'cocina');
+    const nevera = cocina.formatos.find(f => f.nombre.endsWith('Nevera 1'));
+    // se dio de alta hoy: no debe los dias anteriores del mes
+    expect(nevera.diasTotales).toBe(1);
+    if (hoy.getDate() > 1) {
+      const cong = cocina.formatos.find(f => f.nombre.endsWith('Congelador'));
+      expect(cong.notas).toEqual(['1 día incompleto']);
+      expect(cocina.novedades.some(n => n.observaciones === 'Quedó sin la medición 2')).toBe(true);
+    }
+  });
+
+  test('la inspeccion muestra una tabla por elemento y deja fuera lo guardado sin elemento', async () => {
+    const o = await empresaConAdmin();
+    const { agent, empresa } = o;
+    const d = new Date();
+    // un registro de antes de configurar elementos: queda ignorado
+    await Registro.create({
+      empresa_id: empresa._id, formato: 'limpieza_bano', carpeta: 'cocina', fecha: new Date(d.getFullYear(), d.getMonth(), d.getDate()),
+      dia: d.getDate(), mes: d.getMonth() + 1, anio: d.getFullYear(), responsable: 'Viejo', datos: { tipoLimpieza: 'Rutinaria', areas: ['Piso'] }
+    });
+    await entrarAdmin(agent);
+    const lista = await guardarLista(agent, 'limpieza_bano', [{ nombre: 'Mujeres' }, { nombre: 'Hombres' }]);
+    await guardarBano(agent, lista.body.elementos[0].id);
+    await agent.post('/api/admin/verificar-inspeccion').send({ password: PASSWORD_ADMIN });
+    const r = await agent.get(`/api/registros/inspeccion?anio=${d.getFullYear()}&mes=${d.getMonth() + 1}`);
+    expect(r.status).toBe(200);
+    const formatos = r.body.carpetas.find(c => c.clave === 'cocina').formatos.filter(f => f.formatoId === 'limpieza_bano');
+    expect(formatos).toHaveLength(1);
+    expect(formatos[0].titulo).toContain('Baño: Mujeres');
+    expect(formatos[0].filas).toHaveLength(1);
+  });
+});

@@ -2,9 +2,10 @@ const { google } = require('googleapis');
 const path = require('path');
 const fs = require('fs');
 const Registro = require('../models/Registro');
+const Empresa = require('../models/Empresa');
 const { getFormato, NOMBRES_CARPETA } = require('../formatos');
 const { esFestivo } = require('../festivos');
-const { getConfigEmpresa } = require('../empresaConfig');
+const { getConfigEmpresa, nombreHojaElemento, buscarElemento, textoElemento } = require('../empresaConfig');
 const logger = require('../logger');
 
 const RUTA_CREDENCIALES = process.env.GOOGLE_CREDENTIALS_PATH
@@ -159,7 +160,7 @@ function filaTemperatura(r) {
     hora2: d.hora2 || '',
     temp2: d.temp2 != null && !isNaN(d.temp2) ? d.temp2 : '',
     res2: d.resultado2 || '',
-    observaciones: r.observaciones || '', responsable: r.responsable || ''
+    observaciones: [r.parcial ? 'Falta la medición 2' : '', r.observaciones].filter(Boolean).join(' · '), responsable: r.responsable || ''
   };
 }
 
@@ -351,7 +352,7 @@ function columnasYFila(formatoId) {
 }
 
 // Sincronización
-async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) {
+async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta, elementoId = null) {
     if (!disponible) throw new Error('Google Sheets no está configurado en el servidor');
   if (!spreadsheetId) throw new Error('Esta empresa no tiene una hoja de Google Sheets vinculada');
 
@@ -359,11 +360,15 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
   if (!formato) throw new Error(`Formato desconocido: ${formatoId}`);
 
   const config = await getConfigEmpresa(empresaId);
-  const esCompartido = config.compartidos.includes(formatoId);
+  // con elemento (baño, nevera...) es una pestaña propia, nunca compartida
+  const el = buscarElemento(config, elementoId);
+  const esCompartido = !el && config.compartidos.includes(formatoId);
   // compartido => pestaña sin sufijo + columna Carpeta + registros de todas las carpetas
-  const pestana = esCompartido
-    ? nombrePestana(formato, 'cocina')
-    : nombrePestana(formato, carpeta || 'cocina');
+  const pestana = el
+    ? nombreHojaElemento(formato, el, SUFIJO_CARPETA_GS[carpeta] || '')
+    : esCompartido
+      ? nombrePestana(formato, 'cocina')
+      : nombrePestana(formato, carpeta || 'cocina');
   let { columnas, fila, expandirFilas } = columnasYFila(formatoId);
   if (esCompartido) {
     const idxFecha = columnas.findIndex(c => c.key === 'fecha');
@@ -380,9 +385,19 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
   const meta = await sheets.spreadsheets.get({ spreadsheetId });
     const existente = (meta.data.sheets || []).find(s => s.properties.title === pestana);
 
+  // si le cambiaron el nombre al elemento, renombro la pestaña que ya tenia en vez de duplicarla
+  const vieja = !existente && el && el.hoja && el.hoja !== pestana
+    ? (meta.data.sheets || []).find(s => s.properties.title === el.hoja) : null;
+
   let sheetId;
   if (existente) {
     sheetId = existente.properties.sheetId;
+  } else if (vieja) {
+    sheetId = vieja.properties.sheetId;
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: { requests: [{ updateSheetProperties: { properties: { sheetId, title: pestana }, fields: 'title' } }] }
+    });
   } else {
     const r = await sheets.spreadsheets.batchUpdate({
       spreadsheetId,
@@ -402,9 +417,11 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
   }
 
   // ----- Obtener registros agrupados por mes -----
-  const filtroRegs = esCompartido
-    ? { empresa_id: empresaId, formato: formatoId }
-    : { empresa_id: empresaId, formato: formatoId, carpeta: carpeta || 'cocina' };
+  const filtroRegs = el
+    ? { empresa_id: empresaId, formato: formatoId, carpeta: carpeta || 'cocina', elemento: el._id }
+    : esCompartido
+      ? { empresa_id: empresaId, formato: formatoId }
+      : { empresa_id: empresaId, formato: formatoId, carpeta: carpeta || 'cocina' };
   const registros = await Registro.find(filtroRegs)
     .sort({ anio: 1, mes: 1, dia: 1, carpeta: 1 })
     .lean();
@@ -455,6 +472,19 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
               textFormat: { italic: true, fontSize: 9, foregroundColor: { red: 0.42, green: 0.45, blue: 0.50 } }
             }
           },
+          fields: 'userEnteredFormat(horizontalAlignment,textFormat)'
+        }
+      });
+    }
+    if (el) {
+      const idxEl = pushFila([textoElemento(formato, el), ...new Array(numCols - 1).fill('')]);
+      formatRequests.push({
+        mergeCells: { range: rango(sheetId, idxEl, idxEl + 1, 0, numCols), mergeType: 'MERGE_ALL' }
+      });
+      formatRequests.push({
+        repeatCell: {
+          range: rango(sheetId, idxEl, idxEl + 1, 0, numCols),
+          cell: { userEnteredFormat: { horizontalAlignment: 'CENTER', textFormat: { bold: true, fontSize: 11 } } },
           fields: 'userEnteredFormat(horizontalAlignment,textFormat)'
         }
       });
@@ -690,7 +720,12 @@ async function sincronizarFormato(spreadsheetId, empresaId, formatoId, carpeta) 
       });
     }
   }
+
+  // para renombrar la pestaña si cambian el nombre del elemento
+  if (el && el.hoja !== pestana) {
+    await Empresa.updateOne({ _id: empresaId, 'elementos._id': el._id }, { $set: { 'elementos.$.hoja': pestana } });
   }
+}
 
 function rango(sheetId, startRow, endRow, startCol, endCol) {
   return {

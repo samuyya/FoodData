@@ -7,7 +7,7 @@ const Empresa = require('../models/Empresa');
 const Asistencia = require('../models/Asistencia');
 const { getFormato } = require('../formatos');
 const { esFestivo, nombreFestivo } = require('../festivos');
-const { getConfigEmpresa } = require('../empresaConfig');
+const { getConfigEmpresa, gruposDe, nombreHojaElemento, buscarElemento, textoElemento } = require('../empresaConfig');
 const logger = require('../logger');
 
 const CARPETA_EXCEL = path.join(__dirname, '..', 'datos', 'excel');
@@ -150,7 +150,7 @@ function filaTemperatura(r) {
     hora2: d.hora2 || '',
     temp2: d.temp2 != null && !isNaN(d.temp2) ? d.temp2 : '',
     res2:  d.resultado2 || '',
-    observaciones: r.observaciones || '',
+    observaciones: [r.parcial ? 'Falta la medición 2' : '', r.observaciones].filter(Boolean).join(' · '),
     responsable: r.responsable || ''
   };
 }
@@ -449,6 +449,12 @@ function pintarHojaMultiMes(sheet, registros, formatoId, formato, opciones = {})
       sub.font = { italic: true, size: 10, color: { argb: 'FF6B7280' } };
       sub.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
     }
+    if (opciones.elemento) {
+      const elRow = sheet.addRow([textoElemento(formato, opciones.elemento)]);
+      sheet.mergeCells(elRow.number, 1, elRow.number, numCols);
+      elRow.font = { bold: true, size: 12, color: { argb: 'FF0E3A31' } };
+      elRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    }
     sheet.addRow([]);
   }
 
@@ -579,7 +585,9 @@ async function sincronizarFormatoCarpeta(empresaId, formatoId, carpeta, conocido
   if (!formato) throw new Error(`Formato desconocido: ${formatoId}`);
 
   const config = conocidos.config || await getConfigEmpresa(empresaId);
-  const esCompartido = config.compartidos.includes(formatoId);
+  // con elemento (baño, nevera...) es una hoja propia, nunca compartida
+  const el = buscarElemento(config, conocidos.elementoId);
+  const esCompartido = !el && config.compartidos.includes(formatoId);
 
   let empresaNombre = conocidos.empresaNombre;
   if (empresaNombre === undefined) {
@@ -593,24 +601,36 @@ async function sincronizarFormatoCarpeta(empresaId, formatoId, carpeta, conocido
 
   // compartido => una sola hoja sin sufijo, juntando registros de TODAS las carpetas
   // no compartido => hoja con sufijo, solo los registros de esa carpeta
-  const sheetName = esCompartido
-    ? nombreHoja(formato, 'cocina')
-    : nombreHoja(formato, carpeta || 'cocina');
+  const sheetName = el
+    ? nombreHojaElemento(formato, el, SUFIJO_CARPETA[carpeta] || '')
+    : esCompartido
+      ? nombreHoja(formato, 'cocina')
+      : nombreHoja(formato, carpeta || 'cocina');
   const existente = wb.getWorksheet(sheetName);
   if (existente) wb.removeWorksheet(existente.id);
+  // si le cambiaron el nombre, la hoja vieja sobra
+  if (el && el.hojaExcel && el.hojaExcel !== sheetName) {
+    const vieja = wb.getWorksheet(el.hojaExcel);
+    if (vieja) wb.removeWorksheet(vieja.id);
+  }
   const sheet = wb.addWorksheet(sheetName, { properties: { tabColor: { argb: COLOR_PRIMARIO } } });
 
-  const filtro = esCompartido
-    ? { empresa_id: empresaId, formato: formatoId }
-    : { empresa_id: empresaId, formato: formatoId, carpeta: carpeta || 'cocina' };
+  const filtro = el
+    ? { empresa_id: empresaId, formato: formatoId, carpeta: carpeta || 'cocina', elemento: el._id }
+    : esCompartido
+      ? { empresa_id: empresaId, formato: formatoId }
+      : { empresa_id: empresaId, formato: formatoId, carpeta: carpeta || 'cocina' };
 
   const registros = await Registro.find(filtro)
     .sort({ anio: 1, mes: 1, dia: 1, carpeta: 1 })
     .lean();
 
-  pintarHojaMultiMes(sheet, registros, formatoId, formato, { conCarpeta: esCompartido });
+  pintarHojaMultiMes(sheet, registros, formatoId, formato, { conCarpeta: esCompartido, elemento: el });
 
   await wb.xlsx.writeFile(filePath);
+  if (el && el.hojaExcel !== sheetName) {
+    await Empresa.updateOne({ _id: empresaId, 'elementos._id': el._id }, { $set: { 'elementos.$.hojaExcel': sheetName } });
+  }
   return { filePath };
 }
 
@@ -644,7 +664,7 @@ async function reconstruirArchivoCompleto(empresaId) {
 
   const instancias = await Registro.aggregate([
     { $match: { empresa_id: new mongoose.Types.ObjectId(empresaId) } },
-    { $group: { _id: { formato: '$formato', carpeta: '$carpeta' } } }
+    { $group: { _id: { formato: '$formato', carpeta: '$carpeta', elemento: '$elemento' } } }
   ]);
 
   if (instancias.length === 0) return { filePath: null };
@@ -654,8 +674,12 @@ async function reconstruirArchivoCompleto(empresaId) {
   const config = await getConfigEmpresa(empresaId);
   const conocidos = { config, empresaNombre: empresa && empresa.nombre };
   for (const { _id } of instancias) {
-    if (!getFormato(_id.formato)) continue;
-    await sincronizarFormatoCarpeta(empresaId, _id.formato, _id.carpeta || 'cocina', conocidos);
+    const f = getFormato(_id.formato);
+    if (!f) continue;
+    const carpeta = _id.carpeta || 'cocina';
+    // los registros sin elemento de un formato que ya tiene baños, neveras... en servicio se ignoran
+    if (!_id.elemento && !gruposDe(config, _id.formato, carpeta).includes(null)) continue;
+    await sincronizarFormatoCarpeta(empresaId, _id.formato, carpeta, { ...conocidos, elementoId: _id.elemento || null });
   }
   return { filePath };
 }

@@ -106,8 +106,8 @@ function bloqueCarpetaHTML(bloque) {
   const filas = bloque.formatos.map(f => `
     <tr>
       <td>${escapeHTML(f.nombre)}</td>
-      <td class="num">${f.diasRegistrados} / ${f.diasTotales}</td>
-      <td class="num">${f.diasTotales - f.diasRegistrados}</td>
+      <td class="num">${f.diasRegistrados} / ${f.diasTotales}${(f.notas || []).map(t => `<small class="nota-parcial">${escapeHTML(t)}</small>`).join('')}</td>
+      <td class="num">${f.pendientes}</td>
       <td class="num">${pillCumplimiento(f.cumplimiento)}</td>
     </tr>
   `).join('');

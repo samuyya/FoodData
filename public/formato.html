@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Formato - FoodData</title>
   <link rel="icon" href="/img/icon-fooddata-favicon.png" type="image/png" />
-  <link rel="stylesheet" href="/css/styles.css?v=4" />
+  <link rel="stylesheet" href="/css/styles.css?v=5" />
 </head>
 <body class="sub-body">
   <header class="sub-topbar">
@@ -581,6 +581,12 @@
       <h2>Empleados registrados</h2>
       <p class="ayuda">Crea, edita o elimina los empleados de tu empresa. Toca un empleado para abrir su formulario individual.</p>
 
+      <fieldset id="aplicar-en" class="aplicar-en" hidden>
+        <legend>Aplicar también en</legend>
+        <div id="aplicar-en-opciones"></div>
+        <small>Cada módulo tiene su propia lista. Si marcas uno, agregar, editar o eliminar aquí también lo hace allá (se desmarca solo después de cada cambio).</small>
+      </fieldset>
+
       <form id="form-nuevo-empleado" class="form-inline">
         <label class="campo">
           <span>Nuevo empleado</span>
@@ -720,6 +726,6 @@
 
   <script src="/js/util.js"></script>
   <script src="/js/festivos.js"></script>
-  <script src="/js/formato.js?v=4"></script>
+  <script src="/js/formato.js?v=5"></script>
 </body>
 </html>

@@ -3091,5 +3091,13 @@ textarea:focus {
 #btn-editar-elementos { margin-bottom: 1rem; }
 .elemento-cab { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; margin-bottom: 1rem; }
 .elemento-cab h2 { margin: 0; font-size: 1.4rem; }
+.aplicar-en { border: 1px solid var(--color-borde); border-radius: var(--radio); padding: .6rem .9rem; margin: 0 0 1rem; display: grid; gap: .4rem; }
+.aplicar-en legend { font-weight: 600; padding: 0 .3rem; font-size: .9rem; }
+.aplicar-en small { color: var(--color-texto-suave); }
+.ee-modal { max-width: 560px; }
+.ee-lista { list-style: none; margin: .8rem 0 0; padding: 0; display: grid; gap: .4rem; max-height: 320px; overflow-y: auto; }
+.ee-lista li { display: flex; justify-content: space-between; align-items: center; gap: .6rem; padding: .45rem .6rem; border: 1px solid var(--color-borde); border-radius: 8px; }
+.ee-acciones { display: flex; gap: .4rem; flex-shrink: 0; }
+.ee-input { flex: 1 1 auto; min-width: 0; font: inherit; padding: .4rem .6rem; border: 1px solid var(--color-borde); border-radius: 8px; }
 .nota-parcial { display: block; font-size: .78rem; font-weight: 600; color: var(--color-aviso); }
 .falta-medicion { color: var(--color-aviso); font-weight: 600; background: var(--color-aviso-bg); }

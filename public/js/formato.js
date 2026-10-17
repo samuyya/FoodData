@@ -493,7 +493,30 @@ function pintarEmpleados(empleados) {
   });
 }
 
+// las otras listas (asistencia...) a las que se puede aplicar el mismo cambio
+let otrasListasCargadas = false;
+async function cargarAplicarEn() {
+  otrasListasCargadas = true;
+  const r = await fetch('/api/empleados/listas');
+  if (!r.ok) return;
+  const d = await r.json();
+  const otras = d.listas.filter(l => l.id !== 'presentacion');
+  if (!otras.length) return;
+  $('aplicar-en-opciones').innerHTML = otras.map(l => `<label class="check-area"><input type="checkbox" value="${l.id}" data-nombre="${escapeHTML(l.nombre)}" /> ${escapeHTML(l.nombre)}</label>`).join('');
+  $('aplicar-en').hidden = false;
+}
+
+const aplicarEnMarcado = () => Array.from(document.querySelectorAll('#aplicar-en-opciones input:checked')).map(i => i.value);
+const limpiarAplicarEn = () => document.querySelectorAll('#aplicar-en-opciones input').forEach(i => { i.checked = false; });
+
+// " En Asistencia: listo."
+function textoAplicado(aplicado) {
+  if (!aplicado || !aplicado.length) return '';
+  return ' ' + aplicado.map(a => `En ${a.nombre}: ${a.resultado}.`).join(' ');
+}
+
 async function cargarEmpleados() {
+  if (!otrasListasCargadas) cargarAplicarEn();
   const r = await fetch('/api/empleados');
   if (!r.ok) return;
   const data = await r.json();
@@ -504,9 +527,11 @@ async function cargarEmpleados() {
 function aplicarEstadoManipuladores(registroHoy) {
   const manipuladores = (registroHoy && registroHoy.datos && registroHoy.datos.manipuladores) || [];
   manipuladores.forEach(m => {
-    const li = listaEmpleados.querySelector(`.empleado-item[data-id="${m.empleadoId}"]`);
+    // los registros viejos guardaron el id de la lista de antes: tambien se busca por nombre
+    const li = listaEmpleados.querySelector(`.empleado-item[data-id="${m.empleadoId}"]`)
+      || Array.from(listaEmpleados.querySelectorAll('.empleado-item')).find(x => x.querySelector('.empleado-nombre').textContent === m.nombre);
     if (!li) return; // el empleado pudo haber sido eliminado despues
-    const radio = li.querySelector(`input[name="cumple-${m.empleadoId}"][value="${m.cumple ? 'si' : 'no'}"]`);
+    const radio = li.querySelector(`input[name="cumple-${li.dataset.id}"][value="${m.cumple ? 'si' : 'no'}"]`);
     if (radio) { radio.checked = true; radio.dispatchEvent(new Event('change')); }
     if (!m.cumple && Array.isArray(m.criterios)) {
       m.criterios.forEach(c => {
@@ -567,12 +592,13 @@ if (formNuevoEmpleado) {
         const r = await fetch('/api/empleados', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nombre: formNuevoEmpleado.nombre.value })
+          body: JSON.stringify({ nombre: formNuevoEmpleado.nombre.value, aplicarEn: aplicarEnMarcado() })
         });
         const data = await r.json();
         if (!r.ok) { mostrarMsgEmpleado(data.error || 'Error', true); return; }
         formNuevoEmpleado.reset();
-        mostrarMsgEmpleado(`Empleado "${data.empleado.nombre}" agregado.`);
+        mostrarMsgEmpleado(`Empleado "${data.empleado.nombre}" agregado.` + textoAplicado(data.aplicado));
+        limpiarAplicarEn();
         cargarEmpleados();
       } catch (err) {
         mostrarMsgEmpleado('no hay conexion', true);
@@ -592,7 +618,7 @@ formEditarEmpleado.addEventListener('submit', async (e) => {
       const r = await fetch(`/api/empleados/${encodeURIComponent(id)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre })
+        body: JSON.stringify({ nombre, aplicarEn: aplicarEnMarcado() })
       });
       const data = await r.json();
       if (!r.ok) {
@@ -601,6 +627,8 @@ formEditarEmpleado.addEventListener('submit', async (e) => {
         return;
       }
       cerrarModalEditar();
+      if (data.aplicado && data.aplicado.length) mostrarMsgEmpleado('Listo.' + textoAplicado(data.aplicado));
+      limpiarAplicarEn();
       cargarEmpleados();
     } catch (err) {
       modalEmpleadoError.textContent = 'no hay conexion';
@@ -610,12 +638,15 @@ formEditarEmpleado.addEventListener('submit', async (e) => {
 });
 
 async function confirmarEliminar(emp) {
-  if (!window.confirm(`¿Eliminar a "${emp.nombre}"?\nEsta acción no se puede deshacer.`)) return;
+  const tambien = Array.from(document.querySelectorAll('#aplicar-en-opciones input:checked'));
+  const aviso = tambien.length ? `\nTambién se eliminará de: ${tambien.map(i => i.dataset.nombre).join(', ')}.` : '';
+  if (!window.confirm(`¿Eliminar a "${emp.nombre}"?${aviso}\nEsta acción no se puede deshacer.`)) return;
   try {
-    const r = await fetch(`/api/empleados/${encodeURIComponent(emp._id)}`, { method: 'DELETE' });
+    const r = await fetch(`/api/empleados/${encodeURIComponent(emp._id)}?aplicarEn=${tambien.map(i => i.value).join(',')}`, { method: 'DELETE' });
     const data = await r.json();
     if (!r.ok) { mostrarMsgEmpleado(data.error || 'Error al eliminar', true); return; }
-    mostrarMsgEmpleado(`Empleado "${emp.nombre}" eliminado.`);
+    mostrarMsgEmpleado(`Empleado "${emp.nombre}" eliminado.` + textoAplicado(data.aplicado));
+    limpiarAplicarEn();
     cargarEmpleados();
   } catch (err) {
     mostrarMsgEmpleado('no hay conexion', true);

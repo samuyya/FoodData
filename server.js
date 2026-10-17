@@ -23,6 +23,7 @@ const adminRoutes = require('./routes/admin');
 const registrosRoutes = require('./routes/registros');
 const elementosRoutes = require('./routes/elementos');
 const empleadosRoutes = require('./routes/empleados');
+const { migrarListasEmpleados } = require('./servicios/empleadosListas');
 const asistenciaRoutes = require('./routes/asistencia');
 const documentosRoutes = require('./routes/documentos');
 const backupRoutes = require('./routes/backup');
@@ -163,7 +164,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/formatos',  requireModulo('formatos'),  formatosRoutes);
 app.use('/api/registros', requireModulo('formatos'),  registrosRoutes);
 app.use('/api/elementos', requireModulo('formatos'),  elementosRoutes);
-app.use('/api/empleados', requireModulo('formatos'),  empleadosRoutes);
+app.use('/api/empleados', empleadosRoutes); // cada lista revisa su propio modulo
 app.use('/api/asistencia',requireModulo('asistencia'),asistenciaRoutes);
 // documentos: el superadmin sube; las empresas leen los suyos solo si tienen el modulo "programas"
 app.use('/api/documentos', documentosRoutes);
@@ -244,6 +245,7 @@ async function iniciar() {
   try {
     await conectarDB();
     await sincronizarIndicesRegistro();
+    await migrarListasEmpleados();
     await seedSuperadmin();
     googleSheets.inicializar();
     const server = app.listen(PORT, () => {

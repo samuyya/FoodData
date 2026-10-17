@@ -64,7 +64,7 @@ function hoyPartes() {
 
 router.get('/empleados', requireEmpresa, ah(async (req, res) => {
   const empleados = await EmpleadoLista
-    .find({ empresa_id: req.session.empresa.id })
+    .find({ empresa_id: req.session.empresa.id, lista: 'asistencia' })
     .sort({ nombre: 1 })
     .select('nombre')
     .lean();
@@ -176,7 +176,7 @@ router.get('/resumen-empleados', requireEmpresa, ah(async (req, res) => {
   }
 
   const empresaId = req.session.empresa.id;
-  const empleados = await EmpleadoLista.find({ empresa_id: empresaId }).sort({ nombre: 1 }).lean();
+  const empleados = await EmpleadoLista.find({ empresa_id: empresaId, lista: 'asistencia' }).sort({ nombre: 1 }).lean();
 
   const agregado = await Asistencia.aggregate([
     { $match: { empresa_id: new mongoose.Types.ObjectId(empresaId), anio, mes } },

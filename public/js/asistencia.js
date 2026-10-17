@@ -2,6 +2,7 @@ const logoEl = document.getElementById('logo-empresa');
 const nombreEmpresaEl = document.getElementById('nombre-empresa');
 const btnVolver = document.getElementById('btn-volver');
 const btnRegistro = document.getElementById('btn-registro');
+const btnEmpleados = document.getElementById('btn-empleados');
 const logoPlaceholder = document.getElementById('logo-placeholder');
 
 const pasoSeleccion = document.getElementById('paso-seleccion');
@@ -78,7 +79,7 @@ async function cargarEmpleados() {
   if (!data.empleados || data.empleados.length === 0) {
     const li = document.createElement('li');
     li.className = 'empleado-vacio';
-    li.textContent = 'No hay empleados registrados. El administrador debe registrarlos en el Formato 3.';
+    li.textContent = 'No hay empleados registrados. Agrégalos con el botón "Editar empleados".';
     listaEmpleados.appendChild(li);
     return;
   }
@@ -244,5 +245,9 @@ async function iniciar() {
     document.body.innerHTML = '<p style="padding:2rem;color:#b91c1c">Error cargando la página. Recarga.</p>';
   }
 }
+
+btnEmpleados.addEventListener('click', () => {
+  abrirEditorEmpleados({ lista: 'asistencia', titulo: 'Empleados de asistencia', alCambiar: cargarEmpleados });
+});
 
 iniciar();

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Formato - FoodData</title>
   <link rel="icon" href="/img/icon-fooddata-favicon.png" type="image/png" />
-  <link rel="stylesheet" href="/css/styles.css?v=2" />
+  <link rel="stylesheet" href="/css/styles.css?v=4" />
 </head>
 <body class="sub-body">
   <header class="sub-topbar">
@@ -58,6 +58,11 @@
     <div id="banner-incompletos" class="banner banner-warning" hidden></div>
     <div id="banner-info"       class="banner banner-info"    hidden></div>
 
+    <div id="aviso-elementos" class="card aviso-elementos" hidden>
+      <p id="aviso-elementos-texto"></p>
+      <button type="button" id="btn-configurar-elementos" class="btn-secundario"></button>
+    </div>
+
     <!-- formatos con varios baños, neveras, llaves...: una tarjeta por elemento -->
     <section id="vista-elementos" hidden>
       <div class="card elementos-cab">
@@ -69,6 +74,7 @@
         <summary id="elementos-fuera-resumen"></summary>
         <p id="elementos-fuera-lista" class="ayuda"></p>
       </details>
+      <button type="button" id="btn-editar-elementos" class="btn-secundario"></button>
     </section>
     <div id="elemento-cabecera" class="card elemento-cab" hidden>
       <button type="button" id="elemento-volver" class="btn-secundario btn-pequeno"></button>
@@ -662,6 +668,38 @@
     </div>
   </div>
 
+  <div id="modal-clave-elementos" class="modal-backdrop" hidden role="dialog" aria-modal="true">
+    <div class="modal">
+      <h2 id="clave-elementos-titulo">Se necesita la clave del administrador</h2>
+      <p class="subtitulo">Solo el administrador puede cambiar cuántos hay y cómo se llaman.</p>
+      <form id="form-clave-elementos" class="form">
+        <label class="campo">
+          <span>Contraseña de administrador</span>
+          <input type="password" name="password" required autocomplete="current-password" />
+        </label>
+        <p id="clave-elementos-error" class="mensaje mensaje-error" hidden></p>
+        <div class="modal-acciones">
+          <button type="button" id="btn-cancelar-clave-elementos" class="btn-secundario">Cancelar</button>
+          <button type="submit" class="btn-primario">Continuar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-elementos" class="modal-backdrop" hidden role="dialog" aria-modal="true">
+    <div class="modal modal-elementos">
+      <h2 id="ed-titulo"></h2>
+      <p class="subtitulo" id="ed-sub"></p>
+      <ul id="ed-lista" class="ed-lista"></ul>
+      <button type="button" id="ed-agregar" class="btn-secundario btn-pequeno"></button>
+      <p id="ed-error" class="mensaje mensaje-error" hidden></p>
+      <div class="modal-acciones">
+        <button type="button" id="ed-cancelar" class="btn-secundario">Cancelar</button>
+        <button type="button" id="ed-guardar" class="btn-primario">Guardar</button>
+      </div>
+    </div>
+  </div>
+
   <div id="modal-admin-corregir" class="modal-backdrop" hidden role="dialog" aria-modal="true">
     <div class="modal">
       <h2>Corregir un registro</h2>
@@ -682,6 +720,6 @@
 
   <script src="/js/util.js"></script>
   <script src="/js/festivos.js"></script>
-  <script src="/js/formato.js?v=3"></script>
+  <script src="/js/formato.js?v=4"></script>
 </body>
 </html>

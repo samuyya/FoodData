@@ -279,8 +279,126 @@ function pintarTarjetas(info) {
   $('elementos-fuera').hidden = fuera.length === 0;
   $('elementos-fuera-resumen').textContent = `Fuera de servicio (${fuera.length})`;
   $('elementos-fuera-lista').textContent = `${fuera.map(e => e.nombre).join(', ')}. Conservan su historial y no piden días.`;
+  $('btn-editar-elementos').textContent = `⚙️ Editar ${info.formato.plural} 🔒`;
   $('vista-elementos').hidden = false;
 }
+
+// configurar baños, neveras, llaves... (solo el administrador)
+let datosElementos = null;
+let filasEd = [];
+
+function pintarAvisoElementos(info) {
+  const f = info.formato;
+  const hay = info.elementos.length > 0;
+  $('aviso-elementos-texto').innerHTML = hay
+    ? `Ahora mismo no hay ${f.plural} en servicio, así que este formato se llena como uno solo.`
+    : `<strong>¿Tienes varios ${f.plural}?</strong> Configúralos y cada uno se llena por separado. Lo que ya llenaste antes no se pierde, pero no cuenta para los pendientes.`;
+  $('btn-configurar-elementos').textContent = hay ? `⚙️ Editar ${f.plural} 🔒` : `⚙️ Configurar ${f.plural} 🔒`;
+  $('aviso-elementos').hidden = false;
+}
+
+function pedirClaveElementos(luego) {
+  const modal = $('modal-clave-elementos'), form = $('form-clave-elementos'), err = $('clave-elementos-error');
+  form.reset(); err.hidden = true; modal.hidden = false;
+  setTimeout(() => form.password.focus(), 80);
+  $('btn-cancelar-clave-elementos').onclick = () => { modal.hidden = true; };
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    err.hidden = true;
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true; btn.textContent = 'Verificando...';
+    try {
+      const r = await fetch('/api/admin/verificar-elementos', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: form.password.value })
+      });
+      const d = await r.json();
+      if (!r.ok) { err.textContent = d.error || 'No se pudo verificar'; err.hidden = false; form.password.select(); return; }
+      modal.hidden = true;
+      luego();
+    } catch (x) {
+      err.textContent = 'no hay conexion'; err.hidden = false;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Continuar';
+    }
+  };
+}
+
+function abrirEditorElementos() {
+  if (datosElementos.admin) abrirEditor(); else pedirClaveElementos(abrirEditor);
+}
+
+function abrirEditor() {
+  const f = datosElementos.formato;
+  filasEd = datosElementos.elementos.map(e => ({ id: e.id, nombre: e.nombre, tipo: e.tipo, activo: e.activo }));
+  if (!filasEd.length) filasEd.push({ nombre: '', tipo: f.conTipo ? 'refrigeracion' : null, activo: true });
+  $('ed-titulo').textContent = `Editar ${f.plural}`;
+  $('ed-sub').textContent = `Cada uno se llena por separado. Nombre de máximo ${datosElementos.nombreMax} letras. Si ya no se usa, sácalo de servicio: conserva su historial.`;
+  $('ed-agregar').textContent = `+ Agregar ${f.singular}`;
+  $('ed-error').hidden = true;
+  pintarEditor();
+  $('modal-elementos').hidden = false;
+}
+
+function pintarEditor() {
+  const conTipo = datosElementos.formato.conTipo;
+  $('ed-lista').innerHTML = filasEd.map((x, i) => `<li class="ed-fila${x.activo ? '' : ' ed-fila--fuera'}">
+    <input type="text" data-i="${i}" class="ed-nombre" maxlength="${datosElementos.nombreMax}" value="${escapeHTML(x.nombre)}" placeholder="Nombre" aria-label="Nombre" ${x.activo ? '' : 'disabled'} />
+    ${conTipo ? `<select data-i="${i}" class="ed-tipo" aria-label="Tipo" ${x.activo ? '' : 'disabled'}><option value="refrigeracion"${x.tipo === 'refrigeracion' ? ' selected' : ''}>Refrigeración</option><option value="congelacion"${x.tipo === 'congelacion' ? ' selected' : ''}>Congelación</option></select>` : ''}
+    <button type="button" class="btn-secundario btn-pequeno" data-quitar="${i}">${!x.id ? 'Quitar' : x.activo ? 'Sacar de servicio' : 'Volver a servicio'}</button>
+  </li>`).join('');
+}
+
+$('ed-lista').addEventListener('input', (e) => {
+  const i = e.target.dataset.i;
+  if (i === undefined) return;
+  if (e.target.classList.contains('ed-nombre')) filasEd[i].nombre = e.target.value;
+  else filasEd[i].tipo = e.target.value;
+});
+$('ed-lista').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-quitar]');
+  if (!b) return;
+  const x = filasEd[b.dataset.quitar];
+  if (x.id) x.activo = !x.activo; else filasEd.splice(b.dataset.quitar, 1);
+  pintarEditor();
+});
+$('ed-agregar').addEventListener('click', () => {
+  filasEd.push({ nombre: '', tipo: datosElementos.formato.conTipo ? 'refrigeracion' : null, activo: true });
+  pintarEditor();
+  const campos = document.querySelectorAll('.ed-nombre');
+  campos[campos.length - 1].focus();
+});
+$('ed-cancelar').addEventListener('click', () => { $('modal-elementos').hidden = true; });
+
+async function guardarEditor() {
+  const err = $('ed-error');
+  err.hidden = true;
+  if (!filasEd.some(x => x.activo)) { err.textContent = 'Deja al menos uno en servicio.'; err.hidden = false; return; }
+  const btn = $('ed-guardar');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    const r = await fetch(`/api/elementos/${encodeURIComponent(formatoId)}?carpeta=${encodeURIComponent(carpetaId)}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ elementos: filasEd })
+    });
+    const d = await r.json();
+    if (r.status === 401 && d.requiereClaveAdmin) {
+      $('modal-elementos').hidden = true;
+      datosElementos.admin = false;
+      pedirClaveElementos(() => { datosElementos.admin = true; $('modal-elementos').hidden = false; });
+      return;
+    }
+    if (!r.ok) { err.textContent = d.error || 'No se pudo guardar'; err.hidden = false; return; }
+    window.location.href = urlFormato();
+  } catch (x) {
+    err.textContent = 'no se pudo guardar, intenta otra vez'; err.hidden = false;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar';
+  }
+}
+$('ed-guardar').addEventListener('click', guardarEditor);
+$('btn-configurar-elementos').addEventListener('click', abrirEditorElementos);
+$('btn-editar-elementos').addEventListener('click', abrirEditorElementos);
 
 // encabezado del formulario cuando se esta llenando un elemento puntual
 function pintarCabeceraElemento(formato, el) {
@@ -2036,6 +2154,8 @@ async function cargar() {
     if (formatoActual.elementos) {
       const rEl = await fetch(`/api/elementos/${encodeURIComponent(formatoId)}?carpeta=${encodeURIComponent(carpetaId)}`);
       const dEl = rEl.ok ? await rEl.json() : null;
+      datosElementos = dEl;
+      if (dEl && !dEl.configurado && !elementoId) pintarAvisoElementos(dEl);
       if (dEl && dEl.configurado) {
         if (!elementoId) { pintarTarjetas(dEl); return; }
         elementoActual = dEl.elementos.find(e => e.id === elementoId && e.activo) || null;

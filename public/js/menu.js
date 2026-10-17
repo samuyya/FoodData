@@ -50,7 +50,9 @@ btnFormatos.addEventListener('click', () => {
 btnAsistencia.addEventListener('click', () => {
   window.location.href = '/asistencia.html';
 });
-btnCapacitaciones.addEventListener('click', () => avisoPendiente('Capacitaciones'));
+btnCapacitaciones.addEventListener('click', () => {
+  window.location.href = '/capacitaciones.html';
+});
 btnProgramas.addEventListener('click', () => {
   window.location.href = '/programas.html';
 });

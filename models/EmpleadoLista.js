@@ -4,6 +4,8 @@ const empleadoListaSchema = new mongoose.Schema({
   nombre: { type: String, required: true, trim: true },
   empresa_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true },
   // cada modulo tiene su lista: asistencia, presentacion o capacitaciones
+  // solo en la lista de capacitaciones
+  cargo: { type: mongoose.Schema.Types.ObjectId, ref: 'Cargo', default: null },
   lista: { type: String, enum: ['asistencia', 'presentacion', 'capacitaciones'], default: 'asistencia' }
 }, { timestamps: true });
 

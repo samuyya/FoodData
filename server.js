@@ -23,6 +23,7 @@ const adminRoutes = require('./routes/admin');
 const registrosRoutes = require('./routes/registros');
 const elementosRoutes = require('./routes/elementos');
 const empleadosRoutes = require('./routes/empleados');
+const capacitacionesRoutes = require('./routes/capacitaciones');
 const { migrarListasEmpleados } = require('./servicios/empleadosListas');
 const asistenciaRoutes = require('./routes/asistencia');
 const documentosRoutes = require('./routes/documentos');
@@ -166,6 +167,7 @@ app.use('/api/registros', requireModulo('formatos'),  registrosRoutes);
 app.use('/api/elementos', requireModulo('formatos'),  elementosRoutes);
 app.use('/api/empleados', empleadosRoutes); // cada lista revisa su propio modulo
 app.use('/api/asistencia',requireModulo('asistencia'),asistenciaRoutes);
+app.use('/api/capacitaciones', requireModulo('capacitaciones'), capacitacionesRoutes);
 // documentos: el superadmin sube; las empresas leen los suyos solo si tienen el modulo "programas"
 app.use('/api/documentos', documentosRoutes);
 app.use('/api/backup', backupRoutes);

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Capacitaciones - FoodData</title>
+  <link rel="icon" href="/img/icon-fooddata-favicon.png" type="image/png" />
+  <link rel="stylesheet" href="/css/styles.css?v=5" />
+  <link rel="stylesheet" href="/css/capacitaciones.css?v=2" />
+</head>
+<body class="sub-body">
+  <header class="sub-topbar">
+    <div class="sub-topbar-inner">
+      <div class="sub-acciones">
+        <button type="button" id="btn-volver" class="btn-secundario">← Volver al menú</button>
+      </div>
+
+      <div class="sub-encabezado">
+        <div class="sub-titulo-grupo">
+          <h1 class="titulo-pagina">Capacitaciones</h1>
+          <p class="subtitulo-pagina">Sube tus capacitaciones y decide quién debe hacer cada una.</p>
+        </div>
+
+        <section class="establecimiento">
+          <div class="establecimiento-logo">
+            <img loading="lazy" decoding="async" id="logo-empresa" class="establecimiento-logo-img" alt="Logo de la empresa" hidden />
+            <span id="logo-placeholder" class="establecimiento-logo-ph">Logo</span>
+          </div>
+          <div class="establecimiento-info">
+            <span class="establecimiento-label">Restaurante</span>
+            <strong id="nombre-empresa" class="establecimiento-nombre">...</strong>
+          </div>
+        </section>
+      </div>
+    </div>
+  </header>
+
+  <main class="sub-main" id="cap-main" hidden>
+    <div class="cap-tabs" role="group" aria-label="Secciones">
+      <button type="button" data-tab="resumen" aria-pressed="true">Resumen</button>
+      <button type="button" data-tab="caps" aria-pressed="false">Capacitaciones</button>
+      <button type="button" data-tab="gente" aria-pressed="false">Cargos y empleados</button>
+    </div>
+
+    <p id="cap-msg" class="mensaje" hidden></p>
+
+    <section id="tab-resumen" class="card"></section>
+    <section id="tab-caps" class="card" hidden></section>
+    <section id="tab-gente" class="card" hidden></section>
+  </main>
+
+  <div id="modal-clave" class="modal-backdrop" hidden role="dialog" aria-modal="true">
+    <div class="modal">
+      <h2>Se necesita la clave del administrador</h2>
+      <p class="subtitulo">Solo el administrador maneja las capacitaciones, los cargos y los empleados.</p>
+      <form id="form-clave" class="form">
+        <label class="campo">
+          <span>Contraseña de administrador</span>
+          <input type="password" name="password" required autocomplete="current-password" />
+        </label>
+        <p id="clave-error" class="mensaje mensaje-error" hidden></p>
+        <div class="modal-acciones">
+          <button type="button" id="btn-clave-volver" class="btn-secundario">Volver al menú</button>
+          <button type="submit" class="btn-primario">Ingresar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/util.js"></script>
+  <script src="/js/capacitaciones.js?v=2"></script>
+</body>
+</html>

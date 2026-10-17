@@ -44,6 +44,13 @@ function adminElementosActivo(req) {
   return e.nombre || 'Administrador';
 }
 
+function adminCapacitacionesActivo(req) {
+  const c = req.session && req.session.adminCapacitaciones;
+  if (!c) return false;
+  if (Date.now() - c.ts > MAX_EDAD_MS) return false;
+  return c.nombre || 'Administrador';
+}
+
 function adminInventarioActivo(req) {
   const i = req.session && req.session.adminInventario;
   if (!i) return false;
@@ -188,6 +195,25 @@ router.post('/verificar-inventario', limiteAdmin, requireEmpresa, ah(async (req,
   res.status(401).json({ ok: false, error: 'Contraseña de administrador incorrecta' });
 }));
 
+// administrar capacitaciones (cargos, empleados, material, asignaciones)
+router.post('/verificar-capacitaciones', limiteAdmin, requireEmpresa, ah(async (req, res) => {
+  const { password } = req.body;
+  if (!password) {
+    return res.status(400).json({ ok: false, error: 'Falta la contraseña' });
+  }
+  const admins = await Administrador.find({ empresa_id: req.session.empresa.id });
+  if (admins.length === 0) {
+    return res.status(404).json({ ok: false, error: 'Esta empresa aún no tiene administrador asignado' });
+  }
+  for (const a of admins) {
+    if (await bcrypt.compare(password, a.passwordHash)) {
+      req.session.adminCapacitaciones = { nombre: a.nombre, ts: Date.now() };
+      return res.json({ ok: true, nombre: a.nombre });
+    }
+  }
+  res.status(401).json({ ok: false, error: 'Contraseña de administrador incorrecta' });
+}));
+
 // configurar elementos (cuantos baños, neveras, llaves... y como se llama cada uno)
 router.post('/verificar-elementos', limiteAdmin, requireEmpresa, ah(async (req, res) => {
   const { password } = req.body;
@@ -220,6 +246,7 @@ router.post('/limpiar', requireEmpresa, (req, res) => {
   req.session.adminInspeccion = null;
   req.session.adminInventario = null;
   req.session.adminElementos = null;
+  req.session.adminCapacitaciones = null;
   res.json({ ok: true });
 });
 
@@ -231,3 +258,4 @@ module.exports.adminReporteActivo = adminReporteActivo;
 module.exports.adminInspeccionActivo = adminInspeccionActivo;
 module.exports.adminInventarioActivo = adminInventarioActivo;
 module.exports.adminElementosActivo = adminElementosActivo;
+module.exports.adminCapacitacionesActivo = adminCapacitacionesActivo;

@@ -13,5 +13,8 @@ module.exports = [
   require('./ItemInventario'),
   require('./MovInventario'),
   require('./ConteoInventario'),
-  require('./VentaDia')
+  require('./VentaDia'),
+  require('./Cargo'),
+  require('./Capacitacion'),
+  require('./AsignacionCapacitacion')
 ];

@@ -67,6 +67,8 @@ const empresaSchema = new mongoose.Schema({
     sabado:    { type: Number, default: 7 },
     domingo:   { type: Number, default: 7 }
   },
+  // la lista de empleados de capacitaciones arranca como copia de la de asistencia, una sola vez
+  capacitacionesListaIniciada: { type: Boolean, default: false },
   // metas del food cost (% del costo frente a lo vendido) para el reporte de inventarios
   metasFoodCost: {
     comida:  { type: Number, default: 32 },

@@ -9,8 +9,7 @@ const LISTAS = {
   capacitaciones: { nombre: 'Capacitaciones', modulo: 'capacitaciones' }
 };
 
-// ojo: capacitaciones todavia no tiene pantallas, asi que no se ofrece como destino hasta que exista
-const LISTAS_VISIBLES = ['asistencia', 'presentacion'];
+const LISTAS_VISIBLES = ['asistencia', 'presentacion', 'capacitaciones'];
 
 function listasDisponibles(req, config) {
   const modulos = (req.session.empresa.modulosActivos && req.session.empresa.modulosActivos.length)

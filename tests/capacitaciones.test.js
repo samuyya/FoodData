@@ -253,3 +253,112 @@ describe('la lista de empleados de capacitaciones', () => {
     expect((await agent.get('/api/empleados/listas')).body.listas.map(l => l.id)).toContain('capacitaciones');
   });
 });
+
+describe('lo que hace el empleado', () => {
+  const request = require('supertest');
+  const { PASSWORD_EMPRESA } = require('./helpers');
+  const Constancia = require('../models/ConstanciaCapacitacion');
+
+  afterEach(async () => {
+    // las fotos de confirmacion tambien escriben en disco
+    for (const id of empresas) {
+      await fs.promises.rm(path.join(__dirname, '..', 'datos', 'capacitaciones', String(id)), { recursive: true, force: true });
+    }
+  });
+
+  const quiz = { activa: true, minimo: 70, preguntas: [
+    { texto: 'Uno', opciones: ['a', 'b'], correcta: 0 },
+    { texto: 'Dos', opciones: ['a', 'b', 'c'], correcta: 2 },
+    { texto: 'Tres', opciones: ['a', 'b'], correcta: 1 }
+  ] };
+  const foto = Buffer.from('foto de mentira');
+  const terminar = (agent, empId, capId, respuestas, conFoto) => {
+    const r = agent.post(`/api/capacitaciones/mis/${empId}/caps/${capId}/terminar`);
+    if (respuestas) r.field('respuestas', JSON.stringify(respuestas));
+    return conFoto ? r.attach('foto', foto, { filename: 'foto.jpg', contentType: 'image/jpeg' }) : r;
+  };
+  async function escenario(extra = {}) {
+    const { agent, empresa } = await conAdmin();
+    const cocinero = await cargo(agent, 'Cocinero');
+    const laura = (await persona(agent, 'Laura Pérez', cocinero.id)).body.empleado;
+    const cap = (await crearCap(agent, base(extra))).body.capacitacion;
+    return { agent, empresa, laura, cap, cocinero };
+  }
+
+  test('cualquiera con el dispositivo ve los nombres y lo suyo, sin clave', async () => {
+    const { empresa } = await escenario();
+    const otro = request.agent(app);
+    await otro.post('/api/auth/login').send({ email: empresa.email, password: PASSWORD_EMPRESA });
+    const g = (await otro.get('/api/capacitaciones/mis/gente')).body.gente;
+    expect(g.map(x => x.nombre)).toEqual(['Laura Pérez']);
+    expect((await otro.get('/api/capacitaciones/cargos')).status).toBe(401);
+    const mis = (await otro.get(`/api/capacitaciones/mis/${g[0].id}`)).body;
+    expect(mis.persona).toEqual({ nombre: 'Laura Pérez', cargo: 'Cocinero' });
+    expect(mis.pendientes.map(p => p.titulo)).toEqual(['Manejo de residuos']);
+    expect(mis.hechas).toEqual([]);
+  });
+
+  test('sin evaluación ni foto: terminar deja la constancia, una sola vez', async () => {
+    const { agent, laura, cap } = await escenario();
+    const r = await terminar(agent, laura._id, cap.id);
+    expect(r.status).toBe(201);
+    expect(r.body.constancia.nota).toBeNull();
+    expect((await terminar(agent, laura._id, cap.id)).status).toBe(409);
+    const mis = (await agent.get(`/api/capacitaciones/mis/${laura._id}`)).body;
+    expect(mis.pendientes).toEqual([]);
+    expect(mis.hechas.map(h => h.titulo)).toEqual(['Manejo de residuos']);
+    // el administrador la ve como hecha
+    const fila = (await resumen(agent)).gente[0];
+    expect(fila.hechas[0]).toBeTruthy();
+    const k = await Constancia.findOne();
+    expect(k).toMatchObject({ empleadoNombre: 'Laura Pérez', cargoNombre: 'Cocinero', titulo: 'Manejo de residuos', version: 1 });
+  });
+
+  test('evaluación: califica con el servidor y exige la nota mínima', async () => {
+    const { agent, laura, cap } = await escenario({ evaluacion: quiz });
+    const contenido = (await agent.get(`/api/capacitaciones/mis/${laura._id}/caps/${cap.id}`)).body;
+    expect(contenido.capacitacion.evaluacion.preguntas).toHaveLength(3);
+    expect(JSON.stringify(contenido)).not.toContain('correcta');
+
+    const mal = await agent.post(`/api/capacitaciones/mis/${laura._id}/caps/${cap.id}/evaluar`).send({ respuestas: [1, 0, 0] });
+    expect(mal.body).toMatchObject({ nota: 0, minimo: 70, aprobada: false });
+    expect((await agent.post(`/api/capacitaciones/mis/${laura._id}/caps/${cap.id}/evaluar`).send({ respuestas: [0] })).status).toBe(400);
+    const regular = await agent.post(`/api/capacitaciones/mis/${laura._id}/caps/${cap.id}/evaluar`).send({ respuestas: [0, 2, 0] });
+    expect(regular.body).toMatchObject({ nota: 67, aprobada: false });
+
+    // aunque el celular diga que aprobó, el servidor vuelve a calificar
+    expect((await terminar(agent, laura._id, cap.id, [1, 0, 0])).status).toBe(400);
+    expect(await Constancia.countDocuments()).toBe(0);
+    const bien = await terminar(agent, laura._id, cap.id, [0, 2, 1]);
+    expect(bien.status).toBe(201);
+    expect(bien.body.constancia.nota).toBe(100);
+  });
+
+  test('la foto de confirmación es obligatoria si la capacitación la pide', async () => {
+    const { agent, laura, cap } = await escenario({ foto: true });
+    expect((await terminar(agent, laura._id, cap.id)).status).toBe(400);
+    const ok = await terminar(agent, laura._id, cap.id, null, true);
+    expect(ok.status).toBe(201);
+    expect((await Constancia.findOne()).fotoRef).toBeTruthy();
+  });
+
+  test('solo se puede hacer lo que le toca, y el material solo lo ve quien lo tiene', async () => {
+    const { agent, laura, cap } = await escenario();
+    const arch = await crearCap(agent, base({ titulo: 'Con archivo', materialTipo: 'archivo', enlace: '', alcance: 'cargos', cargos: [(await cargo(agent, 'Mesero')).id] }), 'cartilla.pdf');
+    const soloMeseros = arch.body.capacitacion.id;
+    expect((await terminar(agent, laura._id, soloMeseros)).status).toBe(403);
+    expect((await agent.get(`/api/capacitaciones/mis/${laura._id}/caps/${soloMeseros}/material`)).status).toBe(403);
+    expect((await agent.get(`/api/capacitaciones/mis/${laura._id}/caps/${cap.id}`)).status).toBe(200);
+  });
+
+  test('si cambian el material, la repite', async () => {
+    const { agent, laura, cap } = await escenario();
+    await terminar(agent, laura._id, cap.id);
+    await agent.put(`/api/capacitaciones/caps/${cap.id}`).field('datos', JSON.stringify(base({ enlace: 'https://youtu.be/nuevo' })));
+    const mis = (await agent.get(`/api/capacitaciones/mis/${laura._id}`)).body;
+    expect(mis.hechas).toEqual([]);
+    expect(mis.pendientes[0]).toMatchObject({ titulo: 'Manejo de residuos', repetir: true });
+    expect((await terminar(agent, laura._id, cap.id)).status).toBe(201);
+    expect(await Constancia.countDocuments()).toBe(2);
+  });
+});

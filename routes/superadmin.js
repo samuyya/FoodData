@@ -11,6 +11,7 @@ const EmpleadoLista = require('../models/EmpleadoLista');
 const Cargo = require('../models/Cargo');
 const Capacitacion = require('../models/Capacitacion');
 const AsignacionCapacitacion = require('../models/AsignacionCapacitacion');
+const ConstanciaCapacitacion = require('../models/ConstanciaCapacitacion');
 const Registro = require('../models/Registro');
 const Asistencia = require('../models/Asistencia');
 const Documento = require('../models/Documento');
@@ -283,6 +284,7 @@ router.delete('/empresas/:id', requireSuperadmin, async (req, res) => {
     await Cargo.deleteMany({ empresa_id: empresaId });
     await Capacitacion.deleteMany({ empresa_id: empresaId });
     await AsignacionCapacitacion.deleteMany({ empresa_id: empresaId });
+    await ConstanciaCapacitacion.deleteMany({ empresa_id: empresaId });
     await Registro.deleteMany({ empresa_id: empresaId });
     await Asistencia.deleteMany({ empresa_id: empresaId });
     await Documento.deleteMany({ empresa_id: empresaId });

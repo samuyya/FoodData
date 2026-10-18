@@ -2,6 +2,7 @@ const EmpleadoLista = require('../models/EmpleadoLista');
 const Empresa = require('../models/Empresa');
 const Capacitacion = require('../models/Capacitacion');
 const Asignacion = require('../models/AsignacionCapacitacion');
+const Constancia = require('../models/ConstanciaCapacitacion');
 
 // la lista de capacitaciones arranca como copia de la de asistencia, una sola vez por empresa
 async function asegurarListaCapacitaciones(empresaId) {
@@ -46,17 +47,22 @@ async function asignarIngreso(empresaId, empleadoId) {
 // la tabla de quien tiene que hacer que: una fila por persona, una celda por capacitacion
 async function resumen(empresaId) {
   await asegurarListaCapacitaciones(empresaId);
-  const [caps, gente, asigs] = await Promise.all([
+  const [caps, gente, asigs, consts] = await Promise.all([
     Capacitacion.find({ empresa_id: empresaId, activa: true }).sort({ createdAt: 1 }).lean(),
     EmpleadoLista.find({ empresa_id: empresaId, lista: 'capacitaciones' }).sort({ nombre: 1 }).populate('cargo', 'nombre').lean(),
-    Asignacion.find({ empresa_id: empresaId }).lean()
+    Asignacion.find({ empresa_id: empresaId }).lean(),
+    Constancia.find({ empresa_id: empresaId }).select('capacitacion_id empleado_id version fecha').sort({ fecha: -1 }).lean()
   ]);
+  // la fecha de la constancia vigente (la de la version actual del material) de cada par
+  const hechas = new Map();
+  consts.forEach(k => { const clave = `${k.empleado_id}:${k.capacitacion_id}:${k.version}`; if (!hechas.has(clave)) hechas.set(clave, k.fecha); });
   const porPar = new Map(asigs.map(a => [`${a.empleado_id}:${a.capacitacion_id}`, a]));
   return {
     caps: caps.map(c => ({ id: c._id, titulo: c.titulo })),
     gente: gente.map(g => ({
       id: g._id, nombre: g.nombre, cargo: g.cargo ? { id: g.cargo._id, nombre: g.cargo.nombre } : null,
-      celdas: caps.map(c => origenDe(c, g, porPar.get(`${g._id}:${c._id}`)) || null)
+      celdas: caps.map(c => origenDe(c, g, porPar.get(`${g._id}:${c._id}`)) || null),
+      hechas: caps.map(c => hechas.get(`${g._id}:${c._id}:${c.version}`) || null)
     }))
   };
 }

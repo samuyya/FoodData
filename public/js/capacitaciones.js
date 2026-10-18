@@ -5,7 +5,7 @@ const PROGRAMAS = ['Limpieza y Desinfección', 'Residuos Sólidos', 'Plagas', 'A
 const ORIGEN = { todos: 'Para todos', cargo: 'Por cargo', ingreso: 'De ingreso', manual: 'A mano' };
 
 // ojo: estado.draft es el formulario abierto (nueva o editando), se va llenando con cada tecla
-const estado = { tab: 'resumen', caps: [], cargos: [], res: { caps: [], gente: [] }, otras: [], editando: null, draft: null, abierto: null, editEmp: null, borrando: null };
+const estado = { admin: false, tab: 'resumen', caps: [], cargos: [], res: { caps: [], gente: [] }, otras: [], editando: null, draft: null, abierto: null, editEmp: null, borrando: null };
 
 function avisar(texto, error) {
   const m = $('cap-msg');
@@ -15,12 +15,12 @@ function avisar(texto, error) {
 }
 
 // pide la clave y avisa cuando ya la dieron. si cancelan, vuelve al menu
-function pedirClave() {
+function pedirClave(volverAlMenu = true) {
   return new Promise((resolve) => {
     const modal = $('modal-clave'), form = $('form-clave'), err = $('clave-error');
     form.reset(); err.hidden = true; modal.hidden = false;
     setTimeout(() => form.password.focus(), 80);
-    $('btn-clave-volver').onclick = () => { window.location.href = '/menu.html'; };
+    $('btn-clave-volver').onclick = () => { if (volverAlMenu) window.location.href = '/menu.html'; else modal.hidden = true; };
     form.onsubmit = async (e) => {
       e.preventDefault();
       err.hidden = true;
@@ -69,28 +69,31 @@ async function cargar() {
   pintar();
 }
 
+const fechaCorta = (f) => new Date(f).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
 const nombresCargos = (ids) => ids.map(id => (estado.cargos.find(c => c.id === id) || {}).nombre).filter(Boolean).join(', ') || 'ningún cargo';
 
 // resumen
 function pintarResumen() {
   const { caps, gente } = estado.res;
   const total = gente.reduce((n, g) => n + g.celdas.filter(Boolean).length, 0);
+  const hechas = gente.reduce((n, g) => n + g.hechas.filter(Boolean).length, 0);
   let tabla;
   if (!caps.length || !gente.length) {
     tabla = `<p class="cap-vacio">${!caps.length ? 'Todavía no hay capacitaciones. Crea la primera en la pestaña Capacitaciones.' : 'Todavía no hay empleados. Agrégalos en la pestaña Cargos y empleados.'}</p>`;
   } else {
     tabla = `<div class="cap-tabla-wrap"><table class="cap-tabla"><thead><tr><th>Empleado</th>${caps.map(c => `<th>${esc(c.titulo)}</th>`).join('')}</tr></thead><tbody>
       ${gente.map(g => `<tr><td><b>${esc(g.nombre)}</b><br><span class="cap-muted">${g.cargo ? esc(g.cargo.nombre) : 'Sin cargo'}</span></td>
-        ${g.celdas.map(o => `<td>${o ? `<span class="cap-celda">Asignada<small>${ORIGEN[o]}</small></span>` : '<span class="cap-na">—</span>'}</td>`).join('')}</tr>`).join('')}
+        ${g.celdas.map((o, i) => `<td>${!o ? '<span class="cap-na">—</span>' : g.hechas[i] ? `<span class="cap-celda cap-celda--ok">✓ ${fechaCorta(g.hechas[i])}</span>` : `<span class="cap-celda">Pendiente<small>${ORIGEN[o]}</small></span>`}</td>`).join('')}</tr>`).join('')}
     </tbody></table></div>`;
   }
   $('tab-resumen').innerHTML = `
     <div class="cap-fila"><h2>Quién debe hacer qué</h2></div>
-    <p class="cap-muted">Aquí verás también quién ya la hizo cuando los empleados empiecen a hacerlas. Por ahora muestra a quién le corresponde cada una.</p>
+    <p class="cap-muted">✓ es que ya la hizo con la versión actual del material. Si cambias el material, vuelve a quedar pendiente.</p>
     <div class="cap-stats">
       <div class="cap-stat"><b>${gente.length}</b><span class="cap-muted">empleados</span></div>
       <div class="cap-stat"><b>${caps.length}</b><span class="cap-muted">capacitaciones activas</span></div>
-      <div class="cap-stat"><b>${total}</b><span class="cap-muted">asignaciones</span></div>
+      <div class="cap-stat"><b>${hechas}</b><span class="cap-muted">hechas</span></div>
+      <div class="cap-stat"><b>${total - hechas}</b><span class="cap-muted">pendientes</span></div>
     </div>${tabla}`;
 }
 
@@ -391,6 +394,21 @@ document.addEventListener('change', async (e) => {
   }
 });
 
+// la zona del administrador va detras de su clave
+async function abrirAdmin() {
+  if (!estado.admin) { await pedirClave(false); estado.admin = true; }
+  $('emp-main').hidden = true; $('cap-main').hidden = false;
+  $('btn-admin').hidden = true; $('btn-vista-emp').hidden = false;
+  $('cap-msg').hidden = true;
+  await cargar();
+}
+
+function verEmpleados() {
+  $('cap-main').hidden = true; $('emp-main').hidden = false;
+  $('btn-admin').hidden = false; $('btn-vista-emp').hidden = true;
+  document.dispatchEvent(new Event('cap-emp'));
+}
+
 async function iniciar() {
   try {
     const rMe = await fetch('/api/auth/me');
@@ -405,12 +423,12 @@ async function iniciar() {
       $('logo-placeholder').hidden = true;
     }
     $('btn-volver').addEventListener('click', () => { window.location.href = '/menu.html'; });
+    $('btn-admin').addEventListener('click', abrirAdmin);
+    $('btn-vista-emp').addEventListener('click', verEmpleados);
     const est = await fetch('/api/capacitaciones/estado');
     if (est.status === 403) { document.body.innerHTML = '<p style="padding:2rem">Tu empresa no tiene este módulo habilitado.</p>'; return; }
-    const e = await est.json();
-    if (!e.admin) await pedirClave();
-    $('cap-main').hidden = false;
-    await cargar();
+    estado.admin = (await est.json()).admin;
+    document.dispatchEvent(new Event('cap-emp'));
   } catch (err) {
     document.body.innerHTML = '<p style="padding:2rem;color:#b91c1c">Error cargando la página. Recarga.</p>';
   }

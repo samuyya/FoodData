@@ -52,3 +52,16 @@
 .cap-vacio { color: var(--color-texto-suave); padding: 1rem 0; }
 .cap-form > *, .cap-col > * { min-width: 0; }
 .cap-form input[type="file"] { max-width: 100%; }
+
+/* pantalla del empleado */
+.cap-sub { margin: 1.2rem 0 .5rem; font-size: 1rem; }
+.cap-grande { width: 100%; text-align: left; font: inherit; border: 1px solid var(--color-borde); background: var(--color-superficie); border-radius: 12px; padding: .8rem .95rem; min-height: 52px; display: flex; justify-content: space-between; gap: .6rem; align-items: center; cursor: pointer; margin-bottom: .5rem; color: var(--color-texto); }
+.cap-grande:hover { border-color: var(--color-primario); }
+.cap-celda--ok { background: var(--color-ok-bg); color: var(--color-ok); }
+.cap-pasos { display: grid; gap: 4px; font-size: .74rem; text-align: center; color: var(--color-texto-suave); margin: .8rem 0; }
+.cap-pasos span { border-top: 4px solid var(--color-borde); padding-top: 4px; }
+.cap-pasos span.on { border-color: var(--color-primario); color: var(--color-primario-oscuro); font-weight: 700; }
+.cap-opt { width: 100%; text-align: left; font: inherit; border: 1px solid var(--color-borde); background: var(--color-superficie); border-radius: 10px; padding: .7rem .85rem; min-height: 46px; cursor: pointer; color: var(--color-texto); }
+.cap-opt[aria-pressed="true"] { border-color: var(--color-primario); background: var(--color-superficie-suave, #ecf9f5); font-weight: 700; }
+.cap-listo { text-align: center; display: grid; gap: .6rem; justify-items: center; padding: 1rem 0; }
+.cap-marca { width: 56px; height: 56px; border-radius: 50%; background: var(--color-ok-bg); color: var(--color-ok); display: grid; place-items: center; font-size: 1.7rem; font-weight: 800; }

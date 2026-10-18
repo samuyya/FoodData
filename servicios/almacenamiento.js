@@ -160,7 +160,32 @@ async function obtenerFotoInventario(referencia) {
   return fs.promises.readFile(ruta);
 }
 
+// fotos de confirmacion de las capacitaciones: tambien privadas
+const CARPETA_CAP = path.join(__dirname, '..', 'datos', 'capacitaciones');
+
+async function guardarFotoCapacitacion(empresaId, buffer) {
+  const nombre = `const-${Date.now()}-${Math.round(Math.random() * 1e6)}.jpg`;
+  if (usarCloudinary) {
+    const publicId = `${empresaId}/capacitaciones/${quitarExtension(nombre)}`;
+    await subirBuffer(buffer, { public_id: publicId, resource_type: 'image', type: 'authenticated' });
+    return publicId;
+  }
+  const dir = path.join(CARPETA_CAP, String(empresaId));
+  await fs.promises.mkdir(dir, { recursive: true });
+  await fs.promises.writeFile(path.join(dir, nombre), buffer);
+  return `${empresaId}/${nombre}`;
+}
+
+async function obtenerFotoCapacitacion(referencia) {
+  if (usarCloudinary) return bajarAutenticado(referencia, 'image');
+  const ruta = path.join(CARPETA_CAP, referencia);
+  if (!fs.existsSync(ruta)) return null;
+  return fs.promises.readFile(ruta);
+}
+
 module.exports = {
+  guardarFotoCapacitacion,
+  obtenerFotoCapacitacion,
   guardarFotoInventario,
   obtenerFotoInventario,
   guardarFotoAsistencia,

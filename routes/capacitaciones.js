@@ -7,13 +7,143 @@ const Asignacion = require('../models/AsignacionCapacitacion');
 const EmpleadoLista = require('../models/EmpleadoLista');
 const { requireEmpresa, ah } = require('../middleware/sesion');
 const { adminCapacitacionesActivo } = require('./admin');
-const { guardarDocumentoPrograma, obtenerDocumentoPrograma, borrarDocumento } = require('../servicios/almacenamiento');
-const { resumen, aplicaPorRegla } = require('../servicios/capacitaciones');
+const Constancia = require('../models/ConstanciaCapacitacion');
+const { guardarDocumentoPrograma, obtenerDocumentoPrograma, borrarDocumento, guardarFotoCapacitacion } = require('../servicios/almacenamiento');
+const { resumen, aplicaPorRegla, origenDe, asegurarListaCapacitaciones } = require('../servicios/capacitaciones');
 
 const router = express.Router();
 router.use(requireEmpresa);
 
 router.get('/estado', (req, res) => res.json({ ok: true, admin: !!adminCapacitacionesActivo(req) }));
+
+// lo del empleado: cualquiera con el dispositivo del restaurante elige su nombre y hace las suyas (sin clave)
+const subirFoto = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 3 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => cb(/^image\/(jpeg|png|webp)$/.test(file.mimetype) ? null : new Error('La foto debe ser una imagen'), /^image\/(jpeg|png|webp)$/.test(file.mimetype))
+});
+function fotoDelEmpleado(req, res, next) {
+  subirFoto.single('foto')(req, res, (err) => {
+    if (!err) return next();
+    res.status(400).json({ ok: false, error: err.code === 'LIMIT_FILE_SIZE' ? 'La foto es muy pesada, toma otra' : err.message });
+  });
+}
+
+// la persona y la capacitacion, solo si de verdad le toca. si no, { status, error }
+async function personaYCap(req) {
+  const empresa_id = req.session.empresa.id;
+  const [emp, cap] = await Promise.all([
+    EmpleadoLista.findOne({ _id: req.params.empleadoId, empresa_id, lista: 'capacitaciones' }).populate('cargo', 'nombre').lean(),
+    Capacitacion.findOne({ _id: req.params.capId, empresa_id, activa: true }).lean()
+  ]);
+  if (!emp || !cap) return { status: 404, error: 'No se encontró la persona o la capacitación' };
+  const asig = await Asignacion.findOne({ empleado_id: emp._id, capacitacion_id: cap._id }).lean();
+  if (!origenDe(cap, emp, asig)) return { status: 403, error: 'Esta capacitación no es para ti' };
+  return { emp, cap, empresa_id };
+}
+
+const yaHecha = (cap, emp) => Constancia.findOne({ empresa_id: cap.empresa_id, capacitacion_id: cap._id, empleado_id: emp._id, version: cap.version }).lean();
+
+// aciertos sobre el total, de 0 a 100
+function calificar(cap, respuestas) {
+  const ps = cap.evaluacion.preguntas;
+  if (!Array.isArray(respuestas) || respuestas.length !== ps.length) return null;
+  const bien = ps.filter((p, i) => Number(respuestas[i]) === p.correcta).length;
+  return Math.round((bien / ps.length) * 100);
+}
+
+router.get('/mis/gente', ah(async (req, res) => {
+  await asegurarListaCapacitaciones(req.session.empresa.id);
+  const gente = await EmpleadoLista.find({ empresa_id: req.session.empresa.id, lista: 'capacitaciones' }).select('nombre').sort({ nombre: 1 }).lean();
+  res.json({ ok: true, gente: gente.map(g => ({ id: g._id, nombre: g.nombre })) });
+}));
+
+router.get('/mis/:empleadoId', ah(async (req, res) => {
+  const empresa_id = req.session.empresa.id;
+  const emp = await EmpleadoLista.findOne({ _id: req.params.empleadoId, empresa_id, lista: 'capacitaciones' }).populate('cargo', 'nombre').lean();
+  if (!emp) return res.status(404).json({ ok: false, error: 'No se encontró a la persona' });
+  const [caps, asigs, consts] = await Promise.all([
+    Capacitacion.find({ empresa_id, activa: true }).sort({ createdAt: 1 }).lean(),
+    Asignacion.find({ empleado_id: emp._id }).lean(),
+    Constancia.find({ empresa_id, empleado_id: emp._id }).sort({ fecha: -1 }).lean()
+  ]);
+  const porCap = new Map(asigs.map(a => [String(a.capacitacion_id), a]));
+  const pendientes = [], hechas = [];
+  caps.forEach(c => {
+    if (!origenDe(c, emp, porCap.get(String(c._id)))) return;
+    const delCap = consts.filter(k => String(k.capacitacion_id) === String(c._id));
+    const vigente = delCap.find(k => k.version === c.version);
+    if (vigente) hechas.push({ id: c._id, titulo: c.titulo, fecha: vigente.fecha, nota: vigente.nota });
+    else pendientes.push({ id: c._id, titulo: c.titulo, descripcion: c.descripcion, repetir: delCap.length > 0 });
+  });
+  res.json({ ok: true, persona: { nombre: emp.nombre, cargo: emp.cargo ? emp.cargo.nombre : '' }, pendientes, hechas });
+}));
+
+// lo que necesita la pantalla para hacerla (sin decirle cuales son las respuestas correctas)
+router.get('/mis/:empleadoId/caps/:capId', ah(async (req, res) => {
+  const x = await personaYCap(req);
+  if (x.error) return res.status(x.status).json({ ok: false, error: x.error });
+  const { cap, emp } = x;
+  res.json({
+    ok: true, yaHecha: !!(await yaHecha(cap, emp)),
+    capacitacion: {
+      id: cap._id, titulo: cap.titulo, descripcion: cap.descripcion, foto: cap.foto,
+      material: { tipo: cap.material.tipo, archivoNombre: cap.material.archivoNombre, enlace: cap.material.enlace },
+      evaluacion: { activa: cap.evaluacion.activa, minimo: cap.evaluacion.minimo, preguntas: cap.evaluacion.preguntas.map(p => ({ texto: p.texto, opciones: p.opciones })) }
+    }
+  });
+}));
+
+router.get('/mis/:empleadoId/caps/:capId/material', ah(async (req, res) => {
+  const x = await personaYCap(req);
+  if (x.error) return res.status(x.status).json({ ok: false, error: x.error });
+  if (x.cap.material.tipo !== 'archivo') return res.status(404).json({ ok: false, error: 'No hay archivo' });
+  const buf = await obtenerDocumentoPrograma(x.cap.material.archivoRef);
+  if (!buf) return res.status(404).json({ ok: false, error: 'No se encontró el archivo' });
+  res.setHeader('Content-Type', x.cap.material.mimeType || 'application/octet-stream');
+  res.setHeader('Content-Disposition', 'inline; filename*=UTF-8\'\'' + encodeURIComponent(x.cap.material.archivoNombre));
+  res.send(buf);
+}));
+
+// calificar sin guardar nada, para no pedir la foto a quien no aprobó
+router.post('/mis/:empleadoId/caps/:capId/evaluar', ah(async (req, res) => {
+  const x = await personaYCap(req);
+  if (x.error) return res.status(x.status).json({ ok: false, error: x.error });
+  if (!x.cap.evaluacion.activa) return res.status(400).json({ ok: false, error: 'Esta capacitación no tiene evaluación' });
+  const nota = calificar(x.cap, req.body.respuestas);
+  if (nota == null) return res.status(400).json({ ok: false, error: 'Contesta todas las preguntas' });
+  res.json({ ok: true, nota, minimo: x.cap.evaluacion.minimo, aprobada: nota >= x.cap.evaluacion.minimo });
+}));
+
+// guarda la constancia. se vuelve a calificar aqui: lo que diga el celular no vale
+router.post('/mis/:empleadoId/caps/:capId/terminar', fotoDelEmpleado, ah(async (req, res) => {
+  const x = await personaYCap(req);
+  if (x.error) return res.status(x.status).json({ ok: false, error: x.error });
+  const { cap, emp, empresa_id } = x;
+  if (await yaHecha(cap, emp)) return res.status(409).json({ ok: false, error: 'Ya hiciste esta capacitación' });
+
+  let nota = null;
+  if (cap.evaluacion.activa) {
+    let respuestas;
+    try { respuestas = JSON.parse(req.body.respuestas || '[]'); } catch (e) { respuestas = null; }
+    nota = calificar(cap, respuestas);
+    if (nota == null) return res.status(400).json({ ok: false, error: 'Contesta todas las preguntas' });
+    if (nota < cap.evaluacion.minimo) return res.status(400).json({ ok: false, error: `Sacaste ${nota} % y necesitas ${cap.evaluacion.minimo} %. Intenta de nuevo.` });
+  }
+  if (cap.foto && !req.file) return res.status(400).json({ ok: false, error: 'Esta capacitación pide una foto de confirmación' });
+  const fotoRef = req.file && cap.foto ? await guardarFotoCapacitacion(empresa_id, req.file.buffer) : '';
+
+  try {
+    const k = await Constancia.create({
+      empresa_id, capacitacion_id: cap._id, titulo: cap.titulo, programa: cap.programa, version: cap.version,
+      empleado_id: emp._id, empleadoNombre: emp.nombre, cargoNombre: emp.cargo ? emp.cargo.nombre : '', nota, fotoRef
+    });
+    res.status(201).json({ ok: true, constancia: { fecha: k.fecha, nota: k.nota } });
+  } catch (err) {
+    if (err.code === 11000) return res.status(409).json({ ok: false, error: 'Ya hiciste esta capacitación' });
+    throw err;
+  }
+}));
 
 // todo lo de abajo es del administrador
 router.use((req, res, next) => {

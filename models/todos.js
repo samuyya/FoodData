@@ -16,5 +16,6 @@ module.exports = [
   require('./VentaDia'),
   require('./Cargo'),
   require('./Capacitacion'),
-  require('./AsignacionCapacitacion')
+  require('./AsignacionCapacitacion'),
+  require('./ConstanciaCapacitacion')
 ];

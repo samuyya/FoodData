@@ -8,8 +8,12 @@ const EmpleadoLista = require('../models/EmpleadoLista');
 const { requireEmpresa, ah } = require('../middleware/sesion');
 const { adminCapacitacionesActivo } = require('./admin');
 const Constancia = require('../models/ConstanciaCapacitacion');
-const { guardarDocumentoPrograma, obtenerDocumentoPrograma, borrarDocumento, guardarFotoCapacitacion } = require('../servicios/almacenamiento');
-const { resumen, aplicaPorRegla, origenDe, asegurarListaCapacitaciones } = require('../servicios/capacitaciones');
+const { guardarDocumentoPrograma, obtenerDocumentoPrograma, borrarDocumento, guardarFotoCapacitacion, obtenerFotoCapacitacion } = require('../servicios/almacenamiento');
+const { resumen, aplicaPorRegla, origenDe, asegurarListaCapacitaciones, reporteDe } = require('../servicios/capacitaciones');
+const { construirExcel } = require('../servicios/excelCapacitaciones');
+const correo = require('../servicios/correo');
+const logger = require('../logger');
+const { limiteAdmin } = require('../middleware/limites');
 
 const router = express.Router();
 router.use(requireEmpresa);
@@ -397,6 +401,67 @@ router.put('/gente/:empleadoId/caps', ah(async (req, res) => {
     if (regla) await Asignacion.updateOne(filtro, { $set: { empresa_id, origen: 'excluida' } }, { upsert: true });
   }
   res.json({ ok: true });
+}));
+
+// reporte para inspeccion
+const PROGRAMAS = ['Limpieza y Desinfección', 'Residuos Sólidos', 'Plagas', 'Agua Potable', 'Capacitaciones', 'Mantenimiento', 'Trazabilidad', 'Proveedores', 'Muestreo', 'PQRS', 'Recall'];
+const fechaHora = (f) => new Date(f).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' });
+
+router.get('/reporte', ah(async (req, res) => {
+  const d = await reporteDe(req.session.empresa.id, req.query.capacitacion, req.query);
+  if (!d) return res.status(404).json({ ok: false, error: 'Capacitación no encontrada' });
+  res.json({ ok: true, ...d });
+}));
+
+// todo en un libro: el resumen de todos y una hoja por capacitacion
+router.get('/reporte/excel', ah(async (req, res) => {
+  const wb = await construirExcel(req.session.empresa.id, req.session.empresa.nombre, req.query);
+  const nombre = `Capacitaciones - ${req.session.empresa.nombre}.xlsx`;
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename*=UTF-8\'\'' + encodeURIComponent(nombre));
+  await wb.xlsx.write(res);
+  res.end();
+}));
+
+// la foto de confirmacion de una constancia (solo el administrador)
+router.get('/constancias/:id/foto', ah(async (req, res) => {
+  const k = await Constancia.findOne({ _id: req.params.id, empresa_id: req.session.empresa.id }).select('fotoRef').lean();
+  if (!k || !k.fotoRef) return res.status(404).json({ ok: false, error: 'Esta constancia no tiene foto' });
+  const buf = await obtenerFotoCapacitacion(k.fotoRef);
+  if (!buf) return res.status(404).json({ ok: false, error: 'No se encontró la foto' });
+  res.setHeader('Content-Type', 'image/jpeg');
+  res.send(buf);
+}));
+
+router.post('/reporte/enviar', limiteAdmin, ah(async (req, res) => {
+  if (!correo.estaDisponible()) {
+    return res.status(503).json({ ok: false, error: 'El envío de correo no está configurado todavía. Pídele al superadmin que configure el servidor de correo.' });
+  }
+  const destinatario = String(req.body.destinatario || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destinatario)) {
+    return res.status(400).json({ ok: false, error: 'El correo destinatario no es válido' });
+  }
+  const d = await reporteDe(req.session.empresa.id, req.body.capacitacion, req.body);
+  if (!d) return res.status(404).json({ ok: false, error: 'Capacitación no encontrada' });
+
+  const c = d.capacitacion;
+  const periodo = req.body.desde || req.body.hasta ? `Del ${req.body.desde || 'inicio'} al ${req.body.hasta || 'hoy'}` : 'Todo el historial';
+  const meta = [c.programa ? PROGRAMAS[c.programa - 1] : null, 'Versión ' + c.version, c.evaluacion ? `Evaluación: mínimo ${c.evaluacion.minimo} %` : 'Sin evaluación', periodo].filter(Boolean).join(' · ');
+  const tablas = [{
+    titulo: c.titulo, meta,
+    columnas: [{ header: 'Nombre', key: 'nombre', width: 26 }, { header: 'Cargo', key: 'cargo', width: 16 }, { header: 'Fecha y hora', key: 'fecha', width: 20 }, { header: 'Nota', key: 'nota', width: 8 }, { header: 'Foto', key: 'foto', width: 8 }],
+    filas: d.filas.length ? d.filas.map(f => ({ nombre: f.nombre, cargo: f.cargo, fecha: fechaHora(f.fecha), nota: f.nota != null ? f.nota + ' %' : '—', foto: f.conFoto ? 'Sí' : '—' })) : [{ nombre: 'Nadie la ha hecho en este periodo.' }]
+  }];
+  if (d.pendientes.length) {
+    tablas.push({ titulo: 'Pendientes', meta: 'Les corresponde y todavía no la hacen', columnas: [{ header: 'Nombre', key: 'nombre', width: 26 }, { header: 'Cargo', key: 'cargo', width: 16 }], filas: d.pendientes.map(p => ({ nombre: p.nombre, cargo: p.cargo || 'Sin cargo' })) });
+  }
+  try {
+    await correo.enviarReporteCapacitacion(destinatario, { empresaNombre: req.session.empresa.nombre, titulo: 'Registro de capacitación', subtitulo: c.titulo + ' · ' + periodo, tablas });
+    res.json({ ok: true });
+  } catch (err) {
+    logger.warn(`no se pudo enviar correo de capacitacion: ${err.message}`);
+    res.status(500).json({ ok: false, error: 'No se pudo enviar el correo: ' + err.message });
+  }
 }));
 
 module.exports = router;

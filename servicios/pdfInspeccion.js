@@ -87,4 +87,27 @@ function construirPdfInspeccion({ empresaNombre, anio, mes, carpetas }) {
   });
 }
 
-module.exports = { construirPdfInspeccion };
+// un pdf sencillo con una o varias tablas (lo usa el reporte de capacitaciones)
+function construirPdfTablas({ empresaNombre, titulo, subtitulo, tablas }) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: MARGEN });
+    const partes = [];
+    doc.on('data', p => partes.push(p));
+    doc.on('end', () => resolve(Buffer.concat(partes)));
+    doc.on('error', reject);
+
+    doc.font('Helvetica-Bold').fontSize(16).fillColor('#0e3a31').text(`${titulo} — ${empresaNombre}`, MARGEN, MARGEN);
+    doc.font('Helvetica').fontSize(11).fillColor('#555').text(subtitulo);
+    tablas.forEach(t => {
+      doc.moveDown(1);
+      if (doc.y > doc.page.height - 120) doc.addPage();
+      doc.font('Helvetica-Bold').fontSize(12).fillColor('#0e3a31').text(t.titulo);
+      if (t.meta) doc.font('Helvetica-Oblique').fontSize(9).fillColor('#666').text(t.meta);
+      doc.moveDown(0.4);
+      dibujarTabla(doc, t.columnas, t.filas);
+    });
+    doc.end();
+  });
+}
+
+module.exports = { construirPdfInspeccion, construirPdfTablas };

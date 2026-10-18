@@ -65,3 +65,22 @@
 .cap-opt[aria-pressed="true"] { border-color: var(--color-primario); background: var(--color-superficie-suave, #ecf9f5); font-weight: 700; }
 .cap-listo { text-align: center; display: grid; gap: .6rem; justify-items: center; padding: 1rem 0; }
 .cap-marca { width: 56px; height: 56px; border-radius: 50%; background: var(--color-ok-bg); color: var(--color-ok); display: grid; place-items: center; font-size: 1.7rem; font-weight: 800; }
+
+/* reporte para inspeccion */
+.cap-hoja { border: 1px solid var(--color-borde); border-radius: 8px; padding: 1.2rem; margin-top: 1rem; background: #fff; color: #14201d; display: grid; gap: .7rem; overflow-x: auto; }
+.cap-hoja h2, .cap-hoja h3 { margin: 0; color: #0e3a31; }
+.cap-hoja .cap-tabla { min-width: 480px; }
+.cap-miniatura { width: 48px; height: 36px; object-fit: cover; border-radius: 5px; display: block; }
+.cap-firmas { display: flex; gap: 40px; flex-wrap: wrap; margin-top: 1.2rem; }
+.cap-firmas div { border-top: 1px solid #14201d; padding-top: 4px; min-width: 180px; font-size: .8rem; color: #3d5750; }
+.cap-form input[type="date"], .cap-form input[type="email"] { font: inherit; padding: .5rem .65rem; border: 1px solid var(--color-borde); border-radius: 8px; background: #fff; width: 100%; min-width: 0; }
+.cap-inline input[type="email"] { flex: 1 1 200px; font: inherit; padding: .4rem .6rem; border: 1px solid var(--color-borde); border-radius: 8px; min-width: 0; }
+a.btn-pequeno { text-decoration: none; display: inline-flex; align-items: center; }
+@media print {
+  .sub-topbar, .cap-tabs, .cap-noprint, #emp-main, #cap-msg, .modal-backdrop { display: none !important; }
+  .sub-body, .sub-main { background: #fff !important; padding: 0 !important; }
+  #tab-reporte { border: 0 !important; box-shadow: none !important; padding: 0 !important; }
+  .cap-hoja { border: 0; padding: 0; margin: 0; }
+  .cap-miniatura { width: 40px; height: 30px; }
+  @page { size: A4 landscape; margin: 12mm; }
+}

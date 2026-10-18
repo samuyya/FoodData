@@ -5,7 +5,7 @@ const PROGRAMAS = ['Limpieza y Desinfección', 'Residuos Sólidos', 'Plagas', 'A
 const ORIGEN = { todos: 'Para todos', cargo: 'Por cargo', ingreso: 'De ingreso', manual: 'A mano' };
 
 // ojo: estado.draft es el formulario abierto (nueva o editando), se va llenando con cada tecla
-const estado = { admin: false, tab: 'resumen', caps: [], cargos: [], res: { caps: [], gente: [] }, otras: [], editando: null, draft: null, abierto: null, editEmp: null, borrando: null };
+const estado = { rep: { capId: '', periodo: 'todo', desde: '', hasta: '', datos: null }, admin: false, tab: 'resumen', caps: [], cargos: [], res: { caps: [], gente: [] }, otras: [], editando: null, draft: null, abierto: null, editEmp: null, borrando: null };
 
 function avisar(texto, error) {
   const m = $('cap-msg');
@@ -237,10 +237,74 @@ function pintarGente() {
   </div>`;
 }
 
+// reporte para inspeccion: quien hizo cada capacitacion, listo para imprimir o mandar
+const hoyTexto = () => { const h = new Date(); return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}-${String(h.getDate()).padStart(2, '0')}`; };
+
+function rangoReporte() {
+  const r = estado.rep;
+  if (r.periodo === 'mes') return { desde: hoyTexto().slice(0, 8) + '01', hasta: hoyTexto() };
+  if (r.periodo === 'rango') return { desde: r.desde, hasta: r.hasta };
+  return { desde: '', hasta: '' };
+}
+const consultaReporte = () => { const g = rangoReporte(); return `desde=${g.desde}&hasta=${g.hasta}`; };
+
+async function cargarReporte() {
+  const r = estado.rep;
+  if (!r.capId) { r.datos = null; return pintarReporte(); }
+  const d = await api(`/api/capacitaciones/reporte?capacitacion=${r.capId}&${consultaReporte()}`);
+  r.datos = d;
+  pintarReporte();
+}
+
+function periodoTexto() {
+  const g = rangoReporte();
+  if (!g.desde && !g.hasta) return 'Todo el historial';
+  return `Del ${g.desde || 'inicio'} al ${g.hasta || 'hoy'}`;
+}
+
+function hojaReporte(d) {
+  const c = d.capacitacion;
+  const fechaHora = (f) => new Date(f).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' });
+  const filas = d.filas.length ? d.filas.map(f => `<tr><td>${esc(f.nombre)}</td><td>${esc(f.cargo || '—')}</td><td>${fechaHora(f.fecha)}</td><td>${f.nota != null ? f.nota + ' %' : '—'}</td><td>${f.conFoto ? `<img class="cap-miniatura" src="/api/capacitaciones/constancias/${f.id}/foto" alt="Foto de ${esc(f.nombre)}" />` : '—'}</td></tr>`).join('')
+    : '<tr><td colspan="5">Nadie la ha hecho en este periodo.</td></tr>';
+  return `<div class="cap-hoja" id="cap-hoja">
+    <h2>Registro de capacitación</h2>
+    <p><b>${esc(c.titulo)}</b><br><span class="cap-muted">${esc(document.getElementById('nombre-empresa').textContent)} · ${c.programa ? esc(PROGRAMAS[c.programa - 1]) + ' · ' : ''}Versión ${c.version} · ${c.evaluacion ? `Evaluación: mínimo ${c.evaluacion.minimo} %` : 'Sin evaluación'} · ${esc(periodoTexto())}</span></p>
+    <table class="cap-tabla"><thead><tr><th>Nombre</th><th>Cargo</th><th>Fecha y hora</th><th>Nota</th><th>Evidencia</th></tr></thead><tbody>${filas}</tbody></table>
+    ${d.pendientes.length ? `<h3>Pendientes</h3><p class="cap-muted">Les corresponde y todavía no la hacen con la versión actual.</p>
+      <table class="cap-tabla"><thead><tr><th>Nombre</th><th>Cargo</th></tr></thead><tbody>${d.pendientes.map(p => `<tr><td>${esc(p.nombre)}</td><td>${esc(p.cargo || 'Sin cargo')}</td></tr>`).join('')}</tbody></table>` : ''}
+    <div class="cap-firmas"><div>Administrador</div><div>Fecha de impresión</div></div>
+  </div>`;
+}
+
+function pintarReporte() {
+  const r = estado.rep;
+  const caps = estado.caps.filter(c => c.activa);
+  const g = rangoReporte();
+  $('tab-reporte').innerHTML = `
+    <div class="cap-fila cap-noprint"><h2>Reporte para inspección</h2></div>
+    <div class="cap-form cap-noprint" style="margin-top:.8rem">
+      <div class="cap-grid2">
+        <label class="cap-campo">Capacitación<select id="rep-cap"><option value="">Elige una</option>${caps.map(c => `<option value="${c.id}" ${r.capId === c.id ? 'selected' : ''}>${esc(c.titulo)}</option>`).join('')}</select></label>
+        <div class="cap-col"><b>Periodo</b><div class="cap-chips">
+          <button type="button" class="cap-chip" data-rep-periodo="todo" aria-pressed="${r.periodo === 'todo'}">Todo</button>
+          <button type="button" class="cap-chip" data-rep-periodo="mes" aria-pressed="${r.periodo === 'mes'}">Este mes</button>
+          <button type="button" class="cap-chip" data-rep-periodo="rango" aria-pressed="${r.periodo === 'rango'}">Fechas</button></div></div>
+      </div>
+      ${r.periodo === 'rango' ? `<div class="cap-grid2"><label class="cap-campo">Desde<input type="date" id="rep-desde" value="${r.desde}" /></label><label class="cap-campo">Hasta<input type="date" id="rep-hasta" value="${r.hasta}" /></label></div>` : ''}
+      <div class="cap-acciones">
+        <button type="button" class="btn-primario btn-pequeno" data-rep-imprimir ${r.datos ? '' : 'disabled'}>Imprimir / Guardar como PDF</button>
+        <a class="btn-secundario btn-pequeno" href="/api/capacitaciones/reporte/excel?desde=${g.desde}&hasta=${g.hasta}">Descargar Excel (todas)</a>
+      </div>
+      <div class="cap-inline"><input type="email" id="rep-correo" placeholder="Correo de quien lo recibe" aria-label="Correo destinatario" /><button type="button" class="btn-secundario btn-pequeno" data-rep-enviar ${r.datos ? '' : 'disabled'}>Enviar por correo</button></div>
+    </div>
+    ${r.datos ? hojaReporte(r.datos) : '<p class="cap-vacio cap-noprint">Elige una capacitación para ver quién la ha hecho.</p>'}`;
+}
+
 function pintar() {
   document.querySelectorAll('.cap-tabs button').forEach(b => b.setAttribute('aria-pressed', b.dataset.tab === estado.tab));
-  ['resumen', 'caps', 'gente'].forEach(t => { $('tab-' + t).hidden = estado.tab !== t; });
-  pintarResumen(); pintarCaps(); pintarGente();
+  ['resumen', 'caps', 'gente', 'reporte'].forEach(t => { $('tab-' + t).hidden = estado.tab !== t; });
+  pintarResumen(); pintarCaps(); pintarGente(); pintarReporte();
 }
 
 // formulario de capacitaciones: se guarda cada cambio en el borrador sin repintar
@@ -302,7 +366,25 @@ document.addEventListener('click', async (e) => {
   if (!t) return;
   const d = t.dataset;
 
-  if (d.tab) { estado.tab = d.tab; $('cap-msg').hidden = true; return pintar(); }
+  if (d.tab) {
+    estado.tab = d.tab; $('cap-msg').hidden = true; pintar();
+    if (d.tab === 'reporte') cargarReporte();
+    return;
+  }
+
+  // reporte
+  if (d.repPeriodo) { estado.rep.periodo = d.repPeriodo; pintarReporte(); return cargarReporte(); }
+  if ('repImprimir' in d) return window.print();
+  if ('repEnviar' in d) {
+    const dest = $('rep-correo').value.trim();
+    if (!dest) return avisar('Escribe el correo de quien lo va a recibir.', true);
+    t.disabled = true;
+    const g = rangoReporte();
+    const r = await api('/api/capacitaciones/reporte/enviar', json('POST', { capacitacion: estado.rep.capId, destinatario: dest, desde: g.desde, hasta: g.hasta }));
+    t.disabled = false;
+    if (r) avisar(`Enviado a ${dest}.`);
+    return;
+  }
 
   // capacitaciones
   if ('nuevaCap' in d) { estado.editando = 'nueva'; estado.draft = borrador(null); return pintarCaps(); }
@@ -380,6 +462,11 @@ document.addEventListener('click', async (e) => {
 // selects y casillas que actuan al cambiar
 document.addEventListener('change', async (e) => {
   const t = e.target;
+  if (t.id === 'rep-cap') { estado.rep.capId = t.value; return cargarReporte(); }
+  if (t.id === 'rep-desde' || t.id === 'rep-hasta') {
+    estado.rep[t.id === 'rep-desde' ? 'desde' : 'hasta'] = t.value;
+    return cargarReporte();
+  }
   if (t.dataset.cargoEmp) {
     const g = estado.res.gente.find(x => x.id === t.dataset.cargoEmp);
     const r = await api(`/api/empleados/${g.id}`, json('PUT', { nombre: g.nombre, cargo: t.value || null }));

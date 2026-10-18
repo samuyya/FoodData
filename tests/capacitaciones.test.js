@@ -362,3 +362,109 @@ describe('lo que hace el empleado', () => {
     expect(await Constancia.countDocuments()).toBe(2);
   });
 });
+
+describe('reporte para inspección', () => {
+  const request = require('supertest');
+  const ExcelJS = require('exceljs');
+  const Constancia = require('../models/ConstanciaCapacitacion');
+  const { PASSWORD_EMPRESA } = require('./helpers');
+  const { construirPdfTablas } = require('../servicios/pdfInspeccion');
+
+  afterEach(async () => {
+    for (const id of empresas) {
+      await fs.promises.rm(path.join(__dirname, '..', 'datos', 'capacitaciones', String(id)), { recursive: true, force: true });
+    }
+  });
+
+  const hacer = (agent, empId, capId, conFoto) => {
+    const r = agent.post(`/api/capacitaciones/mis/${empId}/caps/${capId}/terminar`);
+    return conFoto ? r.attach('foto', Buffer.from('foto'), { filename: 'f.jpg', contentType: 'image/jpeg' }) : r;
+  };
+  const binario = (res, cb) => { const d = []; res.on('data', c => d.push(c)); res.on('end', () => cb(null, Buffer.concat(d))); };
+
+  async function escenario() {
+    const { agent, empresa } = await conAdmin();
+    const cocinero = await cargo(agent, 'Cocinero');
+    const laura = (await persona(agent, 'Laura Pérez', cocinero.id)).body.empleado;
+    const andres = (await persona(agent, 'Andrés Gómez', cocinero.id)).body.empleado;
+    const cap = (await crearCap(agent, base({ foto: true }))).body.capacitacion;
+    await hacer(agent, laura._id, cap.id, true);
+    return { agent, empresa, laura, andres, cap };
+  }
+
+  test('quién la hizo y a quién le falta', async () => {
+    const { agent, cap } = await escenario();
+    const r = (await agent.get(`/api/capacitaciones/reporte?capacitacion=${cap.id}`)).body;
+    expect(r.capacitacion).toMatchObject({ titulo: 'Manejo de residuos', version: 1, foto: true });
+    expect(r.filas.map(f => [f.nombre, f.cargo, f.conFoto])).toEqual([['Laura Pérez', 'Cocinero', true]]);
+    expect(r.pendientes).toEqual([{ nombre: 'Andrés Gómez', cargo: 'Cocinero' }]);
+    expect((await agent.get('/api/capacitaciones/reporte?capacitacion=507f1f77bcf86cd799439011')).status).toBe(404);
+  });
+
+  test('el periodo filtra lo hecho, no lo pendiente', async () => {
+    const { agent, cap } = await escenario();
+    const manana = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
+    const futuro = (await agent.get(`/api/capacitaciones/reporte?capacitacion=${cap.id}&desde=${manana}`)).body;
+    expect(futuro.filas).toEqual([]);
+    expect(futuro.pendientes).toHaveLength(1);
+    const pasado = (await agent.get(`/api/capacitaciones/reporte?capacitacion=${cap.id}&hasta=2020-01-01`)).body;
+    expect(pasado.filas).toEqual([]);
+    const hoy = new Date();
+    const dia = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+    expect((await agent.get(`/api/capacitaciones/reporte?capacitacion=${cap.id}&desde=${dia}&hasta=${dia}`)).body.filas).toHaveLength(1);
+  });
+
+  test('si el material cambió, quien la hizo con la versión anterior sale pendiente', async () => {
+    const { agent, cap } = await escenario();
+    await agent.put(`/api/capacitaciones/caps/${cap.id}`).field('datos', JSON.stringify(base({ enlace: 'https://youtu.be/nuevo', foto: true })));
+    const r = (await agent.get(`/api/capacitaciones/reporte?capacitacion=${cap.id}`)).body;
+    expect(r.filas[0]).toMatchObject({ nombre: 'Laura Pérez', version: 1 });
+    expect(r.pendientes.map(p => p.nombre).sort()).toEqual(['Andrés Gómez', 'Laura Pérez']);
+  });
+
+  test('la foto de la constancia solo la ve el administrador', async () => {
+    const { agent, empresa, laura } = await escenario();
+    const k = await Constancia.findOne({ empleado_id: laura._id });
+    const ok = await agent.get(`/api/capacitaciones/constancias/${k._id}/foto`);
+    expect(ok.status).toBe(200);
+    expect(ok.headers['content-type']).toContain('image/jpeg');
+
+    const sinClave = request.agent(app);
+    await sinClave.post('/api/auth/login').send({ email: empresa.email, password: PASSWORD_EMPRESA });
+    expect((await sinClave.get(`/api/capacitaciones/constancias/${k._id}/foto`)).status).toBe(401);
+    expect((await sinClave.get('/api/capacitaciones/reporte/excel')).status).toBe(401);
+    // una constancia sin foto no tiene que mostrar nada
+    await Constancia.updateOne({ _id: k._id }, { $set: { fotoRef: '' } });
+    expect((await agent.get(`/api/capacitaciones/constancias/${k._id}/foto`)).status).toBe(404);
+  });
+
+  test('el Excel trae el resumen y una hoja por capacitación', async () => {
+    const { agent } = await escenario();
+    await crearCap(agent, base({ titulo: 'Control de plagas' }));
+    const res = await agent.get('/api/capacitaciones/reporte/excel').buffer().parse(binario);
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('spreadsheetml');
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(res.body);
+    expect(wb.worksheets.map(w => w.name)).toEqual(['Resumen', 'Manejo de residuos', 'Control de plagas']);
+    const texto = [];
+    wb.getWorksheet('Resumen').eachRow(r => texto.push(r.values.join('|')));
+    expect(texto.join('\n')).toContain('Laura Pérez');
+    expect(texto.join('\n')).toContain('Pendiente');
+    const hoja = [];
+    wb.getWorksheet('Manejo de residuos').eachRow(r => hoja.push(r.values.join('|')));
+    expect(hoja.join('\n')).toContain('Cocinero');
+    expect(hoja.join('\n')).toContain('Pendientes');
+  });
+
+  test('enviar por correo avisa si no está configurado, y el PDF se arma', async () => {
+    const { agent, cap } = await escenario();
+    const r = await agent.post('/api/capacitaciones/reporte/enviar').send({ capacitacion: cap.id, destinatario: 'sanidad@ejemplo.com' });
+    expect(r.status).toBe(503);
+    const pdf = await construirPdfTablas({
+      empresaNombre: 'Demo', titulo: 'Registro de capacitación', subtitulo: 'Manejo de residuos',
+      tablas: [{ titulo: 'Manejo de residuos', meta: 'Versión 1', columnas: [{ header: 'Nombre', key: 'nombre', width: 20 }], filas: [{ nombre: 'Laura Pérez' }] }]
+    });
+    expect(pdf.slice(0, 4).toString()).toBe('%PDF');
+  });
+});

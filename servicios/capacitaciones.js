@@ -67,4 +67,42 @@ async function resumen(empresaId) {
   };
 }
 
-module.exports = { asegurarListaCapacitaciones, aplicaPorRegla, origenDe, asignarIngreso, resumen };
+// "2026-10-17" -> fecha local; null si no es una fecha
+function parseDia(s) {
+  const [a, m, d] = String(s || '').split('-').map(Number);
+  return (a && m && d) ? new Date(a, m - 1, d) : null;
+}
+
+// quien la hizo (constancias del periodo) y a quien le toca y todavia no la hace con la version actual
+async function reporteDe(empresaId, capId, { desde, hasta } = {}) {
+  const cap = await Capacitacion.findOne({ _id: capId, empresa_id: empresaId }).lean();
+  if (!cap) return null;
+  const ini = parseDia(desde), fin = parseDia(hasta);
+  const filtro = { empresa_id: empresaId, capacitacion_id: cap._id };
+  if (ini || fin) {
+    filtro.fecha = {};
+    if (ini) filtro.fecha.$gte = ini;
+    if (fin) filtro.fecha.$lt = new Date(fin.getFullYear(), fin.getMonth(), fin.getDate() + 1);
+  }
+  const [consts, todas, gente, asigs] = await Promise.all([
+    Constancia.find(filtro).sort({ fecha: 1 }).lean(),
+    Constancia.find({ empresa_id: empresaId, capacitacion_id: cap._id, version: cap.version }).select('empleado_id').lean(),
+    EmpleadoLista.find({ empresa_id: empresaId, lista: 'capacitaciones' }).sort({ nombre: 1 }).populate('cargo', 'nombre').lean(),
+    Asignacion.find({ empresa_id: empresaId, capacitacion_id: cap._id }).lean()
+  ]);
+  const hechas = new Set(todas.map(k => String(k.empleado_id)));
+  const porPersona = new Map(asigs.map(a => [String(a.empleado_id), a]));
+  return {
+    capacitacion: {
+      id: cap._id, titulo: cap.titulo, programa: cap.programa, version: cap.version, foto: cap.foto, activa: cap.activa,
+      evaluacion: cap.evaluacion.activa ? { minimo: cap.evaluacion.minimo, preguntas: cap.evaluacion.preguntas.length } : null,
+      material: cap.material.tipo === 'archivo' ? cap.material.archivoNombre : cap.material.enlace
+    },
+    filas: consts.map(k => ({ id: k._id, nombre: k.empleadoNombre, cargo: k.cargoNombre, fecha: k.fecha, nota: k.nota, conFoto: !!k.fotoRef, version: k.version })),
+    pendientes: gente
+      .filter(g => origenDe(cap, g, porPersona.get(String(g._id))) && !hechas.has(String(g._id)))
+      .map(g => ({ nombre: g.nombre, cargo: g.cargo ? g.cargo.nombre : '' }))
+  };
+}
+
+module.exports = { asegurarListaCapacitaciones, aplicaPorRegla, origenDe, asignarIngreso, resumen, reporteDe, parseDia };

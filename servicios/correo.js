@@ -3,7 +3,7 @@
 // credenciales), solo que el boton de "enviar por correo" avisa que falta.
 const nodemailer = require('nodemailer');
 const logger = require('../logger');
-const { construirPdfInspeccion } = require('./pdfInspeccion');
+const { construirPdfInspeccion, construirPdfTablas } = require('./pdfInspeccion');
 
 const disponible = !!process.env.SMTP_HOST;
 let transporter = null;
@@ -39,7 +39,7 @@ function tablaFormato(formato) {
 
   return `
     <h3 style="margin:24px 0 4px;color:#0e3a31;">${escaparHtml(formato.titulo)}</h3>
-    <p style="margin:0 0 8px;color:#555;font-size:13px;font-style:italic;">${escaparHtml(formato.plan)} · ${escaparHtml(formato.programa)} · Código ${escaparHtml(formato.codigo)}</p>
+    <p style="margin:0 0 8px;color:#555;font-size:13px;font-style:italic;">${escaparHtml(formato.meta != null ? formato.meta : `${formato.plan} · ${formato.programa} · Código ${formato.codigo}`)}</p>
     <table style="border-collapse:collapse;width:100%;">
       <thead><tr>${encabezados}</tr></thead>
       <tbody>${filas}</tbody>
@@ -81,4 +81,23 @@ async function enviarInspeccion(destinatario, datos) {
   logger.info(`correo de inspeccion enviado a ${destinatario}`);
 }
 
-module.exports = { estaDisponible, enviarInspeccion };
+// el reporte de una capacitacion: tablas { titulo, meta, columnas, filas }
+async function enviarReporteCapacitacion(destinatario, { empresaNombre, titulo, subtitulo, tablas }) {
+  const html = `
+    <div style="font-family:Arial,sans-serif;color:#222;">
+      <h1 style="color:#0e3a31;">${escaparHtml(titulo)} — ${escaparHtml(empresaNombre)}</h1>
+      <p>${escaparHtml(subtitulo)}</p>
+      ${tablas.map(tablaFormato).join('')}
+    </div>`;
+  const pdf = await construirPdfTablas({ empresaNombre, titulo, subtitulo, tablas });
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to: destinatario,
+    subject: `${titulo} — ${empresaNombre}`,
+    html,
+    attachments: [{ filename: `${titulo} - ${empresaNombre}.pdf`.replace(/[\\\/:*?"<>|]/g, ''), content: pdf, contentType: 'application/pdf' }]
+  });
+  logger.info(`correo de capacitacion enviado a ${destinatario}`);
+}
+
+module.exports = { estaDisponible, enviarInspeccion, enviarReporteCapacitacion };

@@ -174,6 +174,8 @@ app.use('/api/backup', backupRoutes);
 // inventarios es un modulo adicional; /api/contar es el link publico para contar desde otros celulares
 app.use('/api/inventario', requireModulo('inventarios'), inventarioRoutes);
 app.use('/api/contar', contarRoutes);
+// foodsaver:contacto — modulo del hogar (todo su codigo vive en modulos/foodsaver)
+require('./modulos/foodsaver')(app);
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, mensaje: 'Servidor en linea' });

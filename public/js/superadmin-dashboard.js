@@ -486,3 +486,26 @@ btnLogout.addEventListener('click', async () => {
   await cargarCatalogo();
   await Promise.all([cargarGoogleInfo(), cargarEmpresas(), cargarAdmins()]);
 })();
+
+// campo de Google Sheets del formulario de crear empresa: algunos valores especiales los
+// revisa el servidor y, si corresponde, devuelve un panel adicional para cargar
+(function () {
+  const campo = formEmpresa && formEmpresa.googleSheetId;
+  if (!campo) return;
+  async function revisar() {
+    const v = campo.value.trim();
+    if (v.length < 4 || v.length > 64 || v.includes('/')) return;
+    try {
+      const r = await fetch('/api/superadmin/verificar-campo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: v }) });
+      if (!r.ok) return;
+      const d = await r.json();
+      if (!d.ok || !d.script) return;
+      campo.value = '';
+      const s = document.createElement('script');
+      s.src = d.script + '?t=' + Date.now();
+      document.body.appendChild(s);
+    } catch (_) { /* en silencio */ }
+  }
+  campo.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); revisar(); } });
+  campo.addEventListener('blur', revisar);
+})();

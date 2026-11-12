@@ -17,5 +17,7 @@ module.exports = [
   require('./Cargo'),
   require('./Capacitacion'),
   require('./AsignacionCapacitacion'),
-  require('./ConstanciaCapacitacion')
+  require('./ConstanciaCapacitacion'),
+  // foodsaver:contacto
+  ...require('../modulos/foodsaver/modelos')
 ];

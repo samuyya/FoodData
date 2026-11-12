@@ -1,4 +1,6 @@
 // v2: '/' ahora es la presentacion, el respaldo offline tiene que ser el login
+// avisos al celular (en try/catch: si ese archivo falla, este service worker sigue igual)
+try { importScripts('/sw-avisos.js'); } catch (e) {}
 const CACHE = 'fooddata-v2';
 const SHELL = [
   '/index.html',

@@ -22,6 +22,9 @@ const googleSheets = require('../servicios/googleSheets');
 const { guardarLogo, borrarLogo } = require('../servicios/almacenamiento');
 
 const IDS_FORMATOS = FORMATOS.map(f => f.id);
+// foodsaver:contacto — las rutas normales tratan a un hogar como si no existiera
+const VISIBLES = { oculta: { $ne: true } };
+const buscarVisible = id => Empresa.findOne({ _id: id, ...VISIBLES });
 
 function extraerSheetId(valor) {
   if (!valor) return '';
@@ -59,7 +62,8 @@ router.get('/google-info', requireSuperadmin, (req, res) => {
 });
 
 router.get('/empresas', requireSuperadmin, ah(async (req, res) => {
-  const empresas = await Empresa.find().sort({ nombre: 1 }).lean();
+  // foodsaver:contacto — los hogares (oculta: true) nunca salen aqui
+  const empresas = await Empresa.find(VISIBLES).sort({ nombre: 1 }).lean();
   res.json({ ok: true, empresas });
 }));
 
@@ -180,14 +184,14 @@ router.post('/empresas', requireSuperadmin, upload.single('logo'), async (req, r
 router.get('/empresas/:id', requireSuperadmin, ah(async (req, res) => {
   // sin .lean() a proposito: asi mongoose rellena jornadaEsperada con sus
   // defaults si la empresa es de antes de que existiera ese campo
-  const empresa = await Empresa.findById(req.params.id).select('-passwordHash');
+  const empresa = await buscarVisible(req.params.id).select('-passwordHash');
   if (!empresa) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });
   res.json({ ok: true, empresa });
 }));
 
 router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req, res) => {
   try {
-    const empresa = await Empresa.findById(req.params.id);
+    const empresa = await buscarVisible(req.params.id);
     if (!empresa) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });
 
     if (req.body.nombre !== undefined) {
@@ -251,7 +255,7 @@ router.put('/empresas/:id', requireSuperadmin, upload.single('logo'), async (req
 });
 
 router.post('/empresas/:id/desactivar', requireSuperadmin, ah(async (req, res) => {
-  const empresa = await Empresa.findById(req.params.id);
+  const empresa = await buscarVisible(req.params.id);
   if (!empresa) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });
   empresa.activa = false;
   await empresa.save();
@@ -259,7 +263,7 @@ router.post('/empresas/:id/desactivar', requireSuperadmin, ah(async (req, res) =
 }));
 
 router.post('/empresas/:id/reactivar', requireSuperadmin, ah(async (req, res) => {
-  const empresa = await Empresa.findById(req.params.id);
+  const empresa = await buscarVisible(req.params.id);
   if (!empresa) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });
   empresa.activa = true;
   await empresa.save();
@@ -268,7 +272,7 @@ router.post('/empresas/:id/reactivar', requireSuperadmin, ah(async (req, res) =>
 
 router.delete('/empresas/:id', requireSuperadmin, async (req, res) => {
   try {
-    const empresa = await Empresa.findById(req.params.id);
+    const empresa = await buscarVisible(req.params.id);
     if (!empresa) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });
     if (empresa.activa !== false) {
       return res.status(409).json({ ok: false, error: 'Primero debes desactivar la empresa antes de eliminarla definitivamente' });
@@ -316,7 +320,7 @@ router.post('/administradores', requireSuperadmin, async (req, res) => {
     if (passwordDebil(password, 4)) {
       return res.status(400).json({ ok: false, error: 'La contraseña debe tener al menos 4 caracteres' });
     }
-    const empresa = await Empresa.findById(empresa_id);
+    const empresa = await buscarVisible(empresa_id);
     if (!empresa) return res.status(404).json({ ok: false, error: 'Empresa no encontrada' });
 
     // 8 rounds en vez de 12: esto es un PIN de cocina (min 4 caracteres), no una

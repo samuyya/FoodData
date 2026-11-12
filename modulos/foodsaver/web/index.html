@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>CaseritosN&amp;S - FoodData</title>
+  <link rel="icon" href="/img/icon-fooddata-favicon.png" type="image/png" />
+  <link rel="stylesheet" href="/despensa/estilos.css" />
+</head>
+<body class="fs">
+  <header class="sub-topbar">
+    <div class="sub-topbar-inner">
+      <a class="btn-sec" href="/menu.html">← Volver al menú</a>
+      <div class="sub-encabezado">
+        <div class="est">
+          <img id="est-foto" alt="" hidden />
+          <span id="est-ph" class="est-ph" aria-hidden="true">🍲</span>
+          <div><span class="est-label">Hogar</span><span class="est-nombre" id="est-nombre">…</span></div>
+        </div>
+        <div>
+          <h1 class="titulo-pagina">La despensa de la casa</h1>
+          <p class="subtitulo-pagina">Lo que hay, lo que vence primero y qué cocinar con eso.</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="sub-main">
+    <div class="tabs" role="tablist" aria-label="Secciones" id="tabs"></div>
+    <div id="panel" aria-live="polite"><p class="vacio">Cargando la despensa…</p></div>
+  </main>
+
+  <div id="capa" hidden></div>
+  <div class="toast" id="toast" role="status" hidden><span id="toast-tx"></span><button type="button" id="toast-undo" hidden>Deshacer</button></div>
+  <datalist id="dl-cat"></datalist>
+
+  <script src="/js/util.js"></script>
+  <script src="/despensa/app.js"></script>
+</body>
+</html>

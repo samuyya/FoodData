@@ -1062,6 +1062,10 @@ textarea:focus {
 .sugerencia-mes p { margin: .15rem 0 0; font-size: .9rem; color: var(--color-texto-medio); }
 .sugerencia-mes .botones { grid-column: 2; margin-top: .55rem; display: flex; gap: .5rem; flex-wrap: wrap; }
 
+/* portada grande en lugar de la tarjeta del establecimiento (la piden algunos botones extra) */
+.menu-portada { display: flex; justify-content: center; margin: -1.2rem 0 2rem; }
+.menu-portada img { width: 100%; max-width: 520px; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 18px; border: 1px solid #e1efe9; box-shadow: 0 8px 24px rgba(15, 40, 32, .10); display: block; }
+
 .menu-boton-flecha {
   font-size: 1.35rem;
   font-weight: 700;

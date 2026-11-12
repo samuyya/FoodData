@@ -110,6 +110,43 @@ async function cargarAvisoInventario() {
   } catch (e) { console.log('no se pudo cargar el aviso de inventario:', e.message); }
 }
 
+// botones extra que manda el servidor (cada uno con su ruta, su insignia y, si trae, una portada)
+function pintarExtras(extras) {
+  if (!Array.isArray(extras) || !extras.length) return;
+  const nav = document.querySelector('.menu-botones');
+  extras.forEach(x => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'menu-boton menu-boton--nuevo';
+    b.innerHTML = '<span class="menu-boton-icono"></span><span class="menu-boton-texto"><span class="extra-nombre"></span><span class="menu-badge" hidden></span></span><span class="menu-boton-flecha">›</span>';
+    b.querySelector('.menu-boton-icono').textContent = x.icono || '•';
+    b.querySelector('.extra-nombre').textContent = x.etiqueta;
+    b.addEventListener('click', () => { window.location.href = x.ruta; });
+    nav.appendChild(b);
+    if (x.insignia) {
+      fetch(x.insignia).then(r => r.ok ? r.json() : null).then(d => {
+        if (!d || !d.texto) return;
+        const badge = b.querySelector('.menu-badge');
+        badge.textContent = d.texto;
+        if (d.tipo === 'ok') badge.classList.add('menu-badge--ok');
+        if (d.tipo === 'aviso') badge.classList.add('menu-badge--aviso');
+        badge.hidden = false;
+      }).catch(() => {});
+    }
+    // la portada reemplaza la tarjeta del establecimiento por una foto grande y centrada
+    if (x.portada) {
+      const est = document.querySelector('.establecimiento');
+      const fig = document.createElement('div');
+      fig.className = 'menu-portada';
+      const img = document.createElement('img');
+      img.src = x.portada;
+      img.alt = 'Foto de ' + (nombreEmpresaEl.textContent || 'la familia');
+      fig.appendChild(img);
+      if (est) est.replaceWith(fig);
+    }
+  });
+}
+
 async function iniciar() {
   try {
     const rMe = await fetch('/api/auth/me');
@@ -118,6 +155,7 @@ async function iniciar() {
     if (me.rol !== 'empleado') { window.location.href = '/index.html'; return; }
     pintarHeader(me.empresa);
     aplicarModulos(me.empresa.modulosActivos);
+    pintarExtras(me.extras);
     // limpiar los marcadores de admin vencidos no bloquea nada visual, corre aparte
     fetch('/api/admin/limpiar', { method: 'POST' }).catch(() => {});
     if (!Array.isArray(me.empresa.modulosActivos) || me.empresa.modulosActivos.includes('formatos')) {

@@ -6,6 +6,9 @@ const IDS_FORMATOS = FORMATOS.map(f => f.id);
 // viene encendido por defecto, el superadmin lo activa a mano
 const MODULOS_BASE = ['formatos', 'asistencia', 'capacitaciones', 'programas'];
 const MODULOS_VALIDOS = [...MODULOS_BASE, 'inventarios'];
+// foodsaver:contacto — modulo del hogar: valido en la base de datos, pero fuera de MODULOS_VALIDOS
+// para que los formularios normales del superadmin nunca puedan activarlo
+const MODULOS_OCULTOS = ['foodsaver'];
 
 const empresaSchema = new mongoose.Schema({
   nombre: { type: String, required: true, trim: true },
@@ -14,6 +17,8 @@ const empresaSchema = new mongoose.Schema({
   logo: { type: String, default: '' },
   googleSheetId: { type: String, default: '', trim: true },
   activa: { type: Boolean, default: true },
+  // foodsaver:contacto — los hogares no salen en las listas normales del superadmin
+  oculta: { type: Boolean, default: false },
   formatosActivos: {
     type: [String],
     default: () => IDS_FORMATOS.slice(),
@@ -37,7 +42,7 @@ const empresaSchema = new mongoose.Schema({
     type: [String],
     default: () => MODULOS_BASE.slice(),
     validate: {
-      validator: arr => arr.every(m => MODULOS_VALIDOS.includes(m)),
+      validator: arr => arr.every(m => MODULOS_VALIDOS.includes(m) || MODULOS_OCULTOS.includes(m)),
       message: 'Módulo inválido'
     }
   },

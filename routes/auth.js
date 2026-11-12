@@ -81,10 +81,14 @@ router.post('/logout', (req, res) => {
 
 router.get('/me', (req, res) => {
   if (req.session && req.session.empresa) {
+    // foodsaver:contacto — botones extra del menu que registran los modulos (app.locals.menuExtras).
+    // el menu los dibuja sin saber de que modulo son
+    const extras = (req.app.locals.menuExtras || []).map(f => f(req.session.empresa)).filter(Boolean);
     return res.json({
       ok: true,
       rol: 'empleado',
-      empresa: req.session.empresa
+      empresa: req.session.empresa,
+      extras
     });
   }
   if (req.session && req.session.superadmin) {
